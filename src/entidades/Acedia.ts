@@ -294,6 +294,12 @@ export class Acedia extends FormaDoMeioDia implements Chefe {
     this.espera = this.fase2 ? 1.3 : 2.1;
   }
 
+  derrotar(): ResultadoGolpe {
+    const r = super.derrotar();
+    if (r === 'morreu') this.cancelar();
+    return r;
+  }
+
   private cancelar() {
     this.ataque = null;
     this.perigosa = false;

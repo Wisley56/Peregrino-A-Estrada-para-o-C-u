@@ -162,6 +162,13 @@ export class Sombra {
     return 'ferido';
   }
 
+  /** Derrota por roteiro (ignora couraça e fases): a sombra se desfaz como se tivesse levado o último golpe. */
+  derrotar(): ResultadoGolpe {
+    if (!this.ativa) return 'nada';
+    this.vida = 0;
+    return this.desfazer();
+  }
+
   protected desfazer(): ResultadoGolpe {
     this.estado = 'desfazendo';
     this.t = 0;

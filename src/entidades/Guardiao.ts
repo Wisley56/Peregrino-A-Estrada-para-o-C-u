@@ -416,6 +416,12 @@ export class Guardiao extends Sombra implements Chefe {
   }
 
   /** Interrompe o ataque atual (atordoado, morto ou trocando de ataque). */
+  derrotar(): ResultadoGolpe {
+    const r = super.derrotar();
+    if (r === 'morreu') this.cancelar();
+    return r;
+  }
+
   private cancelar() {
     this.ataque = null;
     this.perigosa = false;

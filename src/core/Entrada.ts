@@ -20,6 +20,7 @@ export class Entrada {
 
   constructor(private alvo: HTMLElement) {
     window.addEventListener('keydown', (e) => {
+      if (digitando(e.target)) return; // escrevendo num campo (ex.: o painel de desenvolvedor): não é comando do jogo
       if (e.code === 'Tab') e.preventDefault();
       if (!e.repeat) this.novas.add(e.code);
       this.seguradas.add(e.code);
@@ -90,6 +91,10 @@ export class Entrada {
     const n = Math.hypot(x, y) || 1;
     return [x / n, y / n];
   }
+}
+
+function digitando(alvo: EventTarget | null) {
+  return alvo instanceof HTMLInputElement || alvo instanceof HTMLTextAreaElement || alvo instanceof HTMLSelectElement || (alvo instanceof HTMLElement && alvo.isContentEditable);
 }
 
 /** Pede o ponteiro travado; alguns ambientes (iframes, prévias) recusam e tudo segue com arrastar. */

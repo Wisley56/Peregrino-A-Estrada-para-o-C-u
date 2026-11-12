@@ -90,6 +90,11 @@ export class Estado {
   tempo = 0;
   /** Iscas da Gula que o peregrino pegou e ainda não deu aos pobres: cada uma pesa. */
   peso = 0;
+  /**
+   * Trava de salvamento do modo dev: depois de usar o painel de desenvolvedor, nada vai para o espaço de jogo até
+   * alguém liberar de propósito. Assim um teste não estraga o progresso de verdade. Em produção fica sempre falso.
+   */
+  semSalvar = false;
 
   static {
     // migra o save antigo para o espaço 1
@@ -191,7 +196,7 @@ export class Estado {
   }
 
   salvar() {
-    if (this.slot === null) return;
+    if (this.slot === null || this.semSalvar) return;
     const d: DadosSalvos = {
       checkpoint: this.checkpoint,
       checkpointArea: this.checkpointArea,

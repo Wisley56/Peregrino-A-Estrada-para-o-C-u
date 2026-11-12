@@ -310,6 +310,12 @@ export class Gula extends Sombra implements Chefe {
     this.espera = this.fase2 ? 1.2 : 2;
   }
 
+  derrotar(): ResultadoGolpe {
+    const r = super.derrotar();
+    if (r === 'morreu') this.cancelar();
+    return r;
+  }
+
   private cancelar() {
     this.ataque = null;
     this.perigosa = false;
