@@ -373,6 +373,9 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 - **Mira livre** (`Jogo.atualizarMiraLivre`, `Hud.mostrarRetic`), inspirada no Veloren e no Minecraft:
   - a câmera olha 1,05 m acima da cabeça (`CameraTerceira.elevacaoMira`; 0,5 m na capela). O peregrino fica um
     pouco abaixo do centro e a mira fica livre por cima dele, como no Veloren;
+  - para mirar no alto, a câmera desce até `ARFAGEM_LIVRE` (−0,8): o braço encolhe rente ao chão e passa para
+    cima do ombro direito. A direção do olhar é sempre a do braço inteiro, então a mira não salta quando o braço
+    encosta no chão ou numa parede. Na cripta e na capela, sem teto, o limite continua alto;
   - um raio sai da câmera pelo centro da tela, até 45 m. Ele para na primeira sombra ou alvo, ou no que é maciço
     (`Area.alturaCamera`, que na cidade inclui casas, palácio e o arco da porta). O trecho até o peregrino não conta;
   - sem alvo travado, a luz vai para esse ponto, e o golpe e a luz viram o corpo para a mira;

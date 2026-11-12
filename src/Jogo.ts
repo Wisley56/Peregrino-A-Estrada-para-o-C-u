@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CameraTerceira } from './core/Camera';
+import { ARFAGEM_LIVRE, CameraTerceira } from './core/Camera';
 import { Entrada, travarPonteiro } from './core/Entrada';
 import { CHEFOES, Estado } from './core/Estado';
 import { Som } from './core/Som';
@@ -519,7 +519,7 @@ export class Jogo {
     }
     this.renderer.setClearColor(naCripta ? 0x050407 : 0x000000);
     // a cripta não tem teto: a câmera fica alta para enxergar por cima das paredes
-    this.camera.arfagemMin = naCripta ? 0.5 : -0.25;
+    this.camera.arfagemMin = naCripta ? 0.5 : ARFAGEM_LIVRE;
     this.camera.subirAoBater = naCripta;
     this.som.ambienteDe(this.comecou ? this.tipoAmbiente() : null);
     if (naCripta) this.camera.arfagem = Math.max(this.camera.arfagem, 0.5);
@@ -1384,7 +1384,7 @@ export class Jogo {
     const naCapela = !!cap && cap.dentro(this.peregrino.pos);
     if (this.area !== this.cripta) {
       this.camera.subirAoBater = naCapela && !this.emConfissao;
-      this.camera.arfagemMin = naCapela && !this.emConfissao ? 0.35 : -0.25;
+      this.camera.arfagemMin = naCapela && !this.emConfissao ? 0.35 : ARFAGEM_LIVRE;
     }
     if (this.emConfissao) {
       // de fora da abertura do confessionário, de lado, à altura de quem está ajoelhado

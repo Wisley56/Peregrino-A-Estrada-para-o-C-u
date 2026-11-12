@@ -2,6 +2,15 @@ import * as THREE from 'three';
 
 /** Inclinação máxima: quase de cima para baixo (usada encostado em paredes de interiores). */
 const TETO_ARFAGEM = 1.48;
+/**
+ * Inclinação mínima ao ar livre: a câmera desce até o chão e o braço encolhe, como no Veloren e no F5 do Minecraft,
+ * para poder olhar (e mirar) para o alto.
+ */
+export const ARFAGEM_LIVRE = -0.8;
+/** Quanto a câmera vai para o lado (por cima do ombro direito) quando o braço encolhe, para o corpo não tapar a mira. */
+const OMBRO = 0.75;
+/** Folga da câmera acima do chão quando o braço encosta nele. */
+const FOLGA_CHAO = 0.35;
 
 /**
  * Câmera em terceira pessoa. Livre: o mouse gira em volta do peregrino.
@@ -13,7 +22,7 @@ export class CameraTerceira {
   arfagem = 0.32; // ângulo vertical
   distancia = 6.2;
   /** Inclinação mínima; em interiores sem teto, alta o bastante para passar por cima das paredes. */
-  arfagemMin = -0.25;
+  arfagemMin = ARFAGEM_LIVRE;
   /** Interior sem teto: ao bater numa parede, a câmera sobe em vez de se aproximar. */
   subirAoBater = false;
   /**
@@ -77,12 +86,26 @@ export class CameraTerceira {
     }
     this.extra += (alvoExtra - this.extra) * Math.min(1, dt * (alvoExtra > this.extra ? 8 : 2.5));
     if (this.primeiro) this.extra = alvoExtra;
-    const desejo = this.braco(Math.min(TETO_ARFAGEM, this.arfagem + this.extra));
-    // não entrar no terreno: aproxima a câmera ao longo do braço se houver morro no caminho
+    const ideal = this.braco(Math.min(TETO_ARFAGEM, this.arfagem + this.extra));
+    const desejo = ideal.clone();
+    // não entrar no terreno: aproxima a câmera ao longo do braço até o último ponto livre (olhando para cima, ela
+    // desce rente ao chão e fica perto do peregrino)
     const k = this.bloqueio(desejo, altura);
     if (k >= 0) {
-      desejo.copy(this.foco.clone().lerp(desejo, Math.max(0.15, (k - 1) / 8)));
-      desejo.y = Math.max(desejo.y, altura(desejo.x, desejo.z) + 0.5);
+      let livre = (k - 1) / 8, preso = k / 8;
+      for (let i = 0; i < 6; i++) {
+        const meio = (livre + preso) / 2;
+        const p = this.foco.clone().lerp(ideal, meio);
+        if (altura(p.x, p.z) + FOLGA_CHAO > p.y) preso = meio;
+        else livre = meio;
+      }
+      const fator = Math.max(0.12, livre);
+      desejo.copy(this.foco.clone().lerp(ideal, fator));
+      // braço curto: a câmera passa para cima do ombro direito (se não houver parede ali)
+      const lado = this.direita().multiplyScalar(OMBRO * Math.min(1, (1 - fator) * 1.4));
+      const ombro = desejo.clone().add(lado);
+      if (altura(ombro.x, ombro.z) + FOLGA_CHAO <= ombro.y) desejo.copy(ombro);
+      desejo.y = Math.max(desejo.y, altura(desejo.x, desejo.z) + FOLGA_CHAO);
     }
     if (this.primeiro) {
       this.posAtual.copy(desejo);
@@ -92,7 +115,10 @@ export class CameraTerceira {
     this.cam.position.copy(this.posAtual);
     const elevDesejada = alvoTravado ? 0 : this.elevacaoMira;
     this.elev = this.primeiro ? elevDesejada : this.elev + (elevDesejada - this.elev) * Math.min(1, dt * 5);
-    this.cam.lookAt(this.foco.x, this.foco.y + this.elev, this.foco.z);
+    // a direção do olhar é a do braço inteiro, mesmo quando ele encolhe: assim a mira não salta para cima ao
+    // encostar a câmera no chão ou numa parede
+    const olhar = this.foco.clone().setY(this.foco.y + this.elev).sub(ideal);
+    this.cam.lookAt(this.cam.position.clone().add(olhar));
   }
 
   /** Posição da câmera na ponta do braço, para uma inclinação. */
@@ -109,7 +135,7 @@ export class CameraTerceira {
   private bloqueio(desejo: THREE.Vector3, altura: (x: number, z: number) => number) {
     for (let k = 1; k <= 8; k++) {
       const p = this.foco.clone().lerp(desejo, k / 8);
-      if (altura(p.x, p.z) + 0.4 > p.y) return k;
+      if (altura(p.x, p.z) + FOLGA_CHAO > p.y) return k;
     }
     return -1;
   }
