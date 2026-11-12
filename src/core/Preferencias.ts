@@ -9,6 +9,13 @@ export const SENSIBILIDADE_MAX = 2;
 /** Um pouco abaixo do antigo 1,0, que era rápido demais para muita gente. */
 export const SENSIBILIDADE_PADRAO = 0.7;
 
+/**
+ * Mira no centro da tela: `cruz` (a do Minecraft, que inverte a cor do fundo), `anel` (a redonda do Veloren),
+ * `ponto` (discreta) ou `desligada`.
+ */
+export type EstiloMira = 'cruz' | 'anel' | 'ponto' | 'desligada';
+export const ESTILOS_MIRA: readonly EstiloMira[] = ['cruz', 'anel', 'ponto', 'desligada'];
+
 export type Sombras = 'desligadas' | 'simples' | 'suaves' | 'detalhadas';
 export type Serrilhado = 'desligado' | 'fxaa' | 'smaa' | 'msaa';
 export type Predefinicao = 'baixa' | 'media' | 'alta' | 'ultra' | 'personalizada';
@@ -49,6 +56,7 @@ export function predefinicaoDe(c: Ajustes): Predefinicao {
 
 interface Dados {
   sensibilidade: number;
+  mira: EstiloMira;
   graficos: ConfigGraficos;
 }
 
@@ -66,12 +74,14 @@ const um = <T extends string>(v: unknown, ok: readonly T[], padrao: T): T => (ok
 export class Preferencias {
   /** Multiplica o giro da câmera pelo mouse (e pela borda da tela). */
   sensibilidade: number;
+  mira: EstiloMira;
   graficos: ConfigGraficos;
 
   constructor() {
     const d = ler();
     const s = Number(d.sensibilidade);
     this.sensibilidade = Number.isFinite(s) ? Math.min(SENSIBILIDADE_MAX, Math.max(SENSIBILIDADE_MIN, s)) : SENSIBILIDADE_PADRAO;
+    this.mira = um(d.mira, ESTILOS_MIRA, 'cruz');
     const g = (d.graficos ?? {}) as Partial<ConfigGraficos>;
     const p = GRAFICOS_PADRAO;
     const r = Number(g.resolucao);
@@ -88,7 +98,7 @@ export class Preferencias {
 
   salvar() {
     try {
-      localStorage.setItem(CHAVE, JSON.stringify({ sensibilidade: this.sensibilidade, graficos: this.graficos } satisfies Dados));
+      localStorage.setItem(CHAVE, JSON.stringify({ sensibilidade: this.sensibilidade, mira: this.mira, graficos: this.graficos } satisfies Dados));
     } catch {
       /* sem armazenamento */
     }

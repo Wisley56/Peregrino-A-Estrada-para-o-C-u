@@ -16,6 +16,12 @@ export class CameraTerceira {
   arfagemMin = -0.25;
   /** Interior sem teto: ao bater numa parede, a câmera sobe em vez de se aproximar. */
   subirAoBater = false;
+  /**
+   * Quanto (em metros) a câmera olha acima da cabeça do peregrino. Como no Veloren, isso o põe um pouco abaixo do
+   * centro da tela, e a mira fica livre por cima dele, apontando para onde a câmera olha.
+   */
+  elevacaoMira = 0;
+  private elev = 0;
   private extra = 0;
   private foco = new THREE.Vector3();
   private posAtual = new THREE.Vector3();
@@ -84,7 +90,9 @@ export class CameraTerceira {
     }
     this.posAtual.lerp(desejo, Math.min(1, dt * 12));
     this.cam.position.copy(this.posAtual);
-    this.cam.lookAt(this.foco);
+    const elevDesejada = alvoTravado ? 0 : this.elevacaoMira;
+    this.elev = this.primeiro ? elevDesejada : this.elev + (elevDesejada - this.elev) * Math.min(1, dt * 5);
+    this.cam.lookAt(this.foco.x, this.foco.y + this.elev, this.foco.z);
   }
 
   /** Posição da câmera na ponta do braço, para uma inclinação. */

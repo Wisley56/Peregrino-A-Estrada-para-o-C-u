@@ -1,6 +1,6 @@
 import { rubiSVG } from './Vitral';
 import {
-  ConfigGraficos, Preferencias, PREDEFINICOES, Predefinicao, predefinicaoDe,
+  ConfigGraficos, type EstiloMira, Preferencias, PREDEFINICOES, Predefinicao, predefinicaoDe,
   SENSIBILIDADE_MAX, SENSIBILIDADE_MIN, SENSIBILIDADE_PADRAO,
 } from '../core/Preferencias';
 
@@ -38,6 +38,8 @@ const OPCOES: Opcao<keyof ConfigGraficos>[] = [
     valores: [[false, 'Desligada'], [true, 'Ligada']] },
 ] as Opcao<keyof ConfigGraficos>[];
 
+const NOMES_MIRA: [EstiloMira, string][] = [['cruz', 'Cruz'], ['anel', 'Anel'], ['ponto', 'Ponto'], ['desligada', 'Sem']];
+
 const NOMES_PRE: [Exclude<Predefinicao, 'personalizada'>, string][] = [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta'], ['ultra', 'Ultra']];
 
 /**
@@ -69,6 +71,7 @@ export class Configuracoes {
             <button class="padrao" type="button" data-a="padrao">padrão</button>
           </label>
           <p class="ajuda">Gira a câmera ao mover o mouse e ao encostar o cursor na borda da tela.</p>
+          <div class="opcoes mira"><div class="linha"><div><b>Mira</b><small>A luz do cajado vai para onde a mira aponta. A cruz troca de cor com o fundo para nunca sumir.</small></div><div class="seg" data-mira></div></div></div>
         </div>
         <div class="pagina" data-pag="controles">
           <p class="ajuda">O mouse gira a câmera (clique na tela para prendê-lo). Esc ou P pausa.</p>
@@ -101,11 +104,22 @@ export class Configuracoes {
     });
     faixa.addEventListener('change', () => this.prefs.salvar());
     mostrarSens();
+    const mostrarMira = () => {
+      this.raiz.querySelector('[data-mira]')!.innerHTML = NOMES_MIRA.map(
+        ([id, nome]) => `<button type="button" data-estilo="${id}" class="${this.prefs.mira === id ? 'on' : ''}">${nome}</button>`,
+      ).join('');
+    };
+    mostrarMira();
 
     this.raiz.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('button');
       if (!b) return;
       if (b.dataset.aba) return this.mostrarAba(b.dataset.aba as Aba);
+      if (b.dataset.estilo) {
+        this.prefs.mira = b.dataset.estilo as EstiloMira;
+        this.prefs.salvar();
+        return mostrarMira();
+      }
       if (b.dataset.a === 'voltar') return this.fechar();
       if (b.dataset.a === 'padrao') {
         this.prefs.sensibilidade = SENSIBILIDADE_PADRAO;
