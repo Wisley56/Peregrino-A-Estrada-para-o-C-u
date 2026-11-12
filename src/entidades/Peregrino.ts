@@ -174,7 +174,27 @@ function construirRig(vis: Visual) {
   return { perna, tronco, cabeca, chapeu, braco, cajado };
 }
 
-export type Acao = 'livre' | 'golpe' | 'luz' | 'esquiva' | 'rezando' | 'ferido';
+/** Mola amortecida de um grau de liberdade: segue o alvo com atraso e balança um pouco ao parar. */
+class Mola {
+  x = 0;
+  v = 0;
+  constructor(private rigidez: number, private amortecimento: number) {}
+  passo(alvo: number, dt: number) {
+    // integra em subpassos para não explodir com dt grande (aba escondida, queda de quadros)
+    const n = Math.max(1, Math.ceil(dt / (1 / 120)));
+    const h = Math.min(dt, 0.1) / n;
+    for (let i = 0; i < n; i++) {
+      this.v += ((alvo - this.x) * this.rigidez - this.v * this.amortecimento) * h;
+      this.x += this.v * h;
+    }
+    return this.x;
+  }
+}
+
+export type Acao = 'livre' | 'golpe' | 'luz' | 'esquiva' | 'rezando' | 'ferido' | 'carinho';
+
+/** Duração do carinho num bicho (s). */
+export const DURACAO_CARINHO = 2.2;
 
 export class Peregrino {
   readonly raiz = new THREE.Group();
@@ -196,10 +216,25 @@ export class Peregrino {
   rumo = 0; // ângulo para onde olha (0 = +z)
   velocidadeHoriz = 0;
   acao: Acao = 'livre';
+  /** No carinho: bicho grande (cavalo, boi…) é afagado de pé; o pequeno, agachado. */
+  carinhoAlto = false;
   tempoAcao = 0;
   invulneravel = 0;
   private fase = 0;
   private yVisual = 0;
+  /** 0 parado … 1 andando: sobe e desce aos poucos, para o passo começar e terminar macio. */
+  private passoK = 0;
+  /** Ritmo à parte para o idle (respiração), que não salta quando o passo para. */
+  private respira = Math.random() * 10;
+  private rumoAntes = 0;
+  private inclinaCurva = 0;
+  /** Agachada ao cair de um pulo (1 = queda forte), some em ~0,3 s. */
+  private impacto = 0;
+  private chapeu: THREE.Object3D | null = null;
+  private molaChapeu = new Mola(160, 9);
+  private molaCajado = new Mola(90, 7);
+  private molaLamparina = new Mola(40, 2.6);
+  private yAntes = 0;
   private dirEsquiva = new THREE.Vector3();
 
   /** Visual atual (gênero, idade, cores...). Trocar com `vestir()`. */
@@ -255,6 +290,7 @@ export class Peregrino {
     trocar(this.joelhoD, pD.canela);
     trocar(this.tronco, r.tronco);
     if (r.chapeu) r.chapeu.position.set(0, 6 * S, 0);
+    this.chapeu = r.chapeu;
     trocar(this.cabeca, r.cabeca, r.chapeu);
     trocar(this.bracoE, r.braco());
     trocar(this.bracoD, r.braco());
@@ -279,6 +315,43 @@ export class Peregrino {
     }
     if (this.lamparina) this.lamparina.visible = visivel;
     if (this.luzLamparina) this.luzLamparina.intensity = visivel && acesa ? 9 : 0;
+  }
+
+  /** Força do pulo (1 = normal, 0 = não pula): o ouro da Gula e as pedras de São Damião pesam. */
+  forcaPulo = 1;
+  private saco: THREE.Mesh | null = null;
+  private carga: THREE.Object3D | null = null;
+
+  /** O saco de ouro pendurado na cintura, maior quanto mais pesa (0 esconde). */
+  mostrarPeso(n: number) {
+    if (n > 0 && !this.saco) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(3 * S, 3.4 * S, 2.6 * S), new THREE.MeshLambertMaterial({ color: 0x8a6a3a, emissive: 0x2a1a04 }));
+      const ouro = new THREE.Mesh(new THREE.BoxGeometry(2 * S, 0.8 * S, 1.6 * S), new THREE.MeshLambertMaterial({ color: 0xe8c050, emissive: 0x6a4a08 }));
+      ouro.position.y = 2 * S;
+      m.add(ouro);
+      m.castShadow = true;
+      this.saco = m;
+      this.corpo.add(m);
+    }
+    if (!this.saco) return;
+    this.saco.visible = n > 0;
+    const k = 0.8 + Math.min(n, 6) * 0.14;
+    this.saco.scale.setScalar(k);
+    this.saco.position.set(-4.6 * S, 7.2 * S - 1.7 * S * k, 0.8 * S);
+  }
+
+  /** Leva um objeto no ombro (a pedra de São Damião); `null` larga. */
+  carregar(obj: THREE.Object3D | null) {
+    if (this.carga) this.corpo.remove(this.carga);
+    this.carga = obj;
+    if (obj) {
+      obj.position.set(5.2 * S, 18.6 * S, -0.6 * S);
+      this.corpo.add(obj);
+    }
+  }
+
+  get carregando() {
+    return this.carga !== null;
   }
 
   /** O idoso anda mais devagar. */
@@ -319,7 +392,7 @@ export class Peregrino {
     this.invulneravel = Math.max(0, this.invulneravel - dt);
 
     let vx = 0, vz = 0;
-    const travadoNaAcao = this.acao === 'rezando' || this.acao === 'luz' || this.acao === 'ferido';
+    const travadoNaAcao = this.acao === 'rezando' || this.acao === 'luz' || this.acao === 'ferido' || this.acao === 'carinho';
     if (this.acao === 'esquiva') {
       const k = Math.max(0, 1 - this.tempoAcao / 0.45);
       vx = this.dirEsquiva.x * 10 * (0.4 + k);
@@ -333,6 +406,7 @@ export class Peregrino {
     if (this.acao === 'golpe' && this.tempoAcao > 0.38) this.acao = 'livre';
     if (this.acao === 'luz' && this.tempoAcao > 0.35) this.acao = 'livre';
     if (this.acao === 'ferido' && this.tempoAcao > 0.3) this.acao = 'livre';
+    if (this.acao === 'carinho' && this.tempoAcao > DURACAO_CARINHO) this.acao = 'livre';
 
     // na água, mais devagar
     if (this.pos.y < 2.45 - 0.3) {
@@ -360,14 +434,15 @@ export class Peregrino {
 
     // gravidade e pulo
     const chao = fis.altura(this.pos.x, this.pos.z);
-    if (pular && this.noChao && !travadoNaAcao && this.acao !== 'esquiva') {
-      this.vy = 8.6;
+    if (pular && this.noChao && !travadoNaAcao && this.acao !== 'esquiva' && this.forcaPulo > 0) {
+      this.vy = 8.6 * this.forcaPulo;
       this.noChao = false;
     }
     this.vy -= 25 * dt;
     this.pos.y += this.vy * dt;
     if (this.pos.y <= chao) {
-      // degrau: sobe direto se estava no chão
+      // degrau: sobe direto se estava no chão; vindo do ar, agacha conforme a força da queda
+      if (!this.noChao && this.vy < -4) this.impacto = Math.max(this.impacto, Math.min(1, -this.vy / 16));
       this.pos.y = chao;
       this.vy = 0;
       this.noChao = true;
@@ -391,9 +466,23 @@ export class Peregrino {
 
   private animar(dt: number) {
     const andando = this.velocidadeHoriz > 0.2 && this.noChao;
-    this.fase += dt * (andando ? this.velocidadeHoriz * 2.3 : 1.6);
-    const balanco = (andando ? Math.min(1, this.velocidadeHoriz / 5) : 0) * (this.visual.idade === 'idoso' ? 0.7 : 1);
+    // o passo acompanha o chão percorrido; a amplitude entra e sai aos poucos
+    const alvoPasso = andando ? Math.min(1, this.velocidadeHoriz / 5) : 0;
+    this.passoK += (alvoPasso - this.passoK) * Math.min(1, dt * (alvoPasso > this.passoK ? 8 : 6));
+    if (this.passoK > 0.02) this.fase += dt * Math.max(this.velocidadeHoriz, 1.2) * 2.3;
+    this.respira += dt;
+    const balanco = this.passoK * (this.visual.idade === 'idoso' ? 0.7 : 1);
     const s = Math.sin(this.fase);
+    // curva: o corpo inclina para dentro, proporcional ao giro e à velocidade
+    let giro = this.rumo - this.rumoAntes;
+    while (giro > Math.PI) giro -= Math.PI * 2;
+    while (giro < -Math.PI) giro += Math.PI * 2;
+    this.rumoAntes = this.rumo;
+    const alvoCurva = dt > 0 ? Math.max(-0.18, Math.min(0.18, (giro / dt) * 0.035 * this.passoK)) : 0;
+    this.inclinaCurva += (alvoCurva - this.inclinaCurva) * Math.min(1, dt * 6);
+    this.impacto = Math.max(0, this.impacto - dt * 3.2);
+    const subida = dt > 0 ? (this.yVisual - this.yAntes) / dt : 0;
+    this.yAntes = this.yVisual;
 
     this.yVisual += (this.pos.y - this.yVisual) * Math.min(1, dt * 18);
     this.raiz.position.set(this.pos.x, this.yVisual, this.pos.z);
@@ -419,9 +508,35 @@ export class Peregrino {
       bE = -0.9;
       bD = -0.5;
     }
-    if (this.acao === 'livre' && !andando && this.noChao) {
-      corpoY = Math.sin(this.fase) * 0.012;
-      bE = Math.sin(this.fase) * 0.04;
+    // correndo, o corpo vai à frente; o quadril gira um pouco a cada passo e a cabeça compensa
+    corpoRx += balanco * 0.1;
+    let corpoRy = s * 0.07 * balanco;
+    let cabecaRy = -corpoRy * 0.7;
+    if (this.acao === 'livre' && this.noChao) {
+      // parado: respira (o peito sobe e desce), troca o peso de perna e às vezes olha em volta
+      const parado = 1 - balanco;
+      const r = this.respira;
+      corpoY += Math.sin(r * 1.7) * 0.012 * parado;
+      bE += Math.sin(r * 1.7 - 0.6) * 0.04 * parado;
+      bD += Math.sin(r * 1.7 - 0.9) * 0.025 * parado;
+      const peso = Math.sin(r * 0.37) * parado;
+      pE += Math.max(0, peso) * 0.06;
+      jE += Math.max(0, peso) * 0.12;
+      pD += Math.max(0, -peso) * 0.06;
+      jD += Math.max(0, -peso) * 0.12;
+      corpoY -= Math.abs(peso) * 0.012;
+      const olhada = Math.floor(r / 3.2);
+      cabecaRy += Math.sin(olhada * 7331) * 0.35 * parado * (Math.sin(olhada * 1337) > 0.2 ? 1 : 0);
+    }
+    if (this.impacto > 0 && this.noChao) {
+      const k = Math.sin(Math.min(1, this.impacto) * Math.PI * 0.5);
+      corpoY -= k * 0.16;
+      pE -= k * 0.55;
+      pD -= k * 0.55;
+      jE += k * 1.0;
+      jD += k * 1.0;
+      bE -= k * 0.35;
+      corpoRx += k * 0.12;
     }
 
     const t = this.tempoAcao;
@@ -460,6 +575,30 @@ export class Peregrino {
         jE = jD = 1.8;
         bE = bD = -1.2;
         break;
+      case 'carinho': {
+        // a mão esquerda afaga o bicho, indo e voltando; a direita segura o cajado de lado
+        const k = Math.min(1, t / 0.3) * Math.min(1, (DURACAO_CARINHO - t) / 0.3);
+        const afago = Math.sin(t * 7) * 0.22 * k;
+        if (this.carinhoAlto) {
+          bE = (-1.45 + afago) * k;
+          bEz = 0.15 * k;
+          cabecaRx = 0.1 * k;
+        } else {
+          // agachado num joelho, inclinado para a frente
+          pE = -1.25 * k;
+          jE = 1.35 * k;
+          pD = 0.15 * k;
+          jD = 1.65 * k;
+          corpoY = -4 * S * k;
+          corpoRx = 0.28 * k;
+          bE = (-1.05 + afago) * k;
+          bEz = (0.1 + Math.sin(t * 3.5) * 0.08) * k;
+          cabecaRx = 0.3 * k;
+        }
+        bD = -0.15 * k;
+        cajadoRx = 0.2 * k;
+        break;
+      }
       case 'ferido':
         corpoRx = -0.3;
         bE = bD = -0.6;
@@ -477,7 +616,17 @@ export class Peregrino {
     lerp(this.bracoE, 'z', bEz);
     lerp(this.bracoD, 'z', bDz);
     lerp(this.cabeca, 'x', cabecaRx);
-    lerp(this.cajado, 'x', cajadoRx);
+    this.cabeca.rotation.y += (cabecaRy - this.cabeca.rotation.y) * Math.min(1, dt * 5);
+    this.corpo.rotation.y += (corpoRy - this.corpo.rotation.y) * suav;
+    this.centro.rotation.z = this.acao === 'esquiva' ? 0 : -this.inclinaCurva;
+    // movimento secundário: o cajado acompanha a mão com atraso, o chapéu balança no passo e na queda,
+    // a lamparina pende como pêndulo (fica de pé enquanto o braço balança)
+    this.cajado.rotation.x = this.molaCajado.passo(cajadoRx, dt);
+    if (this.chapeu) {
+      const alvo = -balanco * 0.06 + Math.sin(this.fase * 2) * 0.025 * balanco - Math.max(-6, Math.min(6, subida)) * 0.012;
+      this.chapeu.rotation.x = this.molaChapeu.passo(alvo, dt);
+    }
+    if (this.lamparina) this.lamparina.rotation.x = this.molaLamparina.passo(-this.bracoE.rotation.x - this.centro.rotation.x, dt);
     if (this.acao === 'esquiva') {
       this.centro.rotation.x = corpoRx;
       this.corpo.position.y = -0.85 - 0.3 + 0.3 * Math.cos(Math.min(1, t / 0.45) * Math.PI * 2);

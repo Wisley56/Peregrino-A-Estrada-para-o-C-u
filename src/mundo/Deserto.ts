@@ -1,10 +1,12 @@
 import * as THREE from 'three';
+import type { Povoamento } from '../fauna/Fauna';
 import { Ruido, aleatorio } from '../core/Ruido';
 import { Modelo, variar } from '../voxel/Modelo';
 import { materialVoxel } from '../voxel/Malha';
 import { carregarVox, geometriaVox } from '../voxel/Vox';
 import { Sombra } from '../entidades/Sombra';
-import { Antao } from '../entidades/Antao';
+import { ANTAO } from '../entidades/Antao';
+import { Npc } from '../entidades/Npc';
 import { Area } from './Area';
 import { construirCruzeiro, construirPlaca } from './Cenario';
 import { malhaDeColunas } from './Terreno';
@@ -34,6 +36,8 @@ const MESAS: [number, number, number, number, number][] = [
   // x, z, raio x, raio z, altura
   [-50, -45, 16, 14, 12], [22, -40, 9, 8, 9], [40, 38, 8, 10, 8], [-12, 47, 11, 8, 10], [56, -44, 6, 6, 7], [-46, 12, 6, 7, 8],
 ];
+/** Estrada velha ao sul, que sobe para a Cidade Dourada (x local do corredor). */
+const X_SUL = 14;
 /** Fenda no penhasco oeste (fechada pela parede falsa). */
 const FENDA = { z: 30, parede: -58.5, fim: -76 };
 
@@ -292,9 +296,11 @@ export class Deserto implements Area {
   readonly cruz: THREE.Vector3;
   readonly fogo: THREE.Vector3;
   readonly caverna: THREE.Vector3;
-  readonly antao: Antao;
+  readonly antao: Npc;
   readonly parede: THREE.Vector3;
   readonly fimFenda: THREE.Vector3;
+  /** Fim do corredor do sul: a estrada para a Cidade Dourada. */
+  readonly estradaSul: THREE.Vector3;
   readonly luzFogo = new THREE.PointLight(0xff9a40, 6, 9, 1.5);
   private malhaParede: THREE.Mesh;
   private matParede: THREE.MeshLambertMaterial;
@@ -319,6 +325,7 @@ export class Deserto implements Area {
     this.caverna = w(CAVERNA.boca.x, CAVERNA.boca.y);
     this.parede = w(FENDA.parede, FENDA.z);
     this.fimFenda = w(FENDA.fim + 3, FENDA.z + 1.6);
+    this.estradaSul = w(X_SUL, 72);
 
     // poço, cruz de pedra e tamareiras
     const p = poco();
@@ -336,7 +343,7 @@ export class Deserto implements Area {
 
     // Santo Antão, na boca da caverna, e o fogo dele
     const pa = w(-36.2, -31.8);
-    this.antao = new Antao(pa, Math.PI / 4);
+    this.antao = new Npc(ANTAO, pa, Math.PI / 4);
     this.grupo.add(this.antao.raiz);
     this.circulos.push({ x: pa.x, z: pa.z, r: 0.5 });
     this.luzFogo.position.copy(this.fogo).add(new THREE.Vector3(0, 1, 0));
@@ -373,7 +380,9 @@ export class Deserto implements Area {
     const placaFenda = construirPlaca();
     placaFenda.position.copy(this.fimFenda);
     placaFenda.rotation.y = Math.PI / 2;
-    this.grupo.add(placaLeste, placaFenda);
+    const placaSul = construirPlaca();
+    placaSul.position.copy(w(X_SUL + 2.4, 70));
+    this.grupo.add(placaLeste, placaFenda, placaSul);
 
     // parede falsa na fenda do oeste
     this.matParede = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 1 });
@@ -565,6 +574,7 @@ export class Deserto implements Area {
         plano = Math.max(plano, 1 - suave(6, 9, Math.hypot(x - POCO.x, z - POCO.y)));
         for (const mi of MIRAGENS) plano = Math.max(plano, 1 - suave(5, 8, Math.hypot(x - mi.x, z - mi.z)));
         plano = Math.max(plano, 1 - suave(6, 9, Math.hypot(x + 35, z + 32)));
+        if (z > 38) plano = Math.max(plano, 1 - suave(3, 7, Math.abs(x - X_SUL)));
         h = h + (base - h) * plano;
         if (dr < 1.5) tipo = 1;
         if (Math.hypot(x - POCO.x, z - POCO.y) < 6 && this.ruido.fbm(x * 0.4, z * 0.4) > 0.5) tipo = 3;
@@ -585,7 +595,12 @@ export class Deserto implements Area {
         const borda = Math.max(Math.abs(x), Math.abs(z));
         const corredorLeste = x > 50 && Math.abs(z) < 2.8;
         const fenda = x < -52 && x > FENDA.fim && Math.abs(z - FENDA.z) < 3.4;
-        if (borda > 60 && !corredorLeste && !fenda) {
+        const corredorSul = z > 50 && Math.abs(x - X_SUL) < 2.8;
+        if (corredorSul) {
+          h = this.chao(X_SUL, 52);
+          tipo = 1;
+        }
+        if (borda > 60 && !corredorLeste && !fenda && !corredorSul) {
           h = Math.max(h, base + 10 + Math.min(14, (borda - 60) * 2) + this.ruido.fbm(x * 0.1, z * 0.1) * 5);
           tipo = 2;
         }
@@ -616,6 +631,19 @@ export class Deserto implements Area {
       return prof === 0 ? topo : variar(faixas[Math.floor(y / 2) % 4], i, y, j, 0.05);
     }
     return prof < 2 ? variar(0xcfae76, i, y, j, 0.04) : variar(0xb08458, i, y, j, 0.05);
+  }
+
+  /** Lagartixas nas pedras, camelos no oásis do poço, antílopes e hienas ao longe, aves de rapina. */
+  povoamento(): Povoamento[] {
+    const c = (lx: number, lz: number): [number, number] => [lx + ORIGEM_DESERTO.x, lz + ORIGEM_DESERTO.z];
+    return [
+      { especie: 'lagartixa', quantidade: 6, centro: c(0, 0), raio: 45 },
+      { especie: 'camelo', quantidade: 2, centro: [this.poco.x + 5, this.poco.z + 4], raio: 6 },
+      { especie: 'antilope', quantidade: 3, centro: c(-38, 38), raio: 13 },
+      { especie: 'hiena', quantidade: 2, centro: c(38, -42), raio: 12 },
+      { especie: 'corvo', quantidade: 2, centro: [this.poco.x, this.poco.z], raio: 18 },
+      { especie: 'aguia', quantidade: 1, centro: c(0, 0), raio: 45 },
+    ];
   }
 
   fonteMapa(): FonteMapa {

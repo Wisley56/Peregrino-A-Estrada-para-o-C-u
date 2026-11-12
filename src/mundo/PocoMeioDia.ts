@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { Povoamento } from '../fauna/Fauna';
 import { Ruido } from '../core/Ruido';
 import { Modelo, variar } from '../voxel/Modelo';
 import { Sombra } from '../entidades/Sombra';
@@ -291,6 +292,15 @@ export class PocoMeioDia implements Area {
   }
 
   /** O minimapa: o mesmo desenho do chão, visto de cima. */
+  /** O meio-dia é quase sem vida: lagartixas, uma tartaruga junto ao poço e corvos à espera. */
+  povoamento(): Povoamento[] {
+    return [
+      { especie: 'lagartixa', quantidade: 3, centro: this.centro, raio: 12 },
+      { especie: 'tartaruga', quantidade: 1, centro: [this.poco.x + 2.5, this.poco.z + 2], raio: 3 },
+      { especie: 'corvo', quantidade: 3, centro: this.centro, raio: 12 },
+    ];
+  }
+
   fonteMapa(): FonteMapa {
     return {
       x0: ORIGEM_MEIODIA.x - META,

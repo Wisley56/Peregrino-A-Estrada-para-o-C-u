@@ -24,6 +24,11 @@ export interface DadosSalvos {
   salvoEm?: number;
   /** Tempo de jogo acumulado (s). */
   tempo?: number;
+  /** Sacramentos recebidos desde a última queda. */
+  confessado?: boolean;
+  comungou?: boolean;
+  /** Iscas da Gula carregadas (o ouro que pesa). */
+  peso?: number;
 }
 
 /** O que a tela inicial mostra de cada espaço de jogo. */
@@ -48,14 +53,22 @@ function ler(chave: string): DadosSalvos | null {
 }
 
 /** Sombras-chefão: cada uma vencida dá um coração a mais. */
-export const CHEFOES = ['cripta_guardiao', 'meiodia_acedia'];
+export const CHEFOES = ['cripta_guardiao', 'meiodia_acedia', 'palacio_gula'];
 
 /** Estado do peregrino e do mundo. O que importa entre sessões vai para o espaço de jogo atual. */
 export class Estado {
   /** Corações: 5 no começo e +1 por chefão vencido (vale também para saves antigos). O dano vem em meios. */
-  get coracoesMax() {
+  get coracoesBase() {
     return 5 + CHEFOES.filter((id) => this.sombrasVencidas.has(id)).length;
   }
+  /** Com a Eucaristia, um coração dourado a mais até a próxima queda. */
+  get coracoesMax() {
+    return this.coracoesBase + (this.comungou ? 1 : 0);
+  }
+  /** Confessou-se desde a última queda (estado de graça): pode comungar. */
+  confessado = false;
+  /** Comungou desde a última queda. */
+  comungou = false;
   coracoes = 5;
   /** Temor de Deus 5 (Prostração) aumenta a energia máxima. */
   get energiaMax() {
@@ -75,6 +88,8 @@ export class Estado {
   /** Espaço de jogo (1..3). Sem espaço (null), nada é salvo. */
   slot: number | null = null;
   tempo = 0;
+  /** Iscas da Gula que o peregrino pegou e ainda não deu aos pobres: cada uma pesa. */
+  peso = 0;
 
   static {
     // migra o save antigo para o espaço 1
@@ -149,11 +164,18 @@ export class Estado {
       }
     this.identidade = d.identidade ? normalizar(d.identidade) : null;
     this.tempo = d.tempo ?? 0;
+    this.confessado = !!d.confessado;
+    this.comungou = !!d.comungou;
+    this.peso = Math.max(0, Math.floor(d.peso ?? 0));
+    // o zerar() encheu os corações antes de saber dos chefões e da Eucaristia
+    this.coracoes = this.coracoesMax;
     return true;
   }
 
   /** Volta tudo ao começo (jogo novo). */
   zerar() {
+    this.confessado = false;
+    this.comungou = false;
     this.coracoes = this.coracoesMax;
     this.energia = 60;
     this.cor = 0;
@@ -165,6 +187,7 @@ export class Estado {
     this.dons = {};
     this.identidade = null;
     this.tempo = 0;
+    this.peso = 0;
   }
 
   salvar() {
@@ -180,6 +203,9 @@ export class Estado {
       identidade: this.identidade ?? undefined,
       salvoEm: Date.now(),
       tempo: Math.round(this.tempo),
+      confessado: this.confessado || undefined,
+      comungou: this.comungou || undefined,
+      peso: this.peso || undefined,
     };
     try {
       localStorage.setItem(CHAVE_SLOT(this.slot), JSON.stringify(d));
@@ -191,7 +217,7 @@ export class Estado {
 
   /** Nível de um dom: 0 = ainda não recebido. */
   nivel(id: IdDom) {
-    const recebido = id === 'temor' || (id === 'ciencia' && this.flags.has('dom_ciencia'));
+    const recebido = id === 'temor' || this.flags.has(`dom_${id}`);
     if (!recebido) return 0;
     return Math.max(1, Math.min(5, this.dons[id] ?? 1));
   }
@@ -215,6 +241,12 @@ export class Estado {
     this.dons[id] = n + 1;
     this.salvar();
     return true;
+  }
+
+  /** A queda tira o estado de graça e o coração da Eucaristia. */
+  cair() {
+    this.confessado = false;
+    this.comungou = false;
   }
 
   restaurar() {

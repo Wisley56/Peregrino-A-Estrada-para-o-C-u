@@ -1,3 +1,5 @@
+import type { VozAnimal } from '../fauna/Especies';
+
 /** Efeitos sonoros sintetizados (Web Audio). Nenhum arquivo externo. */
 export class Som {
   private ctx: AudioContext | null = null;
@@ -56,6 +58,32 @@ export class Som {
   passo() { this.ruido(0.05, 0.08, 400); }
   pulo() { this.tom(300, 0.12, 'triangle', 0.08, 480); }
   balido() { this.tom(420, 0.45, 'sawtooth', 0.05, 380); this.tom(426, 0.45, 'square', 0.03, 384); }
+
+  /** Voz de um bicho da fauna; mais baixa quanto mais longe (k = 0…1). */
+  voz(v: VozAnimal, k = 1) {
+    const g = Math.max(0.15, Math.min(1, k));
+    const t = (f: number, d: number, tipo: OscillatorType, vol: number, ate?: number, atraso = 0) => this.tom(f, d, tipo, vol * g, ate, atraso);
+    switch (v) {
+      case 'balido': t(420, 0.45, 'sawtooth', 0.05, 380); t(426, 0.45, 'square', 0.03, 384); break;
+      case 'balido_agudo': t(560, 0.35, 'sawtooth', 0.045, 500); t(566, 0.35, 'square', 0.025, 505); break;
+      case 'latido': [0, 0.22].forEach((d) => { t(300, 0.12, 'square', 0.06, 180, d); this.ruido(0.08, 0.08 * g, 900); }); break;
+      case 'miado': t(600, 0.5, 'triangle', 0.05, 900); t(900, 0.3, 'triangle', 0.04, 500, 0.35); break;
+      case 'grunhido': t(110, 0.3, 'sawtooth', 0.06, 80); this.ruido(0.25, 0.1 * g, 300); break;
+      case 'mugido': t(130, 1.1, 'sawtooth', 0.05, 100); t(132, 1.1, 'triangle', 0.04, 98); break;
+      case 'relincho': for (let i = 0; i < 6; i++) t(700 - i * 40, 0.1, 'sawtooth', 0.04, 620 - i * 40, i * 0.08); break;
+      case 'zurro': [0, 0.5, 1].forEach((d, i) => t(i % 2 ? 260 : 520, 0.45, 'sawtooth', 0.05, i % 2 ? 230 : 460, d)); break;
+      case 'cacarejo': for (let i = 0; i < 4; i++) t(650 + (i % 2) * 150, 0.08, 'square', 0.035, 500, i * 0.11); break;
+      case 'grasnado': [0, 0.2].forEach((d) => t(320, 0.15, 'sawtooth', 0.05, 260, d)); break;
+      case 'crocito': [0, 0.35].forEach((d) => { t(420, 0.22, 'sawtooth', 0.05, 300, d); }); this.ruido(0.2, 0.06 * g, 1500); break;
+      case 'pio': t(420, 0.35, 'sine', 0.06, 400); t(380, 0.6, 'sine', 0.05, 360, 0.45); break;
+      case 'uivo': t(300, 2.2, 'sine', 0.06, 520); t(600, 2.2, 'triangle', 0.015, 1040); break;
+      case 'guincho': for (let i = 0; i < 3; i++) t(3200, 0.05, 'square', 0.02, 2600, i * 0.07); break;
+      case 'coaxo': [0, 0.3].forEach((d) => t(160, 0.18, 'square', 0.05, 120, d)); break;
+      case 'grito_aguia': t(1800, 0.7, 'sawtooth', 0.025, 1200); t(1900, 0.5, 'sine', 0.02, 1300, 0.1); break;
+      case 'pavao': t(800, 0.6, 'sawtooth', 0.04, 1300); t(1300, 0.4, 'sawtooth', 0.03, 900, 0.5); break;
+      case 'gemido': t(220, 0.7, 'sawtooth', 0.04, 170); this.ruido(0.5, 0.05 * g, 400); break;
+    }
+  }
   dissolver() { this.tom(660, 0.9, 'sine', 0.15, 220); this.ruido(0.6, 0.2, 3000); }
   graca() {
     [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => this.tom(f, 1.6, 'sine', 0.12, undefined, i * 0.12));

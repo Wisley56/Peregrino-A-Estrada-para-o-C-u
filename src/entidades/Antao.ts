@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { Modelo, variar } from '../voxel/Modelo';
+import type { Humano } from '../voxel/Humano';
+import type { DefNpc } from './Npc';
 
 const S = 0.085; // mesma escala de voxel do peregrino
 
@@ -68,30 +70,18 @@ function modeloAntao() {
   return m.malha(S, [0.5, 0, 0.5]);
 }
 
-export class Antao {
-  readonly raiz = new THREE.Group();
-  readonly pos: THREE.Vector3;
-  private corpo: THREE.Mesh;
-  private t = 0;
-  private rumo: number;
-
-  constructor(pos: THREE.Vector3, rumo: number) {
-    this.pos = pos.clone();
-    this.rumo = rumo;
-    this.corpo = modeloAntao();
-    this.raiz.add(this.corpo);
-    this.raiz.position.copy(this.pos);
-    this.raiz.rotation.y = rumo;
-  }
-
-  /** Respira devagar e vira para o peregrino quando ele chega perto. */
-  atualizar(dt: number, jogador: THREE.Vector3) {
-    this.t += dt;
-    const d = jogador.distanceTo(this.pos);
-    const alvo = d < 9 ? Math.atan2(jogador.x - this.pos.x, jogador.z - this.pos.z) : this.rumo;
-    let dr = alvo - this.raiz.rotation.y;
-    dr = Math.atan2(Math.sin(dr), Math.cos(dr));
-    this.raiz.rotation.y += dr * Math.min(1, dt * 3);
-    this.corpo.scale.y = 1 + Math.sin(this.t * 1.6) * 0.008;
-  }
-}
+/** Santo Antão, guia do Deserto das Vozes (dom da Ciência). */
+export const ANTAO: DefNpc = {
+  id: 'antao',
+  falante: 'antao',
+  no: 'antao',
+  rotulo: 'F: falar com Santo Antão',
+  visual: (): Humano => {
+    // modelo inteiro (a barba longa liga cabeça e peito): a cabeça não gira sozinha, o corpo vira
+    const corpo = modeloAntao();
+    const raiz = new THREE.Group();
+    const cabeca = new THREE.Group();
+    raiz.add(corpo, cabeca);
+    return { raiz, corpo, cabeca, alturaOlhos: 21 * S };
+  },
+};

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { Povoamento } from '../fauna/Fauna';
 import { Modelo, variar } from '../voxel/Modelo';
 import { Sombra } from '../entidades/Sombra';
 import { Guardiao } from '../entidades/Guardiao';
@@ -282,6 +283,19 @@ export class Cripta implements Area {
   private marcarPonto(p: THREE.Vector3, h: number) {
     const x = Math.floor(p.x - ORIGEM.x), z = Math.floor(p.z - ORIGEM.z);
     this.marcar([x, z, x, z], h);
+  }
+
+  /** Ratos pelos cantos e morcegos sob as abóbadas. */
+  povoamento(): Povoamento[] {
+    const c = (x: number, z: number): [number, number] => {
+      const p = mundo(x, z);
+      return [p.x, p.z];
+    };
+    return [
+      { especie: 'rato', quantidade: 4, centro: c(18, 19), raio: 7 },
+      { especie: 'rato', quantidade: 2, centro: c(18, 33), raio: 4 },
+      { especie: 'morcego', quantidade: 3, centro: c(18, 19), raio: 5 },
+    ];
   }
 
   fonteMapa(): FonteMapa {

@@ -65,7 +65,14 @@ export const DONS: Dom[] = [
   {
     id: 'piedade', nome: 'Piedade', cor: '#e57fb0',
     essencia: 'Curar, ajudar e rezar pelos outros; os ajudados voltam depois para retribuir.',
-    origem: 'São Francisco de Assis, na Cidade Dourada', niveis: [],
+    origem: 'São Francisco de Assis, na Cidade Dourada',
+    niveis: [
+      { nome: 'Mãos que servem', texto: 'F junto a quem sofre: socorrer custa 20 de energia. Quem foi ajudado volta depois para retribuir.' },
+      { nome: 'Partilha', texto: 'Socorrer custa só 12 de energia.' },
+      { nome: 'Misericórdia', texto: 'Cada ato de piedade cura um coração inteiro.' },
+      { nome: 'Pobreza alegre', texto: 'O ouro da Gula pesa a metade.' },
+      { nome: 'Instrumento da paz', texto: 'Rezando perto de quem você ajudou, a oração rende o dobro: eles rezam com você.' },
+    ],
   },
   {
     id: 'temor', nome: 'Temor de Deus', cor: '#9b6ad6',

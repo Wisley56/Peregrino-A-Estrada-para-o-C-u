@@ -3,21 +3,31 @@ import { CameraTerceira } from './core/Camera';
 import { Entrada, travarPonteiro } from './core/Entrada';
 import { CHEFOES, Estado } from './core/Estado';
 import { Som } from './core/Som';
-import { identidadePadrao, texto, visualDe } from './core/Aparencia';
+import { identidadePadrao, visualDe } from './core/Aparencia';
 import { Efeitos } from './fx/Efeitos';
-import { Hud, Fala } from './ui/Hud';
+import { Hud } from './ui/Hud';
+import { Dialogos } from './dialogo/Dialogos';
+import { falante } from './dialogo/Falantes';
+import type { Npc } from './entidades/Npc';
+import { Fauna } from './fauna/Fauna';
+import { anatomia } from './fauna/Especies';
+import { iniciarRetratos } from './dialogo/Retratos';
 import { Criacao } from './ui/Criacao';
 import { Mundo } from './mundo/Mundo';
 import { Cripta } from './mundo/Cripta';
 import { Alvo, Area, IdArea } from './mundo/Area';
 import { Deserto, TOTAL_SOMBRAS_DESERTO } from './mundo/Deserto';
 import { PocoMeioDia } from './mundo/PocoMeioDia';
+import { Cidade, NOME_ISCA, PEDRAS_DAMIAO, TOTAL_ATOS_CIDADE, TOTAL_SOMBRAS_CIDADE, type Isca, type Pobre } from './mundo/Cidade';
+import { pedraDeCarregar } from './mundo/CidadeModelos';
+import { Banquete, type Ajudante, type IdAjudante } from './mundo/Banquete';
 import { Chefe } from './entidades/Guardiao';
 import { Minimapa, Marca } from './ui/Minimapa';
 import { Pausa } from './ui/Pausa';
 import { CAPELA } from './mundo/Terreno';
+import type { CapelaRegional } from './mundo/Capela';
 import { colunaDeLuz, construirCeu } from './mundo/Cenario';
-import { Peregrino } from './entidades/Peregrino';
+import { DURACAO_CARINHO, Peregrino } from './entidades/Peregrino';
 import { Pomba } from './entidades/Pomba';
 import { Sombra } from './entidades/Sombra';
 import { Preferencias } from './core/Preferencias';
@@ -25,6 +35,27 @@ import { TelaDons } from './ui/Dons';
 import { Configuracoes } from './ui/Configuracoes';
 
 const TOTAL_SOMBRAS_VALE = 5;
+
+const NOMES_AREA: Record<IdArea, string> = { vale: 'O Vale', cripta: 'A Cripta', deserto: 'Deserto das Vozes', meiodia: 'Poço do Meio-Dia', cidade: 'Cidade Dourada', palacio: 'Palácio da Gula' };
+const NOME_AJUDANTE: Record<IdAjudante, string> = { tomas: 'Tomás', rita: 'Rita', beppo: 'Beppo', leproso: 'o homem curado' };
+/** O que cada pobre diz quando o peregrino reparte com ele o peso do banquete. */
+const FALA_REPARTIR: Record<IdAjudante, string> = {
+  tomas: 'Tomás: "Você repartiu comigo. Agora eu reparto com você."',
+  rita: 'Rita: "Me dê isso. Lá em casa tem três bocas."',
+  beppo: 'Beppo: "Deixa que eu carrego! Eu sou forte!"',
+  leproso: 'O homem curado: "Você me tocou quando ninguém tocava. Me dê o peso."',
+};
+/** Os atos de piedade da Cidade Dourada (flags do save). */
+const ATOS_CIDADE = ['cidade_leproso', 'cidade_ajudou_tomas', 'cidade_ajudou_rita', 'cidade_ajudou_beppo', 'cidade_lobo', 'cidade_damiao'];
+const NOME_POBRE: Record<Pobre['id'], string> = { tomas: 'Tomás', rita: 'Rita', beppo: 'Beppo' };
+/** O que a Gula sussurra quando o peregrino pega uma isca. */
+const SUSSURRO_ISCA: Record<Isca['tipo'], string> = {
+  prato: 'Coma. Amanhã você jejua.',
+  calice: 'Ouro puro. Ninguém vai sentir falta.',
+  moedas: 'Guarde. Os pobres sempre vão existir.',
+  taca: 'Só mais uma taça. Você merece.',
+  coroa: 'Fica bem em você. Fique com ela.',
+};
 
 interface Projetil {
   malha: THREE.Mesh;
@@ -49,11 +80,23 @@ export class Jogo {
   readonly entrada: Entrada;
   readonly estado = new Estado();
   readonly hud = new Hud();
+  /** Conversas e falas, escritas em Ink (src/dialogos/*.ink). */
+  readonly dialogos: Dialogos = new Dialogos(this.hud, {
+    tem: (f) => this.estado.flags.has(f),
+    marcar: (f) => this.marcar(f),
+    nivel: (d) => this.estado.nivel(d as Parameters<Estado['nivel']>[0]),
+    valor: (k) => this.valorDialogo(k),
+    nome: () => (this.estado.identidade ?? identidadePadrao()).nome,
+    feminino: () => (this.estado.identidade ?? identidadePadrao()).genero === 'f',
+    evento: (e) => this.eventoDialogo(e),
+  });
   readonly som = new Som();
   readonly mundo = new Mundo();
   cripta!: Cripta;
   /** Área onde o peregrino está agora. */
   area: Area = this.mundo;
+  /** Ajoelhado no confessionário, conversando com o padre. */
+  private emConfissao = false;
   readonly peregrino = new Peregrino(visualDe(identidadePadrao()));
   readonly pomba = new Pomba();
   private modoCriacao = false;
@@ -66,6 +109,9 @@ export class Jogo {
   private travado: Alvo | null = null;
   private projeteis: Projetil[] = [];
   private golpePendente = -1;
+  /** Onde a mira livre aponta (raio da câmera pelo centro da tela) e o inimigo que está sob ela. */
+  private miraPonto = new THREE.Vector3();
+  private miraAlvo: Alvo | null = null;
   private tempoOracao = 0;
   /** Tempo acumulado para a cura do Repouso em Deus (Temor de Deus 4). */
   private curaOracao = 0;
@@ -79,7 +125,27 @@ export class Jogo {
   private puxao: { de: THREE.Vector3; para: THREE.Vector3; t: number } | null = null;
   private comecou = false;
   private lamparinaAcesa = false;
-  private interacoes: Record<IdArea, Interacao[]> = { vale: [], cripta: [], deserto: [], meiodia: [] };
+  /** A fauna de cada região (só a da área atual aparece e se mexe). */
+  private faunas = new Map<IdArea, Fauna>();
+  private interacoes: Record<IdArea, Interacao[]> = { vale: [], cripta: [], deserto: [], meiodia: [], cidade: [], palacio: [] };
+  readonly cidade = new Cidade();
+  /** O Salão do Banquete, dentro do palácio: a arena da Gula. Os pobres da cidade vêm com o peregrino. */
+  readonly banquete = new Banquete(
+    {
+      lutaComecou: () => this.lutaBanqueteComecou(),
+      banqueteServido: (primeira) => this.banqueteServido(primeira),
+      travessaCaiu: (restantes) => this.travessaCaiu(restantes),
+    },
+    (() => {
+      const def = (id: string) => this.cidade.pobres.find((p) => p.id === id)!.npc.def;
+      return { tomas: def('tomas'), rita: def('rita'), beppo: def('beppo'), leproso: this.cidade.leprosoCurado.def };
+    })(),
+  );
+  /** Peso dos pratos da Gula, só durante a luta (some ao repartir, em jejum ou ao sair). */
+  private pesoBanquete = 0;
+  private jejum = 0;
+  /** Com quem o peregrino já repartiu nesta luta (Piedade 3 devolve um coração uma vez por pessoa). */
+  private repartiu = new Set<IdAjudante>();
   readonly meiodia = new PocoMeioDia({ lutaComecou: () => this.lutaMeioDiaComecou() });
   private minimapa = new Minimapa();
   /** Área cuja base o minimapa está mostrando. */
@@ -128,6 +194,7 @@ export class Jogo {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
     recipiente.appendChild(this.renderer.domElement);
+    iniciarRetratos(this.renderer);
 
     this.camera = new CameraTerceira(innerWidth / innerHeight);
     this.entrada = new Entrada(this.renderer.domElement);
@@ -145,7 +212,7 @@ export class Jogo {
     this.sol.shadow.bias = -0.0006;
     this.sol.shadow.normalBias = 0.04;
     this.cena.add(this.sol, this.sol.target);
-    this.cena.add(this.mundo.grupo, this.deserto.grupo, this.meiodia.grupo, this.peregrino.raiz, this.pomba.raiz, this.coluna, this.flashLuz);
+    this.cena.add(this.mundo.grupo, this.deserto.grupo, this.meiodia.grupo, this.cidade.grupo, this.banquete.grupo, this.peregrino.raiz, this.pomba.raiz, this.coluna, this.flashLuz);
     this.coluna.visible = false;
     this.aplicarGraficos();
 
@@ -185,10 +252,13 @@ export class Jogo {
 
   /** Carrega o mundo "limpo" (fundo da tela inicial). O progresso entra depois, em `iniciarSlot`. */
   async carregar() {
-    await Promise.all([this.mundo.povoar(this.estado.sombrasVencidas), this.deserto.povoar()]);
+    await Promise.all([this.mundo.povoar(this.estado.sombrasVencidas), this.deserto.povoar(), this.cidade.povoar()]);
     this.deserto.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+    this.cidade.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+    this.banquete.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
     this.meiodia.reiniciar(this.estado.sombrasVencidas);
     this.montarCripta();
+    await this.povoarFauna();
     this.estado.checkpoint = this.mundo.inicio.toArray() as [number, number, number];
     this.posicionarNoCheckpoint();
     this.renderer.setAnimationLoop(() => this.quadro());
@@ -207,11 +277,50 @@ export class Jogo {
     this.areaNoMapa = '';
     this.deserto.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
     this.meiodia.reiniciar(this.estado.sombrasVencidas);
+    this.cidade.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+    this.banquete.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+    this.peregrino.carregar(null);
     this.montarCripta();
     if (!temSave) this.estado.checkpoint = this.mundo.inicio.toArray() as [number, number, number];
     this.posicionarNoCheckpoint();
     if (this.estado.identidade === null) this.abrirCriacao();
     else this.comecar();
+  }
+
+  /** Cria a fauna de todas as regiões (a mesma distribuição em toda partida). */
+  private async povoarFauna() {
+    const areas = [this.mundo, this.cripta, this.deserto, this.meiodia, this.cidade] as Area[];
+    await Promise.all(
+      areas.map(async (a, i) => {
+        const fauna = new Fauna(a);
+        await fauna.povoar(a.povoamento?.() ?? [], 101 + i * 7919);
+        this.faunas.set(a.id, fauna);
+        this.cena.add(fauna.grupo);
+      }),
+    );
+    this.criarInteracoes();
+    this.aplicarAmbiente();
+  }
+
+  /** "F: fazer carinho" em cada bicho manso da área. */
+  private interacoesDaFauna(id: IdArea): Interacao[] {
+    const fauna = this.faunas.get(id);
+    if (!fauna) return [];
+    return fauna.animais
+      .filter((b) => b.ficha.carinho)
+      .map((b) => ({
+        pos: () => b.pos,
+        raio: 1.8,
+        rotulo: `F: fazer carinho ${b.ficha.feminino ? 'na' : 'no'} ${b.ficha.nome}`,
+        agir: () => {
+          const per = this.peregrino;
+          per.rumo = Math.atan2(b.pos.x - per.pos.x, b.pos.z - per.pos.z);
+          per.carinhoAlto = anatomia(b.especie).corpo === 'quadruped_medium';
+          per.iniciar('carinho');
+          b.carinho = DURACAO_CARINHO;
+          if (b.ficha.voz) setTimeout(() => this.som.voz(b.ficha.voz!), 700);
+        },
+      }));
   }
 
   /** (Re)cria a cripta a partir do progresso atual. */
@@ -227,6 +336,7 @@ export class Jogo {
       lutaComecou: () => this.lutaComecou(),
     });
     this.cena.add(this.cripta.grupo);
+    this.faunas.get('cripta')?.trocarFisica(this.cripta);
     this.criarInteracoes();
   }
 
@@ -290,6 +400,9 @@ export class Jogo {
     this.mundo.fecharVeu();
     this.deserto.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
     this.meiodia.reiniciar(this.estado.sombrasVencidas);
+    this.cidade.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+    this.banquete.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+    this.peregrino.carregar(null);
     this.montarCripta();
     this.estado.checkpoint = this.mundo.inicio.toArray() as [number, number, number];
     this.posicionarNoCheckpoint();
@@ -303,18 +416,7 @@ export class Jogo {
     this.som.ambienteDe(this.tipoAmbiente());
     this.hud.escurecer(false);
     travarPonteiro(this.renderer.domElement);
-    if (!this.estado.flags.has('intro')) {
-      const id = this.estado.identidade ?? identidadePadrao();
-      this.hud.falar(
-        [
-          { quem: 'espirito', texto: texto('{nome}, a estrada para o Céu começa aqui, junto a esta fogueira.', id) },
-          { quem: 'espirito', texto: 'Sombras roubaram as cores do Vale. Chegue perto delas, trave a mira com Q e dissipe-as com o cajado ou com a luz.' },
-          { quem: 'espirito', texto: 'A luz gasta energia espiritual. Quando faltar, pare e reze: segure R.' },
-          { quem: 'espirito', texto: 'Siga a estrada até a capela no alto do monte. Eu estarei com você.' },
-        ],
-        () => this.marcar('intro'),
-      );
-    }
+    if (!this.estado.flags.has('intro')) this.dialogos.tocar('vale_intro');
   }
 
   private marcar(flag: string) {
@@ -335,10 +437,15 @@ export class Jogo {
     const naCripta = this.area === this.cripta;
     const noDeserto = this.area === this.deserto;
     const noPoco = this.area === this.meiodia;
+    const naCidade = this.area === this.cidade;
+    const noBanquete = this.area === this.banquete;
     this.mundo.grupo.visible = this.area === this.mundo;
     this.cripta.grupo.visible = naCripta;
     this.deserto.grupo.visible = noDeserto;
     this.meiodia.grupo.visible = noPoco;
+    this.cidade.grupo.visible = naCidade;
+    this.banquete.grupo.visible = noBanquete;
+    for (const [id, fauna] of this.faunas) fauna.grupo.visible = id === this.area.id;
     this.ceu.visible = !naCripta;
     this.sol.visible = !naCripta;
     const fog = this.cena.fog as THREE.Fog;
@@ -362,6 +469,30 @@ export class Jogo {
       this.sol.intensity = 2.9;
       ceu.topo.value.setHex(0x7aa8e0);
       ceu.horizonte.value.setHex(0xfff0d0);
+    } else if (noBanquete) {
+      // salão fechado à luz de velas: ouro quente, cantos escuros, ar pesado de comida
+      fog.color.setHex(0x2a140e);
+      fog.near = 26;
+      fog.far = 70;
+      this.hemi.color.setHex(0xffe0b0);
+      this.hemi.groundColor.setHex(0x4a2a18);
+      this.hemi.intensity = 0.95;
+      this.sol.color.setHex(0xffd0a0);
+      this.sol.intensity = 1.1;
+      ceu.topo.value.setHex(0x1a0a10);
+      ceu.horizonte.value.setHex(0x4a2018);
+    } else if (naCidade) {
+      // fim de tarde na Úmbria: luz dourada e baixa, névoa quente sobre os olivais
+      fog.color.setHex(0xf2dcb4);
+      fog.near = 48;
+      fog.far = 160;
+      this.hemi.color.setHex(0xdce8ff);
+      this.hemi.groundColor.setHex(0x7a6040);
+      this.hemi.intensity = 1.45;
+      this.sol.color.setHex(0xffdca0);
+      this.sol.intensity = 2.6;
+      ceu.topo.value.setHex(0x4f8ad8);
+      ceu.horizonte.value.setHex(0xf6d29a);
     } else if (noDeserto) {
       // sol forte e ar quente: névoa clara, cor de areia
       fog.color.setHex(0xf0dcb4);
@@ -399,7 +530,7 @@ export class Jogo {
   }
 
   private areaPorId(id: IdArea): Area {
-    return id === 'cripta' ? this.cripta : id === 'deserto' ? this.deserto : id === 'meiodia' ? this.meiodia : this.mundo;
+    return id === 'cripta' ? this.cripta : id === 'deserto' ? this.deserto : id === 'meiodia' ? this.meiodia : id === 'cidade' ? this.cidade : id === 'palacio' ? this.banquete : this.mundo;
   }
 
   private sombrasDoDesertoVencidas() {
@@ -408,6 +539,8 @@ export class Jogo {
 
   /** A cor da região onde o peregrino está (a cripta usa a do Vale). */
   private corAtual() {
+    if (this.area === this.cidade) return this.corDaCidade();
+    if (this.area === this.banquete) return 1; // o ouro falso da Gula brilha sempre
     return this.area === this.deserto || this.area === this.meiodia ? this.sombrasDoDesertoVencidas() / TOTAL_SOMBRAS_DESERTO : this.estado.cor;
   }
 
@@ -420,10 +553,7 @@ export class Jogo {
     if (this.primeiraVez('deserto_dica_vozes'))
       setTimeout(
         () =>
-          this.hud.falar([
-            { quem: 'espirito', texto: 'Ouviu? São as vozes do deserto. Elas falam bonito, mas não falam a verdade.' },
-            { quem: 'espirito', texto: 'Quando alguma coisa parecer boa demais, desconfie. Não saia do rastro dos marcos.' },
-          ]),
+          this.dialogos.tocar('deserto_dica_vozes'),
         1500,
       );
   }
@@ -434,10 +564,7 @@ export class Jogo {
     if (!porCiencia && this.primeiraVez('deserto_dica_miragem'))
       setTimeout(
         () =>
-          this.hud.falar([
-            { quem: 'espirito', texto: 'A tentação se veste de coisa boa. Por trás da miragem havia uma sombra.' },
-            { quem: 'espirito', texto: 'Vença-a, e o deserto vai recuperando a cor.' },
-          ]),
+          this.dialogos.tocar('deserto_dica_miragem'),
         900,
       );
   }
@@ -474,10 +601,7 @@ export class Jogo {
           this.som.dissolver();
           setTimeout(() => this.som.graca(), 500);
           this.efeitos.ouro = 0.8;
-          this.hud.falar([
-            { quem: 'espirito', texto: 'A rocha era falsa! O penhasco não estava fechado: o medo é que fazia parecer.' },
-            { quem: 'espirito', texto: 'A fenda segue para oeste.' },
-          ]);
+          this.dialogos.tocar('deserto_parede_revelada');
         }
       }
     }
@@ -489,55 +613,50 @@ export class Jogo {
     );
   }
 
-  private falarComAntao() {
-    const id = this.estado.identidade ?? identidadePadrao();
-    if (!this.estado.flags.has('dom_ciencia')) {
-      this.hud.falar(
-        [
-          { quem: 'Santo Antão', texto: texto('Paz a você, {nome}. Eu sou Antão. Você atravessou as vozes e chegou até aqui.', id) },
-          { quem: 'Santo Antão', texto: 'Quando eu era jovem, ouvi na igreja: "Se queres ser perfeito, vai, vende o que tens, dá aos pobres, e depois vem e segue-me." Vendi tudo e vim para o deserto.' },
-          { quem: 'Santo Antão', texto: 'Aqui as vozes me mostraram ouro no caminho, banquetes, a saudade de casa. Tudo parecia bom. Tudo era armadilha.' },
-          { quem: 'Santo Antão', texto: 'Um dia vi as armadilhas do inimigo espalhadas pela terra inteira e perguntei: "Quem pode escapar delas?" E ouvi uma voz: "A humildade."' },
-          { quem: 'espirito', texto: 'Antão aprendeu a distinguir o verdadeiro do falso. Isso é o dom da Ciência.' },
-          { quem: 'Santo Antão', texto: 'Receba-o. Quando alguma coisa parecer bonita demais, olhe de novo, com os olhos de Deus.' },
-        ],
-        () => {
-          this.marcar('dom_ciencia');
-          this.som.item();
-          this.efeitos.ouro = 1.2;
-          this.tempoColuna = 0;
-          this.hud.anunciar('Você recebeu o dom da Ciência!', 3.5);
-          setTimeout(
-            () =>
-              this.hud.falar([
-                { quem: 'espirito', texto: 'Aperte E para usar a Ciência. Ela gasta 15 de energia e, por alguns segundos, mostra o que as coisas são de verdade.' },
-                { quem: 'Santo Antão', texto: 'A oeste, onde o penhasco parece fechado, há uma fenda. Olhe para ela com a Ciência.' },
-              ]),
-            1400,
-          );
-        },
-      );
+  /** Números que o roteiro pede com valor("chave"). */
+  /** Interação padrão de um NPC: ele se vira e gesticula enquanto a conversa dura. */
+  private falarCom(npc: Npc): Interacao {
+    return {
+      pos: () => npc.pos,
+      raio: 2.8,
+      rotulo: npc.def.rotulo ?? `F: falar com ${falante(npc.def.falante)?.nome ?? npc.def.id}`,
+      agir: () => {
+        npc.falando = true;
+        this.dialogos.tocar(npc.def.no, () => (npc.falando = false));
+      },
+    };
+  }
+
+  private valorDialogo(chave: string): number {
+    if (chave === 'faltam_vale') return Math.max(0, TOTAL_SOMBRAS_VALE - this.sombrasDoValeVencidas());
+    if (chave === 'miragens') return this.deserto.miragensRestantes;
+    if (chave === 'peso') return this.estado.peso;
+    if (chave === 'ajudantes') return this.banquete.quantosVieram;
+    if (chave === 'energia') return Math.floor(this.estado.energia);
+    if (chave === 'custo_piedade') return this.custoPiedade();
+    if (chave === 'pedras') return this.cidade.pedrasAssentadas;
+    if (chave === 'faltam_pobres') return this.cidade.pobres.filter((p) => !this.estado.flags.has(`cidade_ajudou_${p.id}`)).length;
+    if (import.meta.env.DEV) console.warn(`[ink] valor desconhecido: ${chave}`);
+    return 0;
+  }
+
+  /** Efeitos de jogo pedidos pelo roteiro com ~ evento("nome"). */
+  private eventoDialogo(nome: string) {
+    if (nome === 'absolvicao') {
+      const cap = this.area.capela;
+      if (cap) this.confessar(cap.confessionario.clone());
       return;
     }
-    if (!this.deserto.paredeAberta) {
-      const n = this.deserto.miragensRestantes;
-      this.hud.falar([
-        { quem: 'Santo Antão', texto: 'O penhasco a oeste esconde uma fenda. Chegue perto dele e use a Ciência (E).' },
-        ...(n > 0 ? [{ quem: 'Santo Antão', texto: `Ainda ${n === 1 ? 'resta uma miragem' : `restam ${n} miragens`} no deserto. Cada uma esconde uma sombra.` }] : []),
-      ]);
+    if (nome === 'dom_ciencia') {
+      this.marcar('dom_ciencia');
+      this.som.item();
+      this.efeitos.ouro = 1.2;
+      this.tempoColuna = 0;
+      this.hud.anunciar('Você recebeu o dom da Ciência!', 3.5);
       return;
     }
-    if (this.estado.flags.has('meiodia_vencido')) {
-      this.hud.falar([
-        { quem: 'Santo Antão', texto: texto('Você voltou, {nome}. Eu vi a água subir no poço: o demônio do meio-dia foi vencido.', this.estado.identidade ?? identidadePadrao()) },
-        { quem: 'Santo Antão', texto: 'Ele vai voltar outras vezes, em outros dias quentes. Quando voltar, faça o que fez hoje: reze, e continue a caminhar.' },
-      ]);
-      return;
-    }
-    this.hud.falar([
-      { quem: 'Santo Antão', texto: 'Depois da fenda mora o demônio do meio-dia. Ele não grita: ele cansa. Faz a alma achar que nada vale a pena.' },
-      { quem: 'Santo Antão', texto: 'Quando o cansaço chegar, não pare de rezar. Vá com Deus.' },
-    ]);
+    if (this.eventoDaCidade(nome)) return;
+    if (import.meta.env.DEV) console.warn(`[ink] evento desconhecido: ${nome}`);
   }
 
   /** Escurece, troca de área, guarda o lugar de chegada como checkpoint e clareia. */
@@ -545,6 +664,8 @@ export class Jogo {
     if (this.transitando) return;
     this.transitando = true;
     this.travado = null;
+    this.peregrino.carregar(null);
+    this.pesoBanquete = 0;
     this.torpor = 0;
     this.hud.escurecer(true);
     setTimeout(() => {
@@ -584,48 +705,22 @@ export class Jogo {
         raio: 2.6,
         rotulo: 'F: contemplar o cruzeiro',
         agir: () => {
-          if (this.primeiraVez('cruzeiro'))
-            this.hud.falar([{ quem: 'espirito', texto: 'Junto à cruz, a oração tem o dobro de força. Ajoelhe-se aqui quando estiver cansado.' }]);
-          else this.hud.falar([{ quem: 'Inscrição', texto: '"Eu sou o caminho, a verdade e a vida." (Jo 14,6)' }]);
+          this.dialogos.tocar('vale_cruzeiro');
         },
       },
-      {
-        pos: () => m.altar,
-        raio: 2.4,
-        rotulo: 'F: ajoelhar-se diante do altar',
-        agir: () => {
-          this.descansar(m.altar.clone().add(new THREE.Vector3(0, 0, 2)), 'Confissão: o caminho foi guardado na capela.');
-          if (this.estado.flags.has('veu_oeste'))
-            this.hud.falar([{ quem: 'espirito', texto: 'O caminho a oeste está aberto. Depois das montanhas fica o Deserto das Vozes, onde Santo Antão espera por você.' }]);
-          else if (this.estado.flags.has('lamparina'))
-            this.hud.falar([{ quem: 'espirito', texto: 'Leve a Lamparina até a névoa de trevas, a oeste do Vale.' }]);
-          else if (this.estado.cor >= 0.999)
-            this.hud.falar([
-              { quem: 'espirito', texto: 'O Vale voltou a ter cor. Mas a estrada continua: sob esta capela fica a cripta dos primeiros peregrinos.' },
-              { quem: 'espirito', texto: 'Lá embaixo há uma lamparina que nenhuma treva apaga. Desça pela escada ao lado da capela.' },
-            ]);
-          else {
-            const faltam = TOTAL_SOMBRAS_VALE - this.sombrasDoValeVencidas();
-            this.hud.falar([{ quem: 'espirito', texto: `Ainda há ${faltam} ${faltam === 1 ? 'sombra' : 'sombras'} no Vale. Volte quando ele tiver recuperado as cores.` }]);
-          }
-        },
-      },
+      ...this.interacoesDaCapela(m.capela, 'vale_altar'),
       {
         pos: () => m.entradaCripta,
         raio: 2.6,
         rotulo: () => (this.estado.cor >= 0.999 ? 'F: descer à cripta' : 'F: examinar a escada selada'),
         agir: () => {
           if (this.estado.cor < 0.999) {
-            this.hud.falar([{ quem: 'espirito', texto: 'Uma laje pesada sela a escada. Ela só vai ceder quando o Vale tiver recuperado as cores.' }]);
+            this.dialogos.tocar('vale_escada_selada');
             return;
           }
           const descer = () =>
             this.trocarArea(c, c.chegada, Math.PI, () => {
-              if (this.primeiraVez('cripta_entrou'))
-                this.hud.falar([
-                  { quem: 'espirito', texto: 'Esta é a cripta dos primeiros peregrinos. Aqui embaixo, é a luz que abre os caminhos.' },
-                  { quem: 'espirito', texto: 'Fique atento: as sombras também se escondem no escuro.' },
-                ]);
+              if (this.primeiraVez('cripta_entrou')) this.dialogos.tocar('cripta_chegada');
             });
           if (!this.estado.flags.has('cripta_laje')) {
             this.marcar('cripta_laje');
@@ -645,7 +740,7 @@ export class Jogo {
             this.lamparinaAcesa = true;
             this.atualizarLamparina();
           } else
-            this.hud.falar([{ quem: 'espirito', texto: 'Uma névoa de trevas fecha a passagem. Nem o cajado nem a sua luz a atravessam: é preciso uma luz que não se apague.' }]);
+            this.dialogos.tocar('vale_nevoa');
         },
       },
       {
@@ -655,22 +750,9 @@ export class Jogo {
         rotulo: 'F: seguir para o Deserto das Vozes',
         agir: () =>
           this.trocarArea(d, d.chegada, -Math.PI / 2, () => {
-            if (this.primeiraVez('deserto_entrou'))
-              this.hud.falar([
-                { quem: 'espirito', texto: 'Este é o Deserto das Vozes. Aqui o silêncio é grande, e por isso as vozes falsas parecem altas.' },
-                { quem: 'espirito', texto: 'Siga os marcos de pedra até a caverna de Santo Antão. Ele já venceu este deserto antes de você.' },
-              ]);
+            if (this.primeiraVez('deserto_entrou')) this.dialogos.tocar('deserto_chegada');
           }),
       },
-      ...m.ovelhas.map<Interacao>((o) => ({
-        pos: () => o.pos,
-        raio: 1.8,
-        rotulo: 'F: fazer carinho na ovelha',
-        agir: () => {
-          o.balindo = 0.6;
-          this.som.balido();
-        },
-      })),
     ];
     this.interacoes.cripta = [
       {
@@ -683,11 +765,7 @@ export class Jogo {
         pos: () => c.estela,
         raio: 1.9,
         rotulo: 'F: ler a inscrição',
-        agir: () =>
-          this.hud.falar([
-            { quem: 'Inscrição', texto: 'Aqui repousam os primeiros peregrinos, que caminharam de noite levando a luz.' },
-            { quem: 'Inscrição', texto: '"A tua palavra é lâmpada para os meus pés e luz para o meu caminho." (Sl 119,105)' },
-          ]),
+        agir: () => this.dialogos.tocar('cripta_estela'),
       },
       {
         pos: () => c.relicario,
@@ -710,8 +788,7 @@ export class Jogo {
         rotulo: 'F: descansar junto ao poço',
         agir: () => {
           this.descansar(d.poco.clone().add(new THREE.Vector3(2, 0, 0)), 'Você bebeu da água do poço. O caminho foi guardado aqui.');
-          if (this.primeiraVez('deserto_poco'))
-            this.hud.falar([{ quem: 'espirito', texto: 'Água de verdade, não de miragem. "Quem beber da água que eu lhe der nunca mais terá sede." (Jo 4,14)' }]);
+          if (this.primeiraVez('deserto_poco')) this.dialogos.tocar('deserto_poco');
         },
       },
       {
@@ -719,16 +796,23 @@ export class Jogo {
         raio: 2.6,
         rotulo: 'F: contemplar a cruz',
         agir: () => {
-          if (this.primeiraVez('deserto_cruz'))
-            this.hud.falar([{ quem: 'espirito', texto: 'Também aqui, junto à cruz, a oração tem o dobro de força.' }]);
-          else this.hud.falar([{ quem: 'Inscrição', texto: '"Não só de pão vive o homem, mas de toda palavra que sai da boca de Deus." (Mt 4,4)' }]);
+          this.dialogos.tocar('deserto_cruz');
         },
       },
+      this.falarCom(d.antao),
       {
-        pos: () => d.antao.pos,
+        pos: () => d.estradaSul,
         raio: 2.8,
-        rotulo: 'F: falar com Santo Antão',
-        agir: () => this.falarComAntao(),
+        rotulo: () => (this.estado.flags.has('meiodia_vencido') ? 'F: seguir para a Cidade Dourada' : 'F: examinar a estrada velha'),
+        agir: () => {
+          if (!this.estado.flags.has('meiodia_vencido')) {
+            this.dialogos.tocar('deserto_estrada_fechada');
+            return;
+          }
+          this.trocarArea(this.cidade, this.cidade.chegada, Math.PI, () => {
+            if (this.primeiraVez('cidade_entrou')) this.dialogos.tocar('cidade_chegada');
+          });
+        },
       },
       {
         pos: () => d.fogo,
@@ -743,11 +827,7 @@ export class Jogo {
         rotulo: 'F: descer ao Poço do Meio-Dia',
         agir: () =>
           this.trocarArea(md, md.chegada, -Math.PI / 2, () => {
-            if (this.primeiraVez('meiodia_entrou'))
-              this.hud.falar([
-                { quem: 'Placa', texto: 'Poço do Meio-Dia. "Não temerás… o mal que devasta ao meio-dia." (Sl 91,6)' },
-                { quem: 'espirito', texto: 'O sol está a pino. Lá na frente, onde a praça se abre, ele espera.' },
-              ]);
+            if (this.primeiraVez('meiodia_entrou')) this.dialogos.tocar('meiodia_chegada');
           }),
       },
     ];
@@ -766,7 +846,7 @@ export class Jogo {
         rotulo: () => (md.vencido ? 'F: beber da água viva' : 'F: olhar o poço seco'),
         agir: () => {
           if (!md.vencido) {
-            this.hud.falar([{ quem: 'espirito', texto: 'Seco. Faz muito tempo que ninguém tira água daqui.' }]);
+            this.dialogos.tocar('meiodia_poco_seco');
             return;
           }
           this.descansar(md.poco.clone().add(new THREE.Vector3(0, 0, 2.6)), 'Você bebeu da água viva. O caminho foi guardado aqui.');
@@ -777,12 +857,93 @@ export class Jogo {
         raio: 2.2,
         ativa: () => !md.lutando,
         rotulo: 'F: ler o obelisco',
-        agir: () =>
-          this.hud.falar([
-            { quem: 'Inscrição', texto: '"Ensina-nos a contar os nossos dias, para que alcancemos um coração sábio." (Sl 90,12)' },
-          ]),
+        agir: () => this.dialogos.tocar('meiodia_obelisco'),
       },
     ];
+    this.interacoes.cidade = this.interacoesDaCidade();
+    this.interacoes.palacio = this.interacoesDoBanquete();
+    for (const id of Object.keys(this.interacoes) as IdArea[]) this.interacoes[id].push(...this.interacoesDaFauna(id));
+  }
+
+  /** Confessionário, sacrário e altar de uma capela de região. `noAltar`: o que o Espírito diz no altar. */
+  private interacoesDaCapela(cap: CapelaRegional, noAltar: string): Interacao[] {
+    return [
+      {
+        pos: () => cap.confessionario,
+        raio: 1.5,
+        rotulo: 'F: entrar no confessionário',
+        agir: () => this.entrarNoConfessionario(cap),
+      },
+      {
+        pos: () => cap.sacrario,
+        raio: 1.9,
+        rotulo: 'F: ajoelhar-se diante do sacrário',
+        agir: () => this.dialogos.tocar('capela_sacrario'),
+      },
+      {
+        pos: () => cap.altar,
+        raio: 1.6,
+        rotulo: () => (this.estado.confessado && !this.estado.comungou ? 'F: comungar' : 'F: ajoelhar-se diante do altar'),
+        agir: () => {
+          this.comungar();
+          this.dialogos.tocar(noAltar);
+        },
+      },
+    ];
+  }
+
+  /**
+   * Confessionário: guarda o caminho como um descanso e põe o peregrino em estado de graça,
+   * o que o deixa comungar no altar. Cada capela de região tem um.
+   */
+  private confessar(lugar: THREE.Vector3) {
+    this.estado.confessado = true;
+    this.descansar(lugar, 'Absolvição: os pecados foram perdoados e o caminho foi guardado aqui.');
+  }
+
+  /**
+   * Cena de confissão: o peregrino entra no lado do penitente, ajoelha-se diante da grade e conversa com o
+   * padre. A absolvição (~ evento("absolvicao") no roteiro) é que o põe em estado de graça; sair no meio não vale.
+   */
+  private entrarNoConfessionario(cap: CapelaRegional) {
+    const per = this.peregrino;
+    const j = cap.joelhoConfissao, g = cap.gradeConfissao;
+    this.emConfissao = true;
+    per.teleportar(j.x, this.area.altura(j.x, j.z), j.z);
+    per.rumo = Math.atan2(g.x - j.x, g.z - j.z);
+    per.iniciar('rezando');
+    cap.padre.falando = true;
+    // o roteiro da confissão é um só; quem fala por "padre" é o confessor desta capela
+    this.dialogos.apelidos = { padre: cap.padre.def.falante };
+    this.dialogos.tocar('capela_confissao', () => {
+      this.emConfissao = false;
+      cap.padre.falando = false;
+      this.dialogos.apelidos = {};
+      per.acao = 'livre';
+    });
+  }
+
+  /**
+   * Eucaristia: em estado de graça, o altar dá um coração dourado a mais até a próxima queda e
+   * restaura tudo. Sem confissão, o Espírito lembra (uma vez) que ela vem antes.
+   */
+  private comungar() {
+    const e = this.estado;
+    if (!e.confessado) {
+      if (!e.comungou && this.primeiraVez('capela_sem_confissao')) this.dialogos.tocar('capela_sem_confissao');
+      return;
+    }
+    if (e.comungou) {
+      e.restaurar();
+      return;
+    }
+    e.comungou = true;
+    e.restaurar();
+    e.salvar();
+    this.efeitos.ouro = 1.1;
+    this.som.graca();
+    this.hud.anunciar('💛 Eucaristia: um coração a mais até a próxima queda.', 3.2);
+    if (this.primeiraVez('capela_comunhao')) this.dialogos.tocar('capela_comunhao');
   }
 
   private descansar(lugar: THREE.Vector3, msg: string) {
@@ -796,13 +957,360 @@ export class Jogo {
     this.hud.anunciar(msg, 3);
   }
 
+  // ───────────────────────────── cidade dourada ─────────────────────────────
+
+  /** Atos de piedade já feitos na cidade. */
+  private atosDaCidade() {
+    return ATOS_CIDADE.filter((f) => this.estado.flags.has(f)).length;
+  }
+
+  private sombrasDaCidadeVencidas() {
+    return [...this.estado.sombrasVencidas].filter((id) => id.startsWith('cidade_')).length;
+  }
+
+  /** A cor da cidade volta com as sombras vencidas e, sobretudo, com os atos de piedade. */
+  private corDaCidade() {
+    const gula = this.estado.sombrasVencidas.has('palacio_gula') ? 1 : 0;
+    return Math.min(1, (this.sombrasDaCidadeVencidas() + this.atosDaCidade() + gula) / (TOTAL_SOMBRAS_CIDADE + TOTAL_ATOS_CIDADE + 1));
+  }
+
+  private verificarCidadeRestaurada() {
+    if (this.corDaCidade() >= 0.999 && this.primeiraVez('cidade_restaurada')) this.dialogos.tocar('cidade_restaurada');
+  }
+
+  /** Energia que custa socorrer alguém (Piedade 2: Partilha). */
+  private custoPiedade() {
+    return this.estado.nivel('piedade') >= 2 ? 12 : 20;
+  }
+
+  /** O que pesa no peregrino: o ouro da Gula (Piedade 4 o deixa pela metade) e a pedra no ombro. */
+  private pesoEfetivo() {
+    const ouro = this.estado.peso * (this.estado.nivel('piedade') >= 4 ? 0.5 : 1);
+    return ouro + this.pesoBanquete + (this.peregrino.carregando ? 2 : 0);
+  }
+
+  /** Um ato de piedade feito: graça, luz e, com Misericórdia (Piedade 3), um coração. */
+  private atoDePiedade(flag: string, aviso: string) {
+    if (this.estado.flags.has(flag)) return;
+    this.estado.flags.add(flag);
+    this.estado.gracas += 1;
+    if (this.estado.nivel('piedade') >= 3) this.estado.coracoes = Math.min(this.estado.coracoesMax, this.estado.coracoes + 1);
+    this.estado.salvar();
+    this.efeitos.ouro = 0.9;
+    this.som.graca();
+    this.tempoColuna = 0;
+    this.hud.anunciar(`✦ ${aviso} · ato de piedade ${this.atosDaCidade()} de ${TOTAL_ATOS_CIDADE}`, 3);
+    setTimeout(() => this.verificarCidadeRestaurada(), 2500);
+  }
+
+  /** Efeitos pedidos pelo roteiro da cidade. Devolve true se o evento era daqui. */
+  private eventoDaCidade(nome: string) {
+    const c = this.cidade, e = this.estado;
+    if (nome === 'dom_piedade') {
+      this.marcar('dom_piedade');
+      this.som.item();
+      this.efeitos.ouro = 1.2;
+      this.tempoColuna = 0;
+      this.hud.anunciar('Você recebeu o dom da Piedade!', 3.5);
+      return true;
+    }
+    if (nome === 'curar_leproso') {
+      e.energia = Math.max(0, e.energia - this.custoPiedade());
+      c.mostrarLeproso(true);
+      this.atoDePiedade('cidade_leproso', 'O leproso foi curado');
+      return true;
+    }
+    if (nome === 'pacto_lobo') {
+      c.pactoLobo();
+      this.som.voz('uivo', 0.6);
+      this.atoDePiedade('cidade_lobo', 'A paz com o irmão lobo');
+      return true;
+    }
+    const m = /^(socorrer|doar|retribuir)_(\w+)$/.exec(nome);
+    if (!m) return false;
+    const [, acao, quem] = m;
+    if (acao === 'retribuir') {
+      e.restaurar();
+      e.salvar();
+      this.efeitos.ouro = 0.7;
+      this.som.graca();
+      const nome = quem === 'leproso' ? 'O homem curado' : NOME_POBRE[quem as Pobre['id']] ?? quem;
+      this.hud.anunciar(`🍞 ${nome} retribuiu: suas forças voltaram`, 3);
+      return true;
+    }
+    const pobre = c.pobres.find((p) => p.id === quem);
+    if (!pobre) return false;
+    if (acao === 'doar') {
+      e.peso = Math.max(0, e.peso - 1);
+      e.salvar();
+      this.som.moedas();
+      if (this.estado.flags.has(`cidade_ajudou_${quem}`)) this.hud.anunciar(e.peso > 0 ? `O ouro ficou mais leve (peso ${e.peso})` : 'Você está leve de novo', 2.2);
+      else this.atoDePiedade(`cidade_ajudou_${quem}`, `${NOME_POBRE[pobre.id]} recebeu o ouro`);
+      return true;
+    }
+    e.energia = Math.max(0, e.energia - this.custoPiedade());
+    this.atoDePiedade(`cidade_ajudou_${quem}`, `Você socorreu ${NOME_POBRE[pobre.id]}`);
+    return true;
+  }
+
+  /** Pegar uma isca da Gula: um alívio na hora, e peso depois. */
+  private pegarIsca(i: Isca) {
+    const e = this.estado;
+    i.pega = true;
+    i.malha.visible = false;
+    e.flags.add(i.id);
+    e.peso += 1;
+    if (i.tipo === 'prato') e.coracoes = Math.min(e.coracoesMax, e.coracoes + 1);
+    else e.energia = Math.min(e.energiaMax, e.energia + (i.tipo === 'taca' ? 30 : 20));
+    e.salvar();
+    this.som.moedas();
+    this.hud.sussurrar(SUSSURRO_ISCA[i.tipo], 3.2);
+    this.hud.anunciar(`Você pegou ${NOME_ISCA[i.tipo]}. Pesa…`, 2.2);
+    if (this.primeiraVez('cidade_dica_peso')) setTimeout(() => this.dialogos.tocar('cidade_dica_peso'), 1200);
+  }
+
+  /** Falar com alguém da cidade (vira para o peregrino enquanto a conversa dura). */
+  private conversa(npc: () => Npc, no: string, rotulo: string | (() => string), raio = 2.6): Interacao {
+    return {
+      pos: () => npc().pos,
+      raio,
+      rotulo,
+      agir: () => {
+        const n = npc();
+        n.falando = true;
+        this.dialogos.tocar(no, () => (n.falando = false));
+      },
+    };
+  }
+
+  private interacoesDaCidade(): Interacao[] {
+    const c = this.cidade;
+    const f = (x: string) => this.estado.flags.has(x);
+    return [
+      {
+        pos: () => c.saida,
+        raio: 2.6,
+        rotulo: 'F: voltar ao Deserto das Vozes',
+        agir: () => this.trocarArea(this.deserto, this.deserto.estradaSul.clone().add(new THREE.Vector3(0, 0, -3)), Math.PI),
+      },
+      { pos: () => c.cruzeiro, raio: 2.6, rotulo: 'F: contemplar o cruzeiro', agir: () => this.dialogos.tocar('cidade_cruzeiro') },
+      {
+        pos: () => c.fonte,
+        raio: 3,
+        rotulo: 'F: beber da fonte',
+        agir: () => {
+          this.descansar(c.fonte.clone().add(new THREE.Vector3(0, 0, 3)), 'Você bebeu da fonte da praça. O caminho foi guardado aqui.');
+          if (this.primeiraVez('cidade_fonte')) this.dialogos.tocar('cidade_fonte');
+        },
+      },
+      {
+        pos: () => c.portaPalacio,
+        raio: 3,
+        rotulo: () => (!this.portasDoPalacioAbertas() ? 'F: bater às portas de ouro' : f('gula_vencida') ? 'F: entrar no salão do banquete' : 'F: entrar no palácio'),
+        agir: () => {
+          if (!this.portasDoPalacioAbertas()) {
+            this.dialogos.tocar('cidade_palacio');
+            return;
+          }
+          // quem o peregrino ajudou até agora vem com ele
+          this.banquete.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+          this.trocarArea(this.banquete, this.banquete.chegada, Math.PI, () => {
+            if (this.primeiraVez('palacio_entrou')) this.dialogos.tocar('palacio_chegada');
+          });
+        },
+      },
+      this.falarCom(c.francisco),
+      this.conversa(() => c.homemDaEstrada, 'leproso', () => (f('cidade_leproso') ? 'F: falar com o homem curado' : f('dom_piedade') ? 'F: socorrer o leproso' : 'F: falar com o leproso')),
+      this.falarCom(c.mercador),
+      ...c.pobres.map((p) =>
+        this.conversa(() => p.npc, p.id, () =>
+          f(`cidade_ajudou_${p.id}`) ? `F: falar com ${NOME_POBRE[p.id]}` : this.estado.peso > 0 ? `F: dar o ouro a ${NOME_POBRE[p.id]}` : f('dom_piedade') ? `F: socorrer ${NOME_POBRE[p.id]}` : `F: falar com ${NOME_POBRE[p.id]}`,
+        ),
+      ),
+      // São Damião: pedra por pedra
+      {
+        pos: () => c.pedreira,
+        raio: 2.8,
+        ativa: () => f('cidade_leproso') && !c.damiaoPronto && !this.peregrino.carregando,
+        rotulo: 'F: pegar uma pedra',
+        agir: () => {
+          this.peregrino.carregar(pedraDeCarregar());
+          this.som.passo();
+          this.hud.anunciar('A pedra é pesada: sem pulo, e devagar. Leve-a a São Damião.', 2.6);
+        },
+      },
+      {
+        pos: () => c.damiao,
+        raio: 3,
+        ativa: () => this.peregrino.carregando,
+        rotulo: 'F: assentar a pedra',
+        agir: () => {
+          const n = c.pedrasAssentadas + 1;
+          this.peregrino.carregar(null);
+          this.marcar(`cidade_pedra_${n}`);
+          c.definirEstagioDamiao(n);
+          this.som.bloqueio();
+          this.efeitos.ouro = 0.4;
+          if (n >= PEDRAS_DAMIAO) {
+            this.som.portao();
+            this.atoDePiedade('cidade_damiao', 'São Damião foi reconstruída');
+            setTimeout(() => {
+              c.francisco.falando = true;
+              this.dialogos.tocar('francisco', () => (c.francisco.falando = false));
+            }, 1400);
+          } else this.hud.anunciar(`Pedra assentada: ${n} de ${PEDRAS_DAMIAO}`, 2);
+        },
+      },
+      {
+        pos: () => c.altarDamiao,
+        raio: 2.2,
+        ativa: () => c.damiaoPronto,
+        rotulo: 'F: rezar em São Damião',
+        agir: () => this.descansar(c.altarDamiao.clone().add(new THREE.Vector3(1.6, 0, 0)), 'Você rezou diante da cruz de São Damião. O caminho foi guardado aqui.'),
+      },
+      // o lobo
+      {
+        pos: () => c.lobo?.pos ?? c.toca,
+        raio: 4.5,
+        ativa: () => c.estadoLobo === 'toca',
+        rotulo: () => (f('dom_piedade') ? 'F: aproximar-se do lobo' : 'F: olhar a toca do lobo'),
+        agir: () => this.dialogos.tocar('lobo_toca'),
+      },
+      {
+        pos: () => c.lobo?.pos ?? c.fonte,
+        raio: 1.9,
+        ativa: () => c.estadoLobo === 'cidade',
+        rotulo: 'F: fazer carinho no irmão lobo',
+        agir: () => {
+          const l = c.lobo!;
+          const per = this.peregrino;
+          per.rumo = Math.atan2(l.pos.x - per.pos.x, l.pos.z - per.pos.z);
+          per.carinhoAlto = false;
+          per.iniciar('carinho');
+          l.carinho = DURACAO_CARINHO;
+          setTimeout(() => this.som.voz('uivo', 0.35), 700);
+        },
+      },
+      ...c.iscas.map((i) => ({
+        pos: () => i.pos,
+        raio: 1.6,
+        ativa: () => !i.pega,
+        rotulo: `F: pegar ${NOME_ISCA[i.tipo]}`,
+        agir: () => this.pegarIsca(i),
+      })),
+      ...this.interacoesDaCapela(c.capela, 'cidade_altar'),
+    ];
+  }
+
+  /** A cada quadro: o peso na tela e no corpo, e o lobo chegando à praça. */
+  private atualizarCidade() {
+    const peso = this.estado.peso + this.pesoBanquete;
+    this.peregrino.mostrarPeso(peso);
+    this.hud.mostrarPeso(
+      this.pesoBanquete > 0 ? `⚖ Banquete da Gula · peso ${peso}` : peso > 0 ? `⚖ Ouro da Gula · peso ${peso}` : this.peregrino.carregando ? '⚖ Pedra para São Damião' : null,
+    );
+    if (this.area !== this.cidade || this.hud.dialogoAberto) return;
+    const f = this.estado.flags;
+    if (this.cidade.estadoLobo === 'cidade' && f.has('cidade_lobo') && !f.has('cidade_lobo_praca')) this.dialogos.tocar('lobo_cidade');
+    else if (f.has('dom_piedade') && this.cidade.dentroDosMuros(this.peregrino.pos) && this.primeiraVez('cidade_dica_pobres')) this.dialogos.tocar('cidade_dica_pobres');
+  }
+
+
+  // ───────────────────────────── palácio da gula ─────────────────────────────
+
+  /** As portas de ouro abrem quando São Damião está de pé e o lobo está em paz. */
+  private portasDoPalacioAbertas() {
+    const f = this.estado.flags;
+    return f.has('cidade_portas_abertas') || (f.has('cidade_damiao') && f.has('cidade_lobo'));
+  }
+
+  private interacoesDoBanquete(): Interacao[] {
+    const b = this.banquete;
+    const c = this.cidade;
+    const repartir = (a: Ajudante): Interacao => ({
+      pos: () => a.npc.pos,
+      raio: 2.4,
+      ativa: () => a.presente && b.lutando,
+      rotulo: () => (this.pesoBanquete > 0 ? `F: repartir o banquete com ${NOME_AJUDANTE[a.id]}` : `F: falar com ${NOME_AJUDANTE[a.id]}`),
+      agir: () => this.repartirCom(a),
+    });
+    return [
+      {
+        pos: () => b.saida,
+        raio: 2.6,
+        ativa: () => !b.lutando,
+        rotulo: 'F: voltar à cidade',
+        agir: () => this.trocarArea(c, c.portaPalacio.clone().add(new THREE.Vector3(0, 0, 2.4)), 0),
+      },
+      ...b.ajudantes.map(repartir),
+      ...b.ajudantes.map((a) => ({ ...this.conversa(() => a.npc, `palacio_${a.id}`, `F: falar com ${NOME_AJUDANTE[a.id]}`), ativa: () => a.presente && b.vencido })),
+      {
+        pos: () => b.centro,
+        raio: 3,
+        ativa: () => b.vencido,
+        rotulo: 'F: sentar-se à mesa dos pobres',
+        agir: () => this.descansar(b.centro.clone().add(new THREE.Vector3(0, 0, 2)), 'Você comeu o pão com os pobres. O caminho foi guardado aqui.'),
+      },
+    ];
+  }
+
+  /** Reparte com um pobre o peso do banquete: ele leva tudo (Piedade 3: e devolve um coração, uma vez). */
+  private repartirCom(a: Ajudante) {
+    if (this.pesoBanquete <= 0) {
+      this.hud.anunciar(`${NOME_AJUDANTE[a.id][0].toUpperCase()}${NOME_AJUDANTE[a.id].slice(1)} está com você. Quando pesar, reparta (F).`, 2);
+      return;
+    }
+    this.pesoBanquete = 0;
+    this.jejum = 0;
+    a.npc.falando = true;
+    setTimeout(() => (a.npc.falando = false), 1600);
+    this.som.graca();
+    this.efeitos.ouro = 0.5;
+    let extra = '';
+    if (this.estado.nivel('piedade') >= 3 && !this.repartiu.has(a.id) && this.estado.coracoes < this.estado.coracoesMax) {
+      this.estado.coracoes = Math.min(this.estado.coracoesMax, this.estado.coracoes + 1);
+      extra = ' ❤️';
+    }
+    this.repartiu.add(a.id);
+    this.hud.anunciar(FALA_REPARTIR[a.id] + extra, 2.6);
+  }
+
+  private lutaBanqueteComecou() {
+    this.som.tensao();
+    this.pesoBanquete = 0;
+    this.repartiu.clear();
+    this.hud.anunciar('Gula, o Banquete sem fim', 3);
+    if (this.primeiraVez('palacio_dica')) this.dialogos.tocar('palacio_gula');
+  }
+
+  private banqueteServido(primeira: boolean) {
+    if (primeira) return;
+    this.som.moedas();
+    this.hud.anunciar('O banquete não acaba: as travessas voltaram!', 2);
+  }
+
+  private travessaCaiu(restantes: number) {
+    this.som.bloqueio();
+    this.hud.acertou();
+    if (restantes > 0) this.hud.anunciar(`Travessa derrubada · ${restantes === 1 ? 'falta 1' : `faltam ${restantes}`}`, 1.3);
+  }
+
+  private gulaVencida() {
+    this.efeitos.ouro = 1.4;
+    this.som.graca();
+    setTimeout(() => this.som.item(), 600);
+    this.tempoColuna = 0;
+    this.hud.anunciar('✦ A Gula se desfez: a mesa é dos pobres', 3);
+    this.dialogos.tocar('palacio_vencida', () => this.verificarCidadeRestaurada());
+  }
+
   // ───────────────────────────── cripta ─────────────────────────────
 
   private braseiroAceso(n: number) {
     this.som.fogo();
     this.hud.anunciar(`${n} de 3 braseiros acesos`, 1.6);
     if (this.primeiraVez('cripta_dica_chama'))
-      this.hud.falar([{ quem: 'espirito', texto: 'A chama não dura muito sozinha. Acenda os três braseiros antes que ela se apague.' }]);
+      this.dialogos.tocar('cripta_dica_chama');
   }
 
   private portaoDaCriptaAberto() {
@@ -817,13 +1325,7 @@ export class Jogo {
     this.som.tensao();
     this.som.portao();
     this.hud.anunciar('Mamom, o Guardião da Avareza', 3);
-    if (this.primeiraVez('cripta_dica_guardiao'))
-      this.hud.falar([
-        { quem: 'Mamom', texto: 'A lamparina é MINHA. Tudo o que desce até aqui fica comigo.' },
-        { quem: 'espirito', texto: 'É Mamom, o espírito da avareza. "Ninguém pode servir a dois senhores." Ele guarda a luz como se fosse ouro.' },
-        { quem: 'espirito', texto: 'Uma couraça de trevas o protege: o cajado não a atravessa. Trave a mira e lance a luz para atordoá-lo, e então golpeie.' },
-        { quem: 'espirito', texto: 'Cuidado com as correntes douradas: elas roubam a sua energia. Se ela acabar, reze, mas longe dele.' },
-      ]);
+    if (this.primeiraVez('cripta_dica_guardiao')) this.dialogos.tocar('cripta_mamom');
   }
 
   private pegarLamparina() {
@@ -835,15 +1337,7 @@ export class Jogo {
     this.hud.anunciar('Você recebeu a Lamparina da Fé!', 3.5);
     this.lamparinaAcesa = true;
     this.atualizarLamparina();
-    setTimeout(
-      () =>
-        this.hud.falar([
-          { quem: 'espirito', texto: 'Esta lamparina guiou os primeiros peregrinos pela noite. Nenhuma treva consegue apagá-la.' },
-          { quem: 'espirito', texto: 'Aperte L para acendê-la ou guardá-la.' },
-          { quem: 'espirito', texto: 'A oeste do Vale, uma névoa de trevas fecha a passagem pelas montanhas. Leve esta luz até lá.' },
-        ]),
-      1200,
-    );
+    setTimeout(() => this.dialogos.tocar('cripta_lamparina'), 1200);
   }
 
   private atualizarLamparina() {
@@ -885,10 +1379,32 @@ export class Jogo {
     }
     else if (!this.modoCriacao) this.camera.girar(dt * 40, 0);
     const alvoCam = this.travado ? this.travado.centro() : null;
-    this.camera.atualizar(dt, this.peregrino.pos, alvoCam, (x, z) => this.area.altura(x, z));
+    // dentro da capela o telhado some e a câmera passa por cima das paredes, como na cripta
+    const cap = this.area.capela;
+    const naCapela = !!cap && cap.dentro(this.peregrino.pos);
+    if (this.area !== this.cripta) {
+      this.camera.subirAoBater = naCapela && !this.emConfissao;
+      this.camera.arfagemMin = naCapela && !this.emConfissao ? 0.35 : -0.25;
+    }
+    if (this.emConfissao) {
+      // de fora da abertura do confessionário, de lado, à altura de quem está ajoelhado
+      this.camera.guinada = Math.PI / 2 + 0.35;
+      this.camera.arfagem = 0.12;
+      this.camera.distancia = 2.9;
+    } else {
+      // braço mais curto dentro da capela, para não ter de subir tanto por cima das paredes
+      const alvo = naCapela ? 4.3 : 6.2;
+      this.camera.elevacaoMira = this.comecou ? (naCapela ? 0.5 : 1.05) : 0;
+      this.camera.distancia += (alvo - this.camera.distancia) * Math.min(1, dt * 3);
+    }
+    const area = this.area;
+    const chao = area.alturaCamera ? (x: number, z: number) => area.alturaCamera!(x, z) : (x: number, z: number) => area.altura(x, z);
+    const alturaCam = naCapela ? (x: number, z: number) => cap!.alturaCamera(x, z, chao) : chao;
+    this.camera.atualizar(dt, this.peregrino.pos, alvoCam, alturaCam);
     if (this.modoCriacao) this.quadroCriacao(dt);
     this.hud.posicionarMira(this.travado ? this.travado.centro().add(new THREE.Vector3(0, 0.9, 0)) : null, this.camera.cam);
-    this.hud.atualizar(dt, this.estado, this.corAtual(), this.area === this.deserto || this.area === this.meiodia ? 'Cor do Deserto' : 'Cor do Vale');
+    this.atualizarMiraLivre(dt);
+    this.hud.atualizar(dt, this.estado, this.corAtual(), this.area === this.cidade || this.area === this.banquete ? 'Cor da Cidade' : this.area === this.deserto || this.area === this.meiodia ? 'Cor do Deserto' : 'Cor do Vale');
 
     // sol acompanha o peregrino para a sombra ficar nítida por perto
     const p = this.peregrino.pos;
@@ -934,7 +1450,14 @@ export class Jogo {
       this.camera.girar(this.travado ? 0 : e.mouseDx * k, e.mouseDy * k);
     }
 
-    if (dialogo && e.apertou('KeyF', 'Enter', 'Space', 'Mouse0')) this.hud.avancar();
+    if (dialogo) {
+      if (this.hud.escolhendo) {
+        if (e.apertou('ArrowUp', 'KeyW')) this.hud.moverEscolha(-1);
+        if (e.apertou('ArrowDown', 'KeyS')) this.hud.moverEscolha(1);
+        for (let i = 0; i < 9; i++) if (e.apertou(`Digit${i + 1}`, `Numpad${i + 1}`)) this.hud.escolher(i);
+      }
+      if (e.apertou('KeyF', 'Enter', 'Space', 'Mouse0')) this.hud.avancar();
+    }
 
     // mira travada
     if (!parado && e.apertou('KeyQ', 'Mouse1', 'Tab')) {
@@ -956,10 +1479,15 @@ export class Jogo {
     const desejo = this.camera.frente().multiplyScalar(iy).add(this.camera.direita().multiplyScalar(ix));
     if (desejo.lengthSq() > 1) desejo.normalize();
     const correndo = e.segurando('ShiftLeft', 'ShiftRight') && !this.travado;
-    const velocidade = (this.travado ? 3.8 : correndo ? 7.2 : 4.4) * per.fatorVelocidade * (this.torpor > 0 ? 0.5 : 1);
+    // o ouro da Gula e a pedra no ombro pesam: mais devagar e com menos pulo
+    const carga = this.pesoEfetivo();
+    const velocidade = (this.travado ? 3.8 : correndo ? 7.2 : 4.4) * per.fatorVelocidade * (this.torpor > 0 ? 0.5 : 1) * Math.max(0.45, 1 - carga * 0.1);
+    per.forcaPulo = per.carregando ? 0 : Math.max(0.55, 1 - carga * 0.12);
 
     const livre = !parado && per.acao === 'livre';
     if (livre && e.apertou('Mouse0', 'KeyJ')) {
+      // como no Veloren: sem alvo travado, o peregrino golpeia para onde a câmera olha
+      if (!this.travado) this.virarParaMira();
       per.iniciar('golpe');
       this.golpePendente = 0.13;
       this.som.golpe();
@@ -976,7 +1504,9 @@ export class Jogo {
     }
 
     if (per.acao === 'rezando') {
-      if (!e.segurando('KeyR') || desejo.lengthSq() > 0.01 || dialogo) per.acao = 'livre';
+      if (this.emConfissao) {
+        /* ajoelhado no confessionário até o fim da conversa */
+      } else if (!e.segurando('KeyR') || desejo.lengthSq() > 0.01 || dialogo) per.acao = 'livre';
       else this.rezar(dt);
     }
 
@@ -1006,7 +1536,7 @@ export class Jogo {
     this.area.atualizar?.(dt, per.pos);
 
     const chefe = this.chefeDaArea();
-    chefe?.sentir({ pos: per.pos, noChao: per.noChao, esquivando: per.acao === 'esquiva', invulneravel: per.invulneravel > 0 });
+    chefe?.sentir({ pos: per.pos, noChao: per.noChao, esquivando: per.acao === 'esquiva', invulneravel: per.invulneravel > 0, peso: this.pesoEfetivo() });
     for (const s of this.area.sombras) {
       if (s.estado === 'vencida' || parado) continue;
       s.atualizar(dt, this.area, per.pos);
@@ -1017,24 +1547,26 @@ export class Jogo {
     if (!parado) this.aplicarImpactosDoChefe();
     this.atualizarBarraChefe();
     if (this.area === this.mundo) {
-      for (const o of this.mundo.ovelhas) o.atualizar(dt, this.mundo, per.pos);
       this.verificarVeu();
     }
+    this.atualizarCidade();
+    this.faunas.get(this.area.id)?.atualizar(dt, per.pos, (v, d) => this.som.voz(v, 1 - d / 16));
     this.pomba.atualizar(dt, per.pos, per.rumo);
     this.atualizarColuna(dt);
 
     // dica de interação
     const i = !parado && per.acao === 'livre' ? this.interacaoPerto() : null;
     if (i) this.hud.mostrarDica(typeof i.rotulo === 'function' ? i.rotulo() : i.rotulo);
-    else if (per.acao === 'rezando') this.hud.mostrarDica(this.oracaoDobrada() ? 'Rezando (junto à cruz: força em dobro)…' : 'Rezando…');
+    else if (per.acao === 'rezando' && !this.emConfissao) this.hud.mostrarDica(this.oracaoDobrada() ? 'Rezando (junto à cruz: força em dobro)…' : 'Rezando…');
     else if (!dialogo && this.estado.energia < 10) this.hud.mostrarDica('Pouca energia: pare e segure R para rezar');
     else this.hud.mostrarDica(null);
   }
 
   private pausar() {
     this.pausado = true;
+    this.hud.mostrarRetic(this.prefs.mira, null, 0);
     document.exitPointerLock?.();
-    const nomes: Record<IdArea, string> = { vale: 'O Vale', cripta: 'A Cripta', deserto: 'Deserto das Vozes', meiodia: 'Poço do Meio-Dia' };
+    const nomes = NOMES_AREA;
     const min = Math.floor(this.estado.tempo / 60);
     const tempo = min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`;
     const id = this.estado.identidade ?? identidadePadrao();
@@ -1044,6 +1576,7 @@ export class Jogo {
   /** A árvore dos dons (G): pausa o jogo enquanto está aberta. */
   private abrirDons() {
     this.pausado = true;
+    this.hud.mostrarRetic(this.prefs.mira, null, 0);
     document.exitPointerLock?.();
     this.pausa.fechar();
     this.telaDons.abrir();
@@ -1076,6 +1609,7 @@ export class Jogo {
     this.projeteis = [];
     this.lamparinaAcesa = false;
     this.hud.encerrar();
+    this.dialogos.encerrar();
     this.hud.mostrarChefe(null);
     this.atualizarCiencia(0);
     this.som.ambienteDe(null);
@@ -1099,19 +1633,19 @@ export class Jogo {
     const a = this.area;
     if (this.areaNoMapa !== a.id) {
       this.areaNoMapa = a.id;
-      const nomes: Record<IdArea, string> = { vale: 'O Vale', cripta: 'A Cripta', deserto: 'Deserto das Vozes', meiodia: 'Poço do Meio-Dia' };
+      const nomes = NOMES_AREA;
       this.minimapa.definirArea(a.id, nomes[a.id], a.fonteMapa());
     }
     const marcas: Marca[] = [];
     for (const i of this.interacoes[a.id]) {
       if (i.ativa && !i.ativa()) continue;
       const rot = typeof i.rotulo === 'function' ? i.rotulo() : i.rotulo;
-      if (rot.includes('ovelha')) continue;
-      const tipo = /descansar|ajoelhar|beber/.test(rot) ? 'descanso' : /falar/.test(rot) ? 'pessoa' : /voltar|seguir|descer|subir/.test(rot) ? 'saida' : 'lugar';
+      if (rot.startsWith('F: fazer carinho')) continue;
+      const tipo = /descansar|ajoelhar|beber|confessar/.test(rot) ? 'descanso' : /falar/.test(rot) ? 'pessoa' : /voltar|seguir|descer|subir/.test(rot) ? 'saida' : 'lugar';
       const p = i.pos();
       marcas.push({ x: p.x, z: p.z, tipo });
     }
-    for (const s of a.sombras) if (s.ativa && !s.id.includes('reflexo')) marcas.push({ x: s.pos.x, z: s.pos.z, tipo: s.id === 'cripta_guardiao' || s.id === 'meiodia_acedia' ? 'chefe' : 'sombra' });
+    for (const s of a.sombras) if (s.ativa && !s.id.includes('reflexo')) marcas.push({ x: s.pos.x, z: s.pos.z, tipo: CHEFOES.includes(s.id) ? 'chefe' : 'sombra' });
     for (const s of a.sombras) if (s.ativa && s.id.includes('reflexo')) marcas.push({ x: s.pos.x, z: s.pos.z, tipo: 'chefe' });
     const p = this.peregrino.pos;
     this.minimapa.desenhar(p.x, p.z, this.camera.guinada, this.peregrino.rumo, marcas);
@@ -1120,13 +1654,7 @@ export class Jogo {
   private lutaMeioDiaComecou() {
     this.som.tensao();
     this.hud.anunciar('Acídia, o Demônio do Meio-Dia', 3);
-    if (this.primeiraVez('meiodia_dica'))
-      this.hud.falar([
-        { quem: 'Acídia', texto: 'Tão quente… Para que andar tanto? Sente-se. Amanhã você continua. Ou depois.' },
-        { quem: 'espirito', texto: 'É o demônio do meio-dia, a acídia: o cansaço da alma que faz tudo parecer sem sentido.' },
-        { quem: 'espirito', texto: 'Ele se esconde em miragens iguais a ele. Nada o fere enquanto estiver escondido: use a Ciência (E) para ver qual é o verdadeiro.' },
-        { quem: 'espirito', texto: 'Se o torpor dele te alcançar, não desista: segure R e reze. A oração levanta o caído.' },
-      ]);
+    if (this.primeiraVez('meiodia_dica')) this.dialogos.tocar('meiodia_acedia');
   }
 
   private acediaVencida() {
@@ -1135,17 +1663,14 @@ export class Jogo {
     setTimeout(() => this.som.item(), 600);
     this.tempoColuna = 0;
     this.hud.anunciar('✦ A acídia se desfez ao sol', 3);
-    this.hud.falar([
-      { quem: 'espirito', texto: 'Você continuou. Era só isso que ele não queria: que você continuasse.' },
-      { quem: 'espirito', texto: 'Olhe o poço: a água voltou. "Quem crê em mim, do seu interior correrão rios de água viva." (Jo 7,38)' },
-      { quem: 'espirito', texto: 'Volte a Santo Antão quando quiser. O Deserto das Vozes está vencido; a estrada para o Céu continua além dele.' },
-    ]);
+    this.dialogos.tocar('meiodia_vencido');
   }
 
   /** O chefão da área atual (se houver). */
   private chefeDaArea(): Chefe | null {
     if (this.area === this.cripta) return this.cripta.guardiao;
     if (this.area === this.meiodia) return this.meiodia.acedia;
+    if (this.area === this.banquete) return this.banquete.gula;
     return null;
   }
 
@@ -1156,6 +1681,8 @@ export class Jogo {
       return this.hud.mostrarChefe('MAMOM · GUARDIÃO DA AVAREZA', c.vida / c.vidaMax, c.estado !== 'atordoada', c.alerta);
     if (a && this.meiodia.lutando && a.ativa)
       return this.hud.mostrarChefe('ACÍDIA · O DEMÔNIO DO MEIO-DIA', a.vida / a.vidaMax, !a.revelado, a.alerta);
+    const gu = this.area === this.banquete ? this.banquete.gula : null;
+    if (gu && this.banquete.lutando && gu.ativa) return this.hud.mostrarChefe('GULA · O BANQUETE SEM FIM', gu.vida / gu.vidaMax, !gu.faminta, gu.alerta);
     this.hud.mostrarChefe(null);
   }
 
@@ -1181,6 +1708,21 @@ export class Jogo {
         this.torpor = 9;
         this.hud.sussurrar('Para que continuar? Nada disso vale a pena…', 3.2);
         this.peregrino.iniciar('ferido');
+      }
+      if (imp.sussurro) this.hud.sussurrar(imp.sussurro, 2.8);
+      if (imp.peso) {
+        this.pesoBanquete = Math.min(8, this.pesoBanquete + imp.peso);
+        this.som.moedas();
+        this.peregrino.iniciar('ferido');
+        this.hud.anunciar(`Um prato da Gula caiu em você. Pesa… (peso ${this.pesoBanquete})`, 1.6);
+      }
+      if (imp.arrasto) {
+        // o devorar da Gula arrasta o peregrino para a boca (sem atravessar paredes)
+        const per = this.peregrino.pos;
+        const antes = per.clone();
+        per.add(imp.arrasto);
+        this.area.colidir(per, 0.35);
+        if (this.area.altura(per.x, per.z) > antes.y + 1.05) per.copy(antes);
       }
       if (imp.puxarPara) this.puxao = { de: this.peregrino.pos.clone(), para: imp.puxarPara.clone(), t: 0 };
       if (imp.dano > 0) this.ferir(imp.de, imp.dano, !!imp.roubo);
@@ -1210,7 +1752,67 @@ export class Jogo {
     this.som.dissolver();
     setTimeout(() => this.som.graca(), 500);
     this.efeitos.ouro = 1;
-    this.hud.falar([{ quem: 'espirito', texto: 'A névoa se desfez diante da luz. O caminho a oeste está aberto.' }]);
+    this.dialogos.tocar('vale_nevoa_desfeita');
+  }
+
+  /** O peregrino vira o corpo para a direção da mira (só no plano do chão). */
+  private virarParaMira() {
+    const per = this.peregrino;
+    // com um inimigo sob a mira, vira para ele (o golpe pega mesmo de raspão); senão, para o ponto mirado
+    const ponto = this.miraAlvo?.ativa ? this.miraAlvo.pos : this.miraPonto;
+    const dx = ponto.x - per.pos.x, dz = ponto.z - per.pos.z;
+    if (dx * dx + dz * dz > 0.25) per.rumo = Math.atan2(dx, dz);
+    else {
+      const f = this.camera.frente();
+      per.rumo = Math.atan2(f.x, f.z);
+    }
+  }
+
+  /**
+   * A mira livre, como no Veloren: um raio sai da câmera pelo centro da tela e para no primeiro inimigo ou no chão
+   * (até 45 m). O trecho entre a câmera e o peregrino não conta, para não mirar no que está atrás dele.
+   */
+  private atualizarMiraLivre(dt: number) {
+    const cam = this.camera.cam;
+    const per = this.peregrino;
+    const origem = cam.position;
+    const dir = cam.getWorldDirection(new THREE.Vector3());
+    const ate = origem.distanceTo(per.pos) - 0.6;
+    const inicio = Math.max(0, ate);
+    let fim = 45;
+    let alvo: Alvo | null = null;
+    const c = new THREE.Vector3();
+    for (const s of [...this.area.sombras, ...(this.area.alvos?.() ?? [])] as Alvo[]) {
+      if (!s.ativa) continue;
+      s.centro(c).sub(origem);
+      const t = c.dot(dir);
+      if (t < inicio || t > fim) continue;
+      const r = ((s as Partial<{ raioCorpo: number }>).raioCorpo ?? 0.8) + 0.35;
+      if (c.lengthSq() - t * t < r * r) {
+        fim = t;
+        alvo = s;
+      }
+    }
+    const p = new THREE.Vector3();
+    for (let t = inicio; t < fim; t += 0.3) {
+      p.copy(origem).addScaledVector(dir, t);
+      if ((this.area.alturaCamera?.(p.x, p.z) ?? this.area.altura(p.x, p.z)) > p.y) {
+        fim = t;
+        alvo = null;
+        break;
+      }
+    }
+    this.miraPonto.copy(origem).addScaledVector(dir, fim);
+    this.miraAlvo = alvo;
+
+    const ver = this.comecou && !this.modoCriacao && !this.travado && !this.hud.dialogoAberto && !this.morrendo && !this.transitando &&
+      !this.emConfissao && per.acao !== 'rezando';
+    const perto = !!alvo && Math.hypot(alvo.pos.x - per.pos.x, alvo.pos.z - per.pos.z) < 1.8 + ((alvo as Partial<{ raioCorpo: number }>).raioCorpo ?? 0.8);
+    this.hud.mostrarRetic(
+      this.prefs.mira,
+      ver ? { sobreAlvo: !!alvo, aoAlcance: perto, semEnergia: this.estado.energia < 10 || this.torpor > 0 } : null,
+      dt,
+    );
   }
 
   private alvoMaisProximo() {
@@ -1236,6 +1838,7 @@ export class Jogo {
   private resolverGolpe() {
     const per = this.peregrino;
     const frente = per.frente();
+    this.area.golpear?.(per.pos, frente);
     for (const s of this.area.sombras) {
       if (!s.ativa) continue;
       const para = s.pos.clone().sub(per.pos).setY(0);
@@ -1248,6 +1851,7 @@ export class Jogo {
           this.avisoCouraca = 3;
         } else {
           this.som.acerto();
+          this.hud.acertou();
           if (r === 'morreu') this.sombraVencida(s);
         }
       }
@@ -1256,13 +1860,16 @@ export class Jogo {
 
   private lancarLuz() {
     const per = this.peregrino;
+    if (!this.travado) this.virarParaMira();
     per.iniciar('luz');
     this.estado.energia -= 10;
     this.som.luz();
     const origem = per.pontaDoCajado();
     const malha = new THREE.Mesh(this.geoLuz, this.matLuz);
     malha.position.copy(origem);
-    const destino = this.travado ? this.travado.centro() : per.pos.clone().add(per.frente().multiplyScalar(14)).setY(origem.y);
+    // travada, a luz persegue o alvo; livre, vai para o ponto sob a mira
+    const destino = this.travado ? this.travado.centro() : this.miraPonto.clone();
+    if (destino.distanceTo(origem) < 1.5) destino.copy(per.pos).add(per.frente().multiplyScalar(14)).setY(origem.y);
     const vel = destino.sub(origem).normalize().multiplyScalar(18);
     this.cena.add(malha);
     this.projeteis.push({ malha, vel, vida: 1.6, alvo: this.travado });
@@ -1292,6 +1899,7 @@ export class Jogo {
           this.flashLuz.position.copy(p.malha.position);
           this.flashLuz.intensity = 16;
           const r = s.ferir(3 + this.bonusDaVerdade(), this.peregrino.pos, 'luz');
+          if (r !== 'bloqueado') this.hud.acertou();
           if (r === 'morreu') this.sombraVencida(s);
           else if (r === 'atordoado') this.hud.anunciar('Atordoado! Golpeie agora!', 1.4);
           else if (r === 'bloqueado') {
@@ -1333,10 +1941,17 @@ export class Jogo {
     this.estado.salvar();
     const guardiao = s.id === 'cripta_guardiao';
     if (guardiao) this.cripta.guardiaoVencido();
-    if (guardiao || s.id === 'meiodia_acedia') {
+    if (guardiao || s.id === 'meiodia_acedia' || s.id === 'palacio_gula') {
       // cada chefão vencido dá um coração a mais, e o peregrino sai da luta curado
       this.estado.coracoes = this.estado.coracoesMax;
       setTimeout(() => this.hud.anunciar('❤️ Mais um coração!', 2.6), 3400);
+    }
+    if (s.id === 'palacio_gula') {
+      this.banquete.chefeVencido();
+      this.pesoBanquete = 0;
+      this.marcar('gula_vencida');
+      setTimeout(() => this.gulaVencida(), 900);
+      return;
     }
     if (s.id === 'meiodia_acedia') {
       this.meiodia.chefeVencido();
@@ -1352,22 +1967,14 @@ export class Jogo {
       this.hud.anunciar(guardiao ? '✦ Mamom se desfez em luz' : '✦ Graça recebida', 2.6);
       if (guardiao) {
         this.som.portao();
-        this.hud.falar([
-          { quem: 'espirito', texto: 'A avareza se desfez. O que ele prendia não era dele: a luz não se guarda, se partilha.' },
-          { quem: 'espirito', texto: 'O relicário a oeste da arena está aberto.' },
-        ]);
+        this.dialogos.tocar('cripta_mamom_vencido');
       }
       if (this.estado.cor >= 0.999 && this.primeiraVez('vale_restaurado')) {
-        this.hud.falar([
-          { quem: 'espirito', texto: 'Veja: o Vale recuperou suas cores! A luz venceu as sombras.' },
-          { quem: 'espirito', texto: 'Agora suba a estrada até a capela no alto do monte.' },
-        ] as Fala[]);
+        this.dialogos.tocar('vale_restaurado');
       }
       if (s.id.startsWith('deserto_') && this.sombrasDoDesertoVencidas() >= TOTAL_SOMBRAS_DESERTO && this.primeiraVez('deserto_restaurado'))
-        this.hud.falar([
-          { quem: 'espirito', texto: 'O deserto também tem cor! Nenhuma voz falsa sobrou entre as dunas.' },
-          { quem: 'espirito', texto: 'Agora só resta o que mora depois da fenda.' },
-        ] as Fala[]);
+        this.dialogos.tocar('deserto_restaurado');
+      if (s.id.startsWith('cidade_')) this.verificarCidadeRestaurada();
     }, 700);
   }
 
@@ -1388,6 +1995,16 @@ export class Jogo {
   private oracaoDobrada() {
     const p = this.peregrino.pos;
     if (this.area === this.deserto) return p.distanceTo(this.deserto.cruz) < 4 || p.distanceTo(this.deserto.antao.pos) < 5;
+    if (this.area === this.cidade) {
+      const c = this.cidade;
+      if (p.distanceTo(c.cruzeiro) < 4 || p.distanceTo(c.francisco.pos) < 5 || c.capela.dentro(p)) return true;
+      if (c.damiaoPronto && p.distanceTo(c.altarDamiao) < 4) return true;
+      // Piedade 5 (Instrumento da paz): quem foi ajudado reza junto
+      if (this.estado.nivel('piedade') >= 5)
+        return c.pobres.some((q) => this.estado.flags.has(`cidade_ajudou_${q.id}`) && p.distanceTo(q.npc.pos) < 5) ||
+          (this.estado.flags.has('cidade_leproso') && p.distanceTo(c.homemDaEstrada.pos) < 5);
+      return false;
+    }
     if (this.area !== this.mundo) return false;
     return p.distanceTo(this.mundo.cruzeiro) < 4 || Math.hypot(p.x - CAPELA.x, p.z - CAPELA.y) < 5;
   }
@@ -1401,6 +2018,16 @@ export class Jogo {
         this.hud.anunciar('A oração venceu o torpor!', 2);
         this.som.graca();
         this.efeitos.ouro = 0.5;
+      }
+    }
+    // jejum: rezando, o peso do banquete vai embora aos poucos
+    if (this.pesoBanquete > 0) {
+      this.jejum += dt;
+      if (this.jejum >= 2.2) {
+        this.jejum = 0;
+        this.pesoBanquete--;
+        this.som.oracao();
+        this.hud.anunciar(this.pesoBanquete > 0 ? `O jejum alivia: peso ${this.pesoBanquete}` : 'Leve de novo!', 1.4);
       }
     }
     const taxa = this.tempoOracao < 3 ? 5 : this.tempoOracao < 6 ? 8 : 12;
@@ -1454,6 +2081,9 @@ export class Jogo {
     setTimeout(() => {
       this.cripta.reiniciarLuta();
       this.meiodia.reiniciarLuta();
+      this.banquete.reiniciarLuta();
+      this.pesoBanquete = 0;
+      this.peregrino.carregar(null);
       this.torpor = 0;
       this.tempoCiencia = 0;
       const destino = this.areaPorId(this.estado.checkpointArea);
@@ -1465,7 +2095,9 @@ export class Jogo {
       this.peregrino.teleportar(x, y, z);
       this.peregrino.acao = 'livre';
       this.camera.reposicionar();
+      this.estado.cair();
       this.estado.restaurar();
+      this.estado.salvar(); // a queda vale mesmo se o jogo for fechado agora
       this.hud.escurecer(false);
       this.hud.anunciar('Você voltou ao último lugar de descanso.', 3);
       this.morrendo = false;

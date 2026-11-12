@@ -3,11 +3,13 @@ import { aleatorio } from '../core/Ruido';
 import { materialVoxel } from '../voxel/Malha';
 import { carregarVox, geometriaVox } from '../voxel/Vox';
 import { Fisica } from '../entidades/Peregrino';
-import { Ovelha } from '../entidades/Ovelha';
+import type { Povoamento } from '../fauna/Fauna';
 import { Sombra } from '../entidades/Sombra';
+import type { DefNpc } from '../entidades/Npc';
 import { CAPELA, LAGO, NIVEL_AGUA, PASSAGEM, Terreno, estradaX } from './Terreno';
-import { construirCapela, construirCruzeiro, construirEntradaCripta, construirPlaca, construirVeu } from './Cenario';
+import { construirCruzeiro, construirEntradaCripta, construirPlaca, construirVeu } from './Cenario';
 import { Area } from './Area';
+import { CapelaRegional, ESTILO_VALE } from './Capela';
 import type { FonteMapa } from '../ui/Minimapa';
 import { escurecer } from './PocoMeioDia';
 
@@ -62,12 +64,19 @@ function folhas(base: number, variacao: number) {
   };
 }
 
+/** Padre da capela do Vale: batina preta e estola roxa (a cor da penitência), breviário na mão. */
+const PADRE: DefNpc = {
+  id: 'padre_vale',
+  falante: 'padre',
+  no: 'capela_confissao',
+  visual: { genero: 'm', idade: 'idoso', pele: 0xe2b896, penteado: 'calvo', corCabelo: 0xd8d4cc, traje: 'habito', cor: 0x1c1a20, cor2: 0x6a3088, acessorio: 'livro' },
+};
+
 export class Mundo implements Fisica, Area {
   readonly id = 'vale' as const;
   readonly nivelMinimo = NIVEL_AGUA;
   readonly grupo = new THREE.Group();
   readonly terreno = new Terreno();
-  readonly ovelhas: Ovelha[] = [];
   readonly sombras: Sombra[] = [];
   private circulos: Circulo[] = [];
   private caixas: Caixa[] = [];
@@ -77,8 +86,8 @@ export class Mundo implements Fisica, Area {
   readonly inicio: THREE.Vector3;
   readonly fogueira: THREE.Vector3;
   readonly cruzeiro: THREE.Vector3;
-  readonly altar: THREE.Vector3;
-  readonly portaCapela: THREE.Vector3;
+  /** A capela do Vale, com o padre que confessa. */
+  readonly capela: CapelaRegional;
   readonly luzFogueira = new THREE.PointLight(0xff9a40, 8, 10, 1.5);
   readonly entradaCripta: THREE.Vector3;
   readonly veu: THREE.Vector3;
@@ -100,22 +109,11 @@ export class Mundo implements Fisica, Area {
     this.cruzeiro = new THREE.Vector3(estradaX(12) + 4.2, 0, 12);
     this.cruzeiro.y = h(this.cruzeiro.x, this.cruzeiro.z);
     const hc = h(CAPELA.x, CAPELA.y);
-    this.altar = new THREE.Vector3(CAPELA.x, hc, CAPELA.y - 3.2);
-    this.portaCapela = new THREE.Vector3(CAPELA.x, hc, CAPELA.y + 6.5);
 
-    // capela
-    const capela = construirCapela();
-    capela.position.set(CAPELA.x, hc, CAPELA.y);
-    this.grupo.add(capela);
-    const cx = CAPELA.x, cz = CAPELA.y, top = hc + 12;
-    this.caixas.push(
-      { x0: cx - 3.5, x1: cx - 3, z0: cz - 5, z1: cz + 5, topo: top },
-      { x0: cx + 3, x1: cx + 3.5, z0: cz - 5, z1: cz + 5, topo: top },
-      { x0: cx - 3.5, x1: cx + 3.5, z0: cz - 5, z1: cz - 4.5, topo: top },
-      { x0: cx - 3.5, x1: cx - 1, z0: cz + 4.5, z1: cz + 5, topo: top },
-      { x0: cx + 1, x1: cx + 3.5, z0: cz + 4.5, z1: cz + 5, topo: top },
-      { x0: cx - 1, x1: cx + 1, z0: cz - 4, z1: cz - 3, topo: hc + 1.5 }, // altar
-    );
+    // capela: nave com bancos, presbitério, sacrário e confessionário em que se entra
+    this.capela = new CapelaRegional(ESTILO_VALE, CAPELA.x, CAPELA.y, hc, PADRE);
+    this.grupo.add(this.capela.grupo);
+    this.caixas.push(...this.capela.caixas);
 
     // cruzeiro
     const cruz = construirCruzeiro();
@@ -180,8 +178,11 @@ export class Mundo implements Fisica, Area {
     mat.emissive.setHex(0x1a0d33);
   }
 
-  atualizar(dt: number) {
+  atualizar(dt: number, jogador?: THREE.Vector3) {
     this.t += dt;
+    if (jogador) {
+      this.capela.atualizar(dt, jogador);
+    }
     const v = this.malhaVeu;
     if (this.desfazendoVeu < 0) {
       v.scale.set(1 + Math.sin(this.t * 2.1) * 0.15, 1 + Math.sin(this.t * 1.3) * 0.03, 1);
@@ -295,17 +296,6 @@ export class Mundo implements Fisica, Area {
       this.grupo.add(inst);
     }
 
-    // rebanho (Veloren)
-    const pasto = new THREE.Vector3(-28, 0, 24);
-    for (let i = 0; i < 6; i++) {
-      const o = new Ovelha(pasto, 9);
-      o.pos.set(pasto.x + (rnd() - 0.5) * 10, 0, pasto.z + (rnd() - 0.5) * 10);
-      o.pos.y = this.terreno.altura(o.pos.x, o.pos.z);
-      await o.montar();
-      this.ovelhas.push(o);
-      this.grupo.add(o.raiz);
-    }
-
     this.reporSombras(sombrasVencidas);
   }
 
@@ -327,7 +317,25 @@ export class Mundo implements Fisica, Area {
   }
 
   altura(x: number, z: number) {
-    return this.terreno.altura(x, z);
+    return this.capela.piso(x, z) ?? this.terreno.altura(x, z);
+  }
+
+  /** O Vale é pastoril: rebanho no prado, bichos do mato nas bordas, patos no lago e aves no céu. */
+  povoamento(): Povoamento[] {
+    return [
+      { especie: 'ovelha', quantidade: 6, centro: [-28, 24], raio: 9 },
+      { especie: 'cabra', quantidade: 3, centro: [-44, -8], raio: 9 },
+      { especie: 'coelho', quantidade: 4, centro: [18, 42], raio: 13 },
+      { especie: 'lebre', quantidade: 2, centro: [-12, 48], raio: 10 },
+      { especie: 'esquilo', quantidade: 3, centro: [30, -24], raio: 11 },
+      { especie: 'raposa', quantidade: 1, centro: [42, -38], raio: 10 },
+      { especie: 'cervo', quantidade: 2, centro: [-40, -36], raio: 10 },
+      { especie: 'pato', quantidade: 4, centro: [LAGO.x, LAGO.y], raio: 8 },
+      { especie: 'sapo', quantidade: 2, centro: [LAGO.x - 9, LAGO.y + 2], raio: 4 },
+      { especie: 'corvo', quantidade: 3, centro: [8, 6], raio: 24 },
+      { especie: 'aguia', quantidade: 1, centro: [CAPELA.x, CAPELA.y], raio: 38 },
+      { especie: 'coruja', quantidade: 1, centro: [CAPELA.x + 11, CAPELA.y + 6], raio: 5 },
+    ];
   }
 
   fonteMapa(): FonteMapa {
@@ -338,7 +346,7 @@ export class Mundo implements Fisica, Area {
         const h = t.altura(x, z);
         if (h >= 99) return 0x3a3428;
         if (h <= NIVEL_AGUA + 0.05 && Math.hypot(x - LAGO.x, (z - LAGO.y) * 1.3) < 16) return 0x3a7ac0;
-        if (Math.abs(x - CAPELA.x) < 4.5 && z > CAPELA.y - 6 && z < CAPELA.y + 4) return 0xe8dcc4; // a capela
+        if (this.capela.noMapa(x, z)) return 0xe8dcc4; // a capela
         if (t.pesoEstrada(x, z) > 0.35) return 0xc8a46a;
         const borda = Math.max(Math.abs(x), Math.abs(z));
         if (borda > 58 && h > 12) return escurecer(0x8a8274, 0.7 + Math.min(1, (h - 12) / 30) * 0.4);
