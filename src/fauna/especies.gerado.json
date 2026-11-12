@@ -1,0 +1,3742 @@
+{
+ "revisao": "master",
+ "especies": {
+  "ovelha": {
+   "veloren": "Sheep",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "ovelha/sheep_male_head.vox",
+     "desloc": [
+      -5,
+      0,
+      -5
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "ovelha/sheep_male_chest.vox",
+     "desloc": [
+      -5,
+      -5.5,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "ovelha/sheep_male_tail.vox",
+     "desloc": [
+      -2,
+      -2,
+      -1.5
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "ovelha/sheep_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "ovelha/sheep_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "ovelha/sheep_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5.5
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "ovelha/sheep_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5.5
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     4,
+     4
+    ],
+    "chest": [
+     2,
+     7
+    ],
+    "feet_f": [
+     3.5,
+     2,
+     -2
+    ],
+    "feet_b": [
+     3.5,
+     -3.5,
+     -2
+    ],
+    "tail": [
+     -5,
+     0
+    ],
+    "scaler": 0.8,
+    "tempo": 1,
+    "maximize": 1.1,
+    "minimize": 0.8,
+    "spring": 1.2,
+    "feed": 1,
+    "lateral": 0
+   }
+  },
+  "cabra": {
+   "veloren": "Goat",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "cabra/goat_male_head.vox",
+     "desloc": [
+      -6,
+      0,
+      -5.5
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "cabra/goat_male_chest.vox",
+     "desloc": [
+      -4,
+      -5.5,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "cabra/goat_male_tail.vox",
+     "desloc": [
+      -1,
+      -2,
+      -1.5
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "cabra/goat_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -2,
+      -4
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "cabra/goat_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -2,
+      -4
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "cabra/goat_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5.5
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "cabra/goat_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5.5
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     3.5,
+     4
+    ],
+    "chest": [
+     2,
+     7.5
+    ],
+    "feet_f": [
+     3,
+     2.5,
+     -3.5
+    ],
+    "feet_b": [
+     3,
+     -4,
+     -2
+    ],
+    "tail": [
+     -7,
+     0
+    ],
+    "scaler": 0.8,
+    "tempo": 1,
+    "maximize": 1,
+    "minimize": 0.8,
+    "spring": 1.2,
+    "feed": 1,
+    "lateral": 0
+   }
+  },
+  "coelho": {
+   "veloren": "Rabbit",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "coelho/rabbit_male_head.vox",
+     "desloc": [
+      -3.5,
+      0,
+      -3
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "coelho/rabbit_male_chest.vox",
+     "desloc": [
+      -2.5,
+      -5.5,
+      -3
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "coelho/rabbit_male_tail.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -1
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "coelho/rabbit_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      0,
+      -2
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "coelho/rabbit_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      0,
+      -2
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "coelho/rabbit_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -3,
+      -4
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "coelho/rabbit_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -3,
+      -4
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     4,
+     3
+    ],
+    "chest": [
+     -2,
+     6
+    ],
+    "feet_f": [
+     3,
+     3,
+     -3
+    ],
+    "feet_b": [
+     3.5,
+     -2,
+     -1
+    ],
+    "tail": [
+     -4,
+     0
+    ],
+    "scaler": 0.56,
+    "tempo": 1.15,
+    "maximize": 1.3,
+    "minimize": 0.8,
+    "spring": 2.5,
+    "feed": 1.2,
+    "lateral": 0
+   }
+  },
+  "lebre": {
+   "veloren": "Hare",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "lebre/hare_male_head.vox",
+     "desloc": [
+      -3.5,
+      0,
+      -3
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "lebre/hare_male_chest.vox",
+     "desloc": [
+      -2.5,
+      -5,
+      -3
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "lebre/hare_male_tail.vox",
+     "desloc": [
+      -1.5,
+      -11,
+      -2
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "lebre/hare_male_foot_fr.vox",
+     "desloc": [
+      -0.5,
+      0,
+      -2
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "lebre/hare_male_foot_fr.vox",
+     "desloc": [
+      -0.5,
+      0,
+      -2
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "lebre/hare_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -4,
+      -5
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "lebre/hare_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -4,
+      -5
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     3,
+     2
+    ],
+    "chest": [
+     -2,
+     7
+    ],
+    "feet_f": [
+     3,
+     1,
+     -3
+    ],
+    "feet_b": [
+     3.5,
+     -1,
+     -2
+    ],
+    "tail": [
+     -4,
+     -1
+    ],
+    "scaler": 0.65,
+    "tempo": 1.15,
+    "maximize": 1.3,
+    "minimize": 0.8,
+    "spring": 2.2,
+    "feed": 1.2,
+    "lateral": 0
+   }
+  },
+  "esquilo": {
+   "veloren": "Squirrel",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "esquilo/squirrel_male_head.vox",
+     "desloc": [
+      -2.5,
+      0,
+      -2.5
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "esquilo/squirrel_male_chest.vox",
+     "desloc": [
+      -2.5,
+      -4,
+      -2.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "esquilo/squirrel_male_tail.vox",
+     "desloc": [
+      -2.5,
+      -8,
+      -2
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "esquilo/squirrel_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -1.5,
+      -4
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "esquilo/squirrel_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -1.5,
+      -4
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "esquilo/squirrel_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -5
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "esquilo/squirrel_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -5
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     3.5,
+     1
+    ],
+    "chest": [
+     4,
+     5
+    ],
+    "feet_f": [
+     3.5,
+     3,
+     -1
+    ],
+    "feet_b": [
+     3.5,
+     -3,
+     0
+    ],
+    "tail": [
+     -4,
+     0
+    ],
+    "scaler": 0.4,
+    "tempo": 1.15,
+    "maximize": 1,
+    "minimize": 1,
+    "spring": 1,
+    "feed": 1,
+    "lateral": 0
+   }
+  },
+  "raposa": {
+   "veloren": "Fox",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "raposa/fox_male_head.vox",
+     "desloc": [
+      -4.5,
+      0,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "raposa/fox_male_chest.vox",
+     "desloc": [
+      -2.5,
+      -5.5,
+      -2.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "raposa/fox_male_tail.vox",
+     "desloc": [
+      -1.5,
+      -11,
+      -6
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "raposa/fox_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -2,
+      -2.5
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "raposa/fox_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -2,
+      -2.5
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "raposa/fox_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -2,
+      -5
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "raposa/fox_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -2,
+      -5
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     4,
+     3
+    ],
+    "chest": [
+     0,
+     8
+    ],
+    "feet_f": [
+     3,
+     5,
+     -5.5
+    ],
+    "feet_b": [
+     3,
+     -3,
+     -3
+    ],
+    "tail": [
+     -4.5,
+     2
+    ],
+    "scaler": 0.72,
+    "tempo": 1,
+    "maximize": 1.3,
+    "minimize": 1.3,
+    "spring": 1,
+    "feed": 1,
+    "lateral": 0
+   }
+  },
+  "rato": {
+   "veloren": "Rat",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "rato/rat_rat.vox",
+     "desloc": [
+      -4.5,
+      0,
+      -3
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "rato/rat_rat.vox",
+     "desloc": [
+      -3.5,
+      -5.5,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "rato/rat_rat.vox",
+     "desloc": [
+      -0.5,
+      -14,
+      -4
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "rato/rat_rat.vox",
+     "desloc": [
+      -1,
+      -2,
+      -4
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "rato/rat_rat.vox",
+     "desloc": [
+      -1,
+      -2,
+      -4
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "rato/rat_rat.vox",
+     "desloc": [
+      -1,
+      -2.5,
+      -6
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "rato/rat_rat.vox",
+     "desloc": [
+      -1,
+      -2.5,
+      -6
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     5,
+     -1
+    ],
+    "chest": [
+     6,
+     5
+    ],
+    "feet_f": [
+     3,
+     2.5,
+     -1
+    ],
+    "feet_b": [
+     3,
+     -2,
+     1
+    ],
+    "tail": [
+     -3,
+     0
+    ],
+    "scaler": 0.5,
+    "tempo": 1,
+    "maximize": 1,
+    "minimize": 1,
+    "spring": 1,
+    "feed": 1,
+    "lateral": 0
+   }
+  },
+  "sapo": {
+   "veloren": "Frog",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "sapo/frog_male_head.vox",
+     "desloc": [
+      -3.5,
+      0,
+      -3
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "sapo/frog_male_chest.vox",
+     "desloc": [
+      -3.5,
+      -5,
+      -3
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "sapo/empty.vox",
+     "desloc": [
+      0,
+      0,
+      0
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "sapo/frog_male_foot_fr.vox",
+     "desloc": [
+      -2.5,
+      -2.5,
+      -4
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "sapo/frog_male_foot_fr.vox",
+     "desloc": [
+      -2.5,
+      -2.5,
+      -4
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "sapo/frog_male_foot_br.vox",
+     "desloc": [
+      -2.5,
+      -3.5,
+      -4
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "sapo/frog_male_foot_br.vox",
+     "desloc": [
+      -2.5,
+      -3.5,
+      -4
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     4,
+     2
+    ],
+    "chest": [
+     -2,
+     4.5
+    ],
+    "feet_f": [
+     4.5,
+     6.5,
+     0
+    ],
+    "feet_b": [
+     5,
+     -3.5,
+     0
+    ],
+    "tail": [
+     0,
+     0
+    ],
+    "scaler": 0.56,
+    "tempo": 1.15,
+    "maximize": 1.3,
+    "minimize": 0.8,
+    "spring": 2.5,
+    "feed": 0.7,
+    "lateral": 0
+   }
+  },
+  "lagartixa": {
+   "veloren": "Gecko",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "lagartixa/gecko_male_head.vox",
+     "desloc": [
+      -2.5,
+      0,
+      -2
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "lagartixa/gecko_male_chest.vox",
+     "desloc": [
+      -2.5,
+      -5,
+      -1.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "lagartixa/gecko_male_tail.vox",
+     "desloc": [
+      -1.5,
+      -12,
+      -1.5
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "lagartixa/gecko_male_foot_fr.vox",
+     "desloc": [
+      -5.5,
+      -1,
+      -3.5
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "lagartixa/gecko_male_foot_fr.vox",
+     "desloc": [
+      -0.5,
+      -1,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "lagartixa/gecko_male_foot_br.vox",
+     "desloc": [
+      -5.5,
+      -4,
+      -3.5
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "lagartixa/gecko_male_foot_br.vox",
+     "desloc": [
+      -0.5,
+      -4,
+      -3.5
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     4,
+     2
+    ],
+    "chest": [
+     7.5,
+     4
+    ],
+    "feet_f": [
+     2,
+     4,
+     -0.5
+    ],
+    "feet_b": [
+     1.5,
+     -2,
+     -0.5
+    ],
+    "tail": [
+     -4,
+     0
+    ],
+    "scaler": 0.56,
+    "tempo": 1.1,
+    "maximize": 1,
+    "minimize": 1,
+    "spring": 0.6,
+    "feed": 0.8,
+    "lateral": 1
+   }
+  },
+  "tartaruga": {
+   "veloren": "Turtle",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "tartaruga/turtle_male_head.vox",
+     "desloc": [
+      -2.5,
+      0,
+      -1.5
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "tartaruga/turtle_male_chest.vox",
+     "desloc": [
+      -6.5,
+      -7,
+      -4
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "tartaruga/turtle_male_tail.vox",
+     "desloc": [
+      -1.5,
+      -6,
+      -1
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "tartaruga/turtle_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -0.5,
+      -4
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "tartaruga/turtle_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -0.5,
+      -4
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "tartaruga/turtle_male_foot_br.vox",
+     "desloc": [
+      -2,
+      -2.5,
+      -4
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "tartaruga/turtle_male_foot_br.vox",
+     "desloc": [
+      -2,
+      -2.5,
+      -4
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     5,
+     -2
+    ],
+    "chest": [
+     1,
+     6
+    ],
+    "feet_f": [
+     5,
+     4,
+     -2
+    ],
+    "feet_b": [
+     5.5,
+     -2.5,
+     -2
+    ],
+    "tail": [
+     -6,
+     -2
+    ],
+    "scaler": 0.67,
+    "tempo": 3,
+    "maximize": 0.8,
+    "minimize": 0.8,
+    "spring": 0.7,
+    "feed": 0.5,
+    "lateral": 1
+   }
+  },
+  "hiena": {
+   "veloren": "Hyena",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "hiena/hyena_male_head.vox",
+     "desloc": [
+      -4,
+      0,
+      -4
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "hiena/hyena_male_chest.vox",
+     "desloc": [
+      -3,
+      -8,
+      -4.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "hiena/hyena_male_tail.vox",
+     "desloc": [
+      -1,
+      -4,
+      -6
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "hiena/hyena_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -5
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "hiena/hyena_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -5
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "hiena/hyena_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -6.5
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "hiena/hyena_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -6.5
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     7.5,
+     2
+    ],
+    "chest": [
+     -2,
+     9
+    ],
+    "feet_f": [
+     2.5,
+     5,
+     -4
+    ],
+    "feet_b": [
+     3,
+     -5,
+     -2.5
+    ],
+    "tail": [
+     -7,
+     0
+    ],
+    "scaler": 0.95,
+    "tempo": 1.1,
+    "maximize": 1.4,
+    "minimize": 1.4,
+    "spring": 1.4,
+    "feed": 1,
+    "lateral": 0
+   }
+  },
+  "cao": {
+   "veloren": "Dog",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "cao/dog_male_head.vox",
+     "desloc": [
+      -3.5,
+      0,
+      -4
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "cao/dog_male_chest.vox",
+     "desloc": [
+      -2.5,
+      -5.5,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "cao/dog_male_tail.vox",
+     "desloc": [
+      -1.5,
+      -7,
+      -1
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "cao/dog_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -6
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "cao/dog_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -6
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "cao/dog_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -6
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "cao/dog_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -6
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     3,
+     4.5
+    ],
+    "chest": [
+     -2,
+     8.5
+    ],
+    "feet_f": [
+     3.5,
+     3,
+     -2.5
+    ],
+    "feet_b": [
+     3,
+     -3.5,
+     -2.5
+    ],
+    "tail": [
+     -5,
+     0.5
+    ],
+    "scaler": 0.8,
+    "tempo": 1,
+    "maximize": 1,
+    "minimize": 1,
+    "spring": 1,
+    "feed": 1,
+    "lateral": 0
+   }
+  },
+  "gato": {
+   "veloren": "Cat",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "gato/cat_male_head.vox",
+     "desloc": [
+      -4.5,
+      0,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "gato/cat_male_chest.vox",
+     "desloc": [
+      -2.5,
+      -4.5,
+      -2
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "gato/cat_male_tail.vox",
+     "desloc": [
+      -0.5,
+      -7,
+      -5
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "gato/cat_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "gato/cat_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "gato/cat_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "gato/cat_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     4,
+     3
+    ],
+    "chest": [
+     0,
+     6
+    ],
+    "feet_f": [
+     2,
+     4,
+     -1
+    ],
+    "feet_b": [
+     2,
+     -3.5,
+     -1
+    ],
+    "tail": [
+     -3.5,
+     2
+    ],
+    "scaler": 0.67,
+    "tempo": 1.1,
+    "maximize": 1,
+    "minimize": 0.8,
+    "spring": 1.4,
+    "feed": 1,
+    "lateral": 0
+   }
+  },
+  "porco": {
+   "veloren": "Pig",
+   "corpo": "quadruped_small",
+   "pecas": {
+    "head": {
+     "arquivo": "porco/pig_male_head.vox",
+     "desloc": [
+      -5,
+      0,
+      -4
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "porco/pig_male_chest.vox",
+     "desloc": [
+      -5,
+      -5,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "porco/pig_male_tail.vox",
+     "desloc": [
+      -2,
+      -3,
+      0
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "porco/pig_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "porco/pig_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -5
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "porco/pig_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -2,
+      -6
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "porco/pig_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -2,
+      -6
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     5,
+     2
+    ],
+    "chest": [
+     0,
+     6
+    ],
+    "feet_f": [
+     4.5,
+     3.5,
+     -1
+    ],
+    "feet_b": [
+     3.5,
+     -2,
+     0
+    ],
+    "tail": [
+     -4.5,
+     2.5
+    ],
+    "scaler": 0.72,
+    "tempo": 1,
+    "maximize": 1,
+    "minimize": 0.6,
+    "spring": 1,
+    "feed": 1,
+    "lateral": 0
+   }
+  },
+  "cervo": {
+   "veloren": "Deer",
+   "corpo": "quadruped_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "cervo/deer_male_head.vox",
+     "desloc": [
+      -6,
+      -5,
+      0
+     ],
+     "espelhar": false
+    },
+    "neck": {
+     "arquivo": "cervo/deer_male_neck.vox",
+     "desloc": [
+      -3,
+      -2,
+      -4
+     ],
+     "espelhar": false
+    },
+    "jaw": {
+     "arquivo": "cervo/deer_male_jaw.vox",
+     "desloc": [
+      -1,
+      0,
+      -0.5
+     ],
+     "espelhar": false
+    },
+    "torso_front": {
+     "arquivo": "cervo/deer_male_torso_front.vox",
+     "desloc": [
+      -4,
+      -9,
+      -4
+     ],
+     "espelhar": false
+    },
+    "torso_back": {
+     "arquivo": "cervo/deer_male_torso_back.vox",
+     "desloc": [
+      -4,
+      -10,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "ears": {
+     "arquivo": "cervo/empty.vox",
+     "desloc": [
+      0,
+      0,
+      0
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "cervo/deer_male_tail.vox",
+     "desloc": [
+      -2,
+      -2,
+      0
+     ],
+     "espelhar": false
+    },
+    "leg_fl": {
+     "arquivo": "cervo/deer_male_leg_fr.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -3.5
+     ],
+     "espelhar": true
+    },
+    "leg_fr": {
+     "arquivo": "cervo/deer_male_leg_fr.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "leg_bl": {
+     "arquivo": "cervo/deer_male_leg_br.vox",
+     "desloc": [
+      -2,
+      -2.5,
+      -4
+     ],
+     "espelhar": true
+    },
+    "leg_br": {
+     "arquivo": "cervo/deer_male_leg_br.vox",
+     "desloc": [
+      -2,
+      -2.5,
+      -4
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "cervo/deer_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1,
+      -8
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "cervo/deer_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1,
+      -8
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "cervo/deer_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -2,
+      -9
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "cervo/deer_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -2,
+      -9
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     1.5,
+     3.5
+    ],
+    "neck": [
+     -2.5,
+     1
+    ],
+    "jaw": [
+     3.5,
+     2.5
+    ],
+    "tail": [
+     -8.5,
+     0.5
+    ],
+    "torso_front": [
+     11,
+     13.5
+    ],
+    "torso_back": [
+     -9,
+     0.5
+    ],
+    "ears": [
+     2.5,
+     5
+    ],
+    "leg_f": [
+     3.5,
+     -4.5,
+     -3.5
+    ],
+    "leg_b": [
+     3,
+     -6.5,
+     -3.5
+    ],
+    "feet_f": [
+     -0.5,
+     -0.5,
+     -2.5
+    ],
+    "feet_b": [
+     -1,
+     -0.5,
+     -2
+    ],
+    "scaler": 0.9,
+    "startangle": 0,
+    "tempo": 0.85,
+    "spring": 0.9,
+    "feed": [
+     true,
+     1
+    ]
+   }
+  },
+  "camelo": {
+   "veloren": "Camel",
+   "corpo": "quadruped_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "camelo/camel_male_head.vox",
+     "desloc": [
+      -3.5,
+      -4,
+      0
+     ],
+     "espelhar": false
+    },
+    "neck": {
+     "arquivo": "camelo/camel_male_neck.vox",
+     "desloc": [
+      -3.5,
+      -5.5,
+      -8
+     ],
+     "espelhar": false
+    },
+    "jaw": {
+     "arquivo": "camelo/camel_male_jaw.vox",
+     "desloc": [
+      -1.5,
+      0,
+      -1.5
+     ],
+     "espelhar": false
+    },
+    "torso_front": {
+     "arquivo": "camelo/camel_male_torso_front.vox",
+     "desloc": [
+      -5.5,
+      -14,
+      -9.5
+     ],
+     "espelhar": false
+    },
+    "torso_back": {
+     "arquivo": "camelo/camel_male_torso_back.vox",
+     "desloc": [
+      -5.5,
+      -15,
+      -9
+     ],
+     "espelhar": false
+    },
+    "ears": {
+     "arquivo": "camelo/empty.vox",
+     "desloc": [
+      0,
+      0,
+      0
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "camelo/camel_male_tail.vox",
+     "desloc": [
+      -1.5,
+      -3,
+      -14
+     ],
+     "espelhar": false
+    },
+    "leg_fl": {
+     "arquivo": "camelo/camel_male_leg_fr.vox",
+     "desloc": [
+      -2.5,
+      -3.5,
+      -7
+     ],
+     "espelhar": true
+    },
+    "leg_fr": {
+     "arquivo": "camelo/camel_male_leg_fr.vox",
+     "desloc": [
+      -2.5,
+      -3.5,
+      -7
+     ],
+     "espelhar": false
+    },
+    "leg_bl": {
+     "arquivo": "camelo/camel_male_leg_br.vox",
+     "desloc": [
+      -2.5,
+      -3.5,
+      -8
+     ],
+     "espelhar": true
+    },
+    "leg_br": {
+     "arquivo": "camelo/camel_male_leg_br.vox",
+     "desloc": [
+      -2.5,
+      -3.5,
+      -8
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "camelo/camel_male_foot_fr.vox",
+     "desloc": [
+      -2.5,
+      -2.5,
+      -9
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "camelo/camel_male_foot_fr.vox",
+     "desloc": [
+      -2.5,
+      -2.5,
+      -9
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "camelo/camel_male_foot_br.vox",
+     "desloc": [
+      -2.5,
+      -3,
+      -8
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "camelo/camel_male_foot_br.vox",
+     "desloc": [
+      -2.5,
+      -3,
+      -8
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     -0.5,
+     5
+    ],
+    "neck": [
+     3.5,
+     -1.5
+    ],
+    "jaw": [
+     2,
+     2.5
+    ],
+    "tail": [
+     -14,
+     -1
+    ],
+    "torso_front": [
+     11,
+     22.5
+    ],
+    "torso_back": [
+     -12,
+     -0.5
+    ],
+    "ears": [
+     2.5,
+     5
+    ],
+    "leg_f": [
+     4.5,
+     -3.5,
+     -5.5
+    ],
+    "leg_b": [
+     4.5,
+     -10.5,
+     -5
+    ],
+    "feet_f": [
+     0,
+     0,
+     -8
+    ],
+    "feet_b": [
+     0,
+     0.5,
+     -9
+    ],
+    "scaler": 1.15,
+    "startangle": 0,
+    "tempo": 1.8,
+    "spring": 0.85,
+    "feed": [
+     false,
+     0
+    ]
+   }
+  },
+  "antilope": {
+   "veloren": "Antelope",
+   "corpo": "quadruped_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "antilope/antelope_male_head.vox",
+     "desloc": [
+      -6,
+      -7,
+      0
+     ],
+     "espelhar": false
+    },
+    "neck": {
+     "arquivo": "antilope/antelope_male_neck.vox",
+     "desloc": [
+      -3,
+      -3.5,
+      -5
+     ],
+     "espelhar": false
+    },
+    "jaw": {
+     "arquivo": "antilope/antelope_male_jaw.vox",
+     "desloc": [
+      -1,
+      0,
+      -0.5
+     ],
+     "espelhar": false
+    },
+    "torso_front": {
+     "arquivo": "antilope/antelope_male_torso_front.vox",
+     "desloc": [
+      -4,
+      -8,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "torso_back": {
+     "arquivo": "antilope/antelope_male_torso_back.vox",
+     "desloc": [
+      -4,
+      -11,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "ears": {
+     "arquivo": "antilope/empty.vox",
+     "desloc": [
+      0,
+      0,
+      0
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "antilope/antelope_male_tail.vox",
+     "desloc": [
+      -1,
+      -3,
+      -6
+     ],
+     "espelhar": false
+    },
+    "leg_fl": {
+     "arquivo": "antilope/antelope_male_leg_fr.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -4
+     ],
+     "espelhar": true
+    },
+    "leg_fr": {
+     "arquivo": "antilope/antelope_male_leg_fr.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -4
+     ],
+     "espelhar": false
+    },
+    "leg_bl": {
+     "arquivo": "antilope/antelope_male_leg_br.vox",
+     "desloc": [
+      -2,
+      -2.5,
+      -5
+     ],
+     "espelhar": true
+    },
+    "leg_br": {
+     "arquivo": "antilope/antelope_male_leg_br.vox",
+     "desloc": [
+      -2,
+      -2.5,
+      -5
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "antilope/antelope_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -8
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "antilope/antelope_male_foot_fr.vox",
+     "desloc": [
+      -1,
+      -1.5,
+      -8
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "antilope/antelope_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -1,
+      -7
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "antilope/antelope_male_foot_br.vox",
+     "desloc": [
+      -1,
+      -1,
+      -7
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     1.5,
+     2.5
+    ],
+    "neck": [
+     0.5,
+     2.5
+    ],
+    "jaw": [
+     3,
+     0.5
+    ],
+    "tail": [
+     -10,
+     2
+    ],
+    "torso_front": [
+     10,
+     14
+    ],
+    "torso_back": [
+     -7,
+     0
+    ],
+    "ears": [
+     2.5,
+     5
+    ],
+    "leg_f": [
+     4,
+     -4.5,
+     -2.5
+    ],
+    "leg_b": [
+     3.5,
+     -7.5,
+     -3.5
+    ],
+    "feet_f": [
+     -0.5,
+     0,
+     -3.5
+    ],
+    "feet_b": [
+     -0.5,
+     -1.5,
+     -3.5
+    ],
+    "scaler": 0.95,
+    "startangle": 0,
+    "tempo": 1,
+    "spring": 1.2,
+    "feed": [
+     false,
+     0.9
+    ]
+   }
+  },
+  "jumento": {
+   "veloren": "Donkey",
+   "corpo": "quadruped_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "jumento/donkey_male_head.vox",
+     "desloc": [
+      -4,
+      -3,
+      0
+     ],
+     "espelhar": false
+    },
+    "neck": {
+     "arquivo": "jumento/donkey_male_neck.vox",
+     "desloc": [
+      -3,
+      -4,
+      -6.5
+     ],
+     "espelhar": false
+    },
+    "jaw": {
+     "arquivo": "jumento/donkey_male_jaw.vox",
+     "desloc": [
+      -2,
+      0,
+      -1
+     ],
+     "espelhar": false
+    },
+    "torso_front": {
+     "arquivo": "jumento/donkey_male_torso_front.vox",
+     "desloc": [
+      -5,
+      -8,
+      -6.5
+     ],
+     "espelhar": false
+    },
+    "torso_back": {
+     "arquivo": "jumento/donkey_male_torso_back.vox",
+     "desloc": [
+      -5,
+      -13,
+      -5.5
+     ],
+     "espelhar": false
+    },
+    "ears": {
+     "arquivo": "jumento/donkey_male_ears.vox",
+     "desloc": [
+      -5,
+      -1,
+      0
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "jumento/donkey_male_tail.vox",
+     "desloc": [
+      -1,
+      -5,
+      -12
+     ],
+     "espelhar": false
+    },
+    "leg_fl": {
+     "arquivo": "jumento/donkey_male_leg_fr.vox",
+     "desloc": [
+      -2.5,
+      -2.5,
+      -4.5
+     ],
+     "espelhar": true
+    },
+    "leg_fr": {
+     "arquivo": "jumento/donkey_male_leg_fr.vox",
+     "desloc": [
+      -2.5,
+      -2.5,
+      -4.5
+     ],
+     "espelhar": false
+    },
+    "leg_bl": {
+     "arquivo": "jumento/donkey_male_leg_br.vox",
+     "desloc": [
+      -2.5,
+      -3,
+      -4.5
+     ],
+     "espelhar": true
+    },
+    "leg_br": {
+     "arquivo": "jumento/donkey_male_leg_br.vox",
+     "desloc": [
+      -2.5,
+      -3,
+      -4.5
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "jumento/donkey_male_foot_fr.vox",
+     "desloc": [
+      -2,
+      -2.5,
+      -8
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "jumento/donkey_male_foot_fr.vox",
+     "desloc": [
+      -2,
+      -2.5,
+      -8
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "jumento/donkey_male_foot_br.vox",
+     "desloc": [
+      -2,
+      -3,
+      -8
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "jumento/donkey_male_foot_br.vox",
+     "desloc": [
+      -2,
+      -3,
+      -8
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     4.5,
+     -3
+    ],
+    "neck": [
+     1,
+     3.5
+    ],
+    "jaw": [
+     1,
+     1
+    ],
+    "tail": [
+     -11,
+     1.5
+    ],
+    "torso_front": [
+     10,
+     15.5
+    ],
+    "torso_back": [
+     -6,
+     -1
+    ],
+    "ears": [
+     -1,
+     8
+    ],
+    "leg_f": [
+     4,
+     -3.5,
+     -4
+    ],
+    "leg_b": [
+     4,
+     -9,
+     -3
+    ],
+    "feet_f": [
+     0.5,
+     1,
+     -3.5
+    ],
+    "feet_b": [
+     0.5,
+     -1,
+     -3.5
+    ],
+    "scaler": 0.95,
+    "startangle": 0,
+    "tempo": 0.85,
+    "spring": 0.85,
+    "feed": [
+     false,
+     1
+    ]
+   }
+  },
+  "cavalo": {
+   "veloren": "Horse",
+   "corpo": "quadruped_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "cavalo/horse_male_head.vox",
+     "desloc": [
+      -3,
+      -6,
+      0
+     ],
+     "espelhar": false
+    },
+    "neck": {
+     "arquivo": "cavalo/horse_male_neck.vox",
+     "desloc": [
+      -3,
+      -1.5,
+      -5.5
+     ],
+     "espelhar": false
+    },
+    "jaw": {
+     "arquivo": "cavalo/horse_male_jaw.vox",
+     "desloc": [
+      -2,
+      0,
+      -2
+     ],
+     "espelhar": false
+    },
+    "torso_front": {
+     "arquivo": "cavalo/horse_male_torso_front.vox",
+     "desloc": [
+      -5,
+      -9,
+      -7
+     ],
+     "espelhar": false
+    },
+    "torso_back": {
+     "arquivo": "cavalo/horse_male_torso_back.vox",
+     "desloc": [
+      -4,
+      -10,
+      -4.5
+     ],
+     "espelhar": false
+    },
+    "ears": {
+     "arquivo": "cavalo/horse_male_ears.vox",
+     "desloc": [
+      -3,
+      -1,
+      0
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "cavalo/horse_male_tail.vox",
+     "desloc": [
+      -2,
+      -10,
+      -13
+     ],
+     "espelhar": false
+    },
+    "leg_fl": {
+     "arquivo": "cavalo/horse_male_leg_fr.vox",
+     "desloc": [
+      -2,
+      -2.5,
+      -6
+     ],
+     "espelhar": true
+    },
+    "leg_fr": {
+     "arquivo": "cavalo/horse_male_leg_fr.vox",
+     "desloc": [
+      -2,
+      -2.5,
+      -6
+     ],
+     "espelhar": false
+    },
+    "leg_bl": {
+     "arquivo": "cavalo/horse_male_leg_br.vox",
+     "desloc": [
+      -2,
+      -3,
+      -4.5
+     ],
+     "espelhar": true
+    },
+    "leg_br": {
+     "arquivo": "cavalo/horse_male_leg_br.vox",
+     "desloc": [
+      -2,
+      -3,
+      -4.5
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "cavalo/horse_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -8
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "cavalo/horse_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -8
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "cavalo/horse_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -1.5,
+      -9
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "cavalo/horse_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -1.5,
+      -9
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     4.5,
+     2.5
+    ],
+    "neck": [
+     -2.5,
+     -1.5
+    ],
+    "jaw": [
+     4,
+     1
+    ],
+    "tail": [
+     -9,
+     1.5
+    ],
+    "torso_front": [
+     7,
+     16
+    ],
+    "torso_back": [
+     -8,
+     -1.5
+    ],
+    "ears": [
+     1,
+     7
+    ],
+    "leg_f": [
+     4.5,
+     -2.5,
+     -3
+    ],
+    "leg_b": [
+     3.5,
+     -7,
+     -2
+    ],
+    "feet_f": [
+     -0.5,
+     0.5,
+     -5
+    ],
+    "feet_b": [
+     0.5,
+     -1.5,
+     -3.5
+    ],
+    "scaler": 1.2,
+    "startangle": 0,
+    "tempo": 0.85,
+    "spring": 0.85,
+    "feed": [
+     true,
+     0.85
+    ]
+   }
+  },
+  "boi": {
+   "veloren": "Cattle",
+   "corpo": "quadruped_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "boi/cattle_male_head.vox",
+     "desloc": [
+      -5,
+      0,
+      -6.5
+     ],
+     "espelhar": false
+    },
+    "neck": {
+     "arquivo": "boi/cattle_male_neck.vox",
+     "desloc": [
+      -4,
+      -2,
+      -7
+     ],
+     "espelhar": false
+    },
+    "jaw": {
+     "arquivo": "boi/cattle_male_jaw.vox",
+     "desloc": [
+      -2,
+      0,
+      -1
+     ],
+     "espelhar": false
+    },
+    "torso_front": {
+     "arquivo": "boi/cattle_male_torso_front.vox",
+     "desloc": [
+      -6,
+      -9,
+      -8
+     ],
+     "espelhar": false
+    },
+    "torso_back": {
+     "arquivo": "boi/cattle_male_torso_back.vox",
+     "desloc": [
+      -6,
+      -10,
+      -6.5
+     ],
+     "espelhar": false
+    },
+    "ears": {
+     "arquivo": "boi/cattle_male_ears.vox",
+     "desloc": [
+      -6,
+      -1,
+      0
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "boi/cattle_male_tail.vox",
+     "desloc": [
+      -1,
+      -8,
+      -13
+     ],
+     "espelhar": false
+    },
+    "leg_fl": {
+     "arquivo": "boi/cattle_male_leg_fr.vox",
+     "desloc": [
+      -2.5,
+      -3,
+      -6.5
+     ],
+     "espelhar": true
+    },
+    "leg_fr": {
+     "arquivo": "boi/cattle_male_leg_fr.vox",
+     "desloc": [
+      -2.5,
+      -3,
+      -6.5
+     ],
+     "espelhar": false
+    },
+    "leg_bl": {
+     "arquivo": "boi/cattle_male_leg_br.vox",
+     "desloc": [
+      -2,
+      -3,
+      -5
+     ],
+     "espelhar": true
+    },
+    "leg_br": {
+     "arquivo": "boi/cattle_male_leg_br.vox",
+     "desloc": [
+      -2,
+      -3,
+      -5
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "boi/cattle_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -8
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "boi/cattle_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -2,
+      -8
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "boi/cattle_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -9
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "boi/cattle_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -9
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     2,
+     3.5
+    ],
+    "neck": [
+     0,
+     0
+    ],
+    "jaw": [
+     5,
+     -5.5
+    ],
+    "tail": [
+     -8,
+     3.5
+    ],
+    "torso_front": [
+     7,
+     15.5
+    ],
+    "torso_back": [
+     -8,
+     -0.5
+    ],
+    "ears": [
+     2,
+     -1.5
+    ],
+    "leg_f": [
+     5.5,
+     -2,
+     -2.5
+    ],
+    "leg_b": [
+     4,
+     -7,
+     -1
+    ],
+    "feet_f": [
+     -0.5,
+     1,
+     -5
+    ],
+    "feet_b": [
+     -0.5,
+     -0.5,
+     -5
+    ],
+    "scaler": 1.25,
+    "startangle": 0,
+    "tempo": 0.8,
+    "spring": 1,
+    "feed": [
+     false,
+     0
+    ]
+   }
+  },
+  "lobo": {
+   "veloren": "Wolf",
+   "corpo": "quadruped_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "lobo/wolf_male_head.vox",
+     "desloc": [
+      -5,
+      0,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "neck": {
+     "arquivo": "lobo/wolf_male_neck.vox",
+     "desloc": [
+      -5,
+      -2,
+      -5
+     ],
+     "espelhar": false
+    },
+    "jaw": {
+     "arquivo": "lobo/wolf_male_jaw.vox",
+     "desloc": [
+      -2,
+      0,
+      -1
+     ],
+     "espelhar": false
+    },
+    "torso_front": {
+     "arquivo": "lobo/wolf_male_torso_front.vox",
+     "desloc": [
+      -5,
+      -13,
+      -5
+     ],
+     "espelhar": false
+    },
+    "torso_back": {
+     "arquivo": "lobo/wolf_male_torso_back.vox",
+     "desloc": [
+      -4,
+      -11,
+      -5
+     ],
+     "espelhar": false
+    },
+    "ears": {
+     "arquivo": "lobo/wolf_male_ears.vox",
+     "desloc": [
+      -5,
+      -1,
+      0
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "lobo/wolf_male_tail.vox",
+     "desloc": [
+      -2,
+      -13,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "leg_fl": {
+     "arquivo": "lobo/wolf_male_leg_fr.vox",
+     "desloc": [
+      -2,
+      -3.5,
+      -4
+     ],
+     "espelhar": true
+    },
+    "leg_fr": {
+     "arquivo": "lobo/wolf_male_leg_fr.vox",
+     "desloc": [
+      -2,
+      -3.5,
+      -4
+     ],
+     "espelhar": false
+    },
+    "leg_bl": {
+     "arquivo": "lobo/wolf_male_leg_br.vox",
+     "desloc": [
+      -1.5,
+      -3.5,
+      -3.5
+     ],
+     "espelhar": true
+    },
+    "leg_br": {
+     "arquivo": "lobo/wolf_male_leg_br.vox",
+     "desloc": [
+      -1.5,
+      -3.5,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "foot_fl": {
+     "arquivo": "lobo/wolf_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -10
+     ],
+     "espelhar": true
+    },
+    "foot_fr": {
+     "arquivo": "lobo/wolf_male_foot_fr.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -10
+     ],
+     "espelhar": false
+    },
+    "foot_bl": {
+     "arquivo": "lobo/wolf_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -10
+     ],
+     "espelhar": true
+    },
+    "foot_br": {
+     "arquivo": "lobo/wolf_male_foot_br.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -10
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "head": [
+     1.5,
+     3
+    ],
+    "neck": [
+     -4.5,
+     2
+    ],
+    "jaw": [
+     5,
+     -2.5
+    ],
+    "tail": [
+     -11,
+     0
+    ],
+    "torso_front": [
+     12,
+     13
+    ],
+    "torso_back": [
+     -12.5,
+     1
+    ],
+    "ears": [
+     3,
+     2.5
+    ],
+    "leg_f": [
+     4.5,
+     -6.5,
+     -1.5
+    ],
+    "leg_b": [
+     5,
+     -6.5,
+     -3
+    ],
+    "feet_f": [
+     0.5,
+     0,
+     -2
+    ],
+    "feet_b": [
+     0,
+     -1,
+     -1.5
+    ],
+    "scaler": 0.9,
+    "startangle": 0,
+    "tempo": 1.1,
+    "spring": 1.2,
+    "feed": [
+     false,
+     0
+    ]
+   }
+  },
+  "galinha": {
+   "veloren": "Chicken",
+   "corpo": "bird_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "galinha/chicken_male_head.vox",
+     "desloc": [
+      -1.5,
+      -3,
+      -3
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "galinha/chicken_male_chest.vox",
+     "desloc": [
+      -2.5,
+      -4.5,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "galinha/chicken_male_tail.vox",
+     "desloc": [
+      -1.5,
+      -3,
+      -4
+     ],
+     "espelhar": false
+    },
+    "wing_in_l": {
+     "arquivo": "galinha/chicken_male_wing_in_r.vox",
+     "desloc": [
+      -3,
+      -2,
+      -0.5
+     ],
+     "espelhar": true
+    },
+    "wing_in_r": {
+     "arquivo": "galinha/chicken_male_wing_in_r.vox",
+     "desloc": [
+      0,
+      -2,
+      -0.5
+     ],
+     "espelhar": false
+    },
+    "wing_out_l": {
+     "arquivo": "galinha/chicken_male_wing_out_r.vox",
+     "desloc": [
+      -3,
+      -4,
+      -1
+     ],
+     "espelhar": true
+    },
+    "wing_out_r": {
+     "arquivo": "galinha/chicken_male_wing_out_r.vox",
+     "desloc": [
+      0,
+      -4,
+      -1
+     ],
+     "espelhar": false
+    },
+    "leg_l": {
+     "arquivo": "galinha/chicken_male_leg_r.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -6
+     ],
+     "espelhar": true
+    },
+    "leg_r": {
+     "arquivo": "galinha/chicken_male_leg_r.vox",
+     "desloc": [
+      -1.5,
+      -2.5,
+      -6
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "chest": [
+     0,
+     5.5
+    ],
+    "head": [
+     3,
+     4.5
+    ],
+    "tail": [
+     -7.5,
+     3.5
+    ],
+    "wing_in": [
+     2,
+     1,
+     1
+    ],
+    "wing_out": [
+     3,
+     2,
+     0.5
+    ],
+    "leg": [
+     1,
+     0,
+     4.4
+    ],
+    "scaler": 0.75,
+    "feed": -0.65
+   }
+  },
+  "pato": {
+   "veloren": "Duck",
+   "corpo": "bird_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "pato/duck_male_head.vox",
+     "desloc": [
+      -2,
+      -1.5,
+      -2.5
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "pato/duck_male_chest.vox",
+     "desloc": [
+      -3,
+      -4.5,
+      -3
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "pato/duck_male_tail.vox",
+     "desloc": [
+      -2,
+      -1.5,
+      -3
+     ],
+     "espelhar": false
+    },
+    "wing_in_l": {
+     "arquivo": "pato/duck_male_wing_in_r.vox",
+     "desloc": [
+      -3,
+      -2,
+      -0.5
+     ],
+     "espelhar": true
+    },
+    "wing_in_r": {
+     "arquivo": "pato/duck_male_wing_in_r.vox",
+     "desloc": [
+      0,
+      -2,
+      -0.5
+     ],
+     "espelhar": false
+    },
+    "wing_out_l": {
+     "arquivo": "pato/duck_male_wing_out_r.vox",
+     "desloc": [
+      -4,
+      -4,
+      -1
+     ],
+     "espelhar": true
+    },
+    "wing_out_r": {
+     "arquivo": "pato/duck_male_wing_out_r.vox",
+     "desloc": [
+      0,
+      -4,
+      -1
+     ],
+     "espelhar": false
+    },
+    "leg_l": {
+     "arquivo": "pato/duck_male_leg_r.vox",
+     "desloc": [
+      -1.5,
+      -1.5,
+      -4
+     ],
+     "espelhar": true
+    },
+    "leg_r": {
+     "arquivo": "pato/duck_male_leg_r.vox",
+     "desloc": [
+      -1.5,
+      -1.5,
+      -4
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "chest": [
+     0,
+     4
+    ],
+    "head": [
+     2,
+     5.5
+    ],
+    "tail": [
+     -5,
+     1
+    ],
+    "wing_in": [
+     2.5,
+     0.5,
+     1
+    ],
+    "wing_out": [
+     3,
+     2,
+     0.5
+    ],
+    "leg": [
+     1.5,
+     0,
+     3
+    ],
+    "scaler": 0.75,
+    "feed": -0.55
+   }
+  },
+  "ganso": {
+   "veloren": "Goose",
+   "corpo": "bird_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "ganso/goose_male_head.vox",
+     "desloc": [
+      -2,
+      -4.5,
+      -6
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "ganso/goose_male_chest.vox",
+     "desloc": [
+      -4,
+      -5.5,
+      -3
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "ganso/goose_male_tail.vox",
+     "desloc": [
+      -2,
+      -3,
+      -2.5
+     ],
+     "espelhar": false
+    },
+    "wing_in_l": {
+     "arquivo": "ganso/goose_male_wing_in_r.vox",
+     "desloc": [
+      -4,
+      -3,
+      -0.5
+     ],
+     "espelhar": true
+    },
+    "wing_in_r": {
+     "arquivo": "ganso/goose_male_wing_in_r.vox",
+     "desloc": [
+      0,
+      -3,
+      -0.5
+     ],
+     "espelhar": false
+    },
+    "wing_out_l": {
+     "arquivo": "ganso/goose_male_wing_out_r.vox",
+     "desloc": [
+      -10,
+      -6,
+      -1
+     ],
+     "espelhar": true
+    },
+    "wing_out_r": {
+     "arquivo": "ganso/goose_male_wing_out_r.vox",
+     "desloc": [
+      0,
+      -6,
+      -1
+     ],
+     "espelhar": false
+    },
+    "leg_l": {
+     "arquivo": "ganso/goose_male_leg_r.vox",
+     "desloc": [
+      -2.5,
+      0,
+      -6
+     ],
+     "espelhar": true
+    },
+    "leg_r": {
+     "arquivo": "ganso/goose_male_leg_r.vox",
+     "desloc": [
+      -2.5,
+      0,
+      -6
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "chest": [
+     0,
+     6.5
+    ],
+    "head": [
+     5,
+     4
+    ],
+    "tail": [
+     -4,
+     3
+    ],
+    "wing_in": [
+     2.5,
+     1,
+     2
+    ],
+    "wing_out": [
+     4,
+     3,
+     0.5
+    ],
+    "leg": [
+     2,
+     -2.5,
+     4.4
+    ],
+    "scaler": 0.75,
+    "feed": -0.65
+   }
+  },
+  "corvo": {
+   "veloren": "Crow",
+   "corpo": "bird_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "corvo/crow_male_head.vox",
+     "desloc": [
+      -1.5,
+      -4.5,
+      -2.5
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "corvo/crow_male_chest.vox",
+     "desloc": [
+      -2.5,
+      -4,
+      -3
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "corvo/crow_male_tail.vox",
+     "desloc": [
+      -3.5,
+      -3.5,
+      -1.5
+     ],
+     "espelhar": false
+    },
+    "wing_in_l": {
+     "arquivo": "corvo/crow_male_wing_in_r.vox",
+     "desloc": [
+      -5,
+      -3,
+      -0.5
+     ],
+     "espelhar": true
+    },
+    "wing_in_r": {
+     "arquivo": "corvo/crow_male_wing_in_r.vox",
+     "desloc": [
+      0,
+      -3,
+      -0.5
+     ],
+     "espelhar": false
+    },
+    "wing_out_l": {
+     "arquivo": "corvo/crow_male_wing_out_r.vox",
+     "desloc": [
+      -9,
+      -6,
+      -1
+     ],
+     "espelhar": true
+    },
+    "wing_out_r": {
+     "arquivo": "corvo/crow_male_wing_out_r.vox",
+     "desloc": [
+      0,
+      -6,
+      -1
+     ],
+     "espelhar": false
+    },
+    "leg_l": {
+     "arquivo": "corvo/crow_male_leg_r.vox",
+     "desloc": [
+      -1.5,
+      0,
+      -3
+     ],
+     "espelhar": true
+    },
+    "leg_r": {
+     "arquivo": "corvo/crow_male_leg_r.vox",
+     "desloc": [
+      -1.5,
+      0,
+      -3
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "chest": [
+     0,
+     4
+    ],
+    "head": [
+     4.5,
+     4
+    ],
+    "tail": [
+     -5,
+     -1.5
+    ],
+    "wing_in": [
+     2,
+     0.5,
+     1
+    ],
+    "wing_out": [
+     5,
+     3,
+     0.5
+    ],
+    "leg": [
+     1.5,
+     -2.5,
+     2.1
+    ],
+    "scaler": 0.75,
+    "feed": -0.65
+   }
+  },
+  "aguia": {
+   "veloren": "Eagle",
+   "corpo": "bird_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "aguia/eagle_male_head.vox",
+     "desloc": [
+      -2,
+      -5,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "aguia/eagle_male_chest.vox",
+     "desloc": [
+      -3,
+      -6,
+      -4
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "aguia/eagle_male_tail.vox",
+     "desloc": [
+      -4,
+      -3.5,
+      -1.5
+     ],
+     "espelhar": false
+    },
+    "wing_in_l": {
+     "arquivo": "aguia/eagle_male_wing_in_r.vox",
+     "desloc": [
+      -8,
+      -4.5,
+      -0.5
+     ],
+     "espelhar": true
+    },
+    "wing_in_r": {
+     "arquivo": "aguia/eagle_male_wing_in_r.vox",
+     "desloc": [
+      0,
+      -4.5,
+      -0.5
+     ],
+     "espelhar": false
+    },
+    "wing_out_l": {
+     "arquivo": "aguia/eagle_male_wing_out_r.vox",
+     "desloc": [
+      -12,
+      -8,
+      -1
+     ],
+     "espelhar": true
+    },
+    "wing_out_r": {
+     "arquivo": "aguia/eagle_male_wing_out_r.vox",
+     "desloc": [
+      0,
+      -8,
+      -1
+     ],
+     "espelhar": false
+    },
+    "leg_l": {
+     "arquivo": "aguia/eagle_male_leg_r.vox",
+     "desloc": [
+      -2,
+      0,
+      -6
+     ],
+     "espelhar": true
+    },
+    "leg_r": {
+     "arquivo": "aguia/eagle_male_leg_r.vox",
+     "desloc": [
+      -2,
+      0,
+      -6
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "chest": [
+     0,
+     6
+    ],
+    "head": [
+     4.5,
+     5
+    ],
+    "tail": [
+     -6,
+     -2
+    ],
+    "wing_in": [
+     3,
+     1.5,
+     1
+    ],
+    "wing_out": [
+     8,
+     4.5,
+     0.5
+    ],
+    "leg": [
+     1.5,
+     -4,
+     4.4
+    ],
+    "scaler": 0.75,
+    "feed": -0.75
+   }
+  },
+  "coruja": {
+   "veloren": "HornedOwl",
+   "corpo": "bird_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "coruja/horned_owl_male_head.vox",
+     "desloc": [
+      -4.5,
+      -4,
+      -4.5
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "coruja/horned_owl_male_chest.vox",
+     "desloc": [
+      -3.5,
+      -5.5,
+      -4
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "coruja/horned_owl_male_tail.vox",
+     "desloc": [
+      -2.5,
+      -3,
+      -2.5
+     ],
+     "espelhar": false
+    },
+    "wing_in_l": {
+     "arquivo": "coruja/horned_owl_male_wing_in_r.vox",
+     "desloc": [
+      -5,
+      -4,
+      -0.5
+     ],
+     "espelhar": true
+    },
+    "wing_in_r": {
+     "arquivo": "coruja/horned_owl_male_wing_in_r.vox",
+     "desloc": [
+      0,
+      -4,
+      -0.5
+     ],
+     "espelhar": false
+    },
+    "wing_out_l": {
+     "arquivo": "coruja/horned_owl_male_wing_out_r.vox",
+     "desloc": [
+      -10,
+      -7,
+      -1
+     ],
+     "espelhar": true
+    },
+    "wing_out_r": {
+     "arquivo": "coruja/horned_owl_male_wing_out_r.vox",
+     "desloc": [
+      0,
+      -7,
+      -1
+     ],
+     "espelhar": false
+    },
+    "leg_l": {
+     "arquivo": "coruja/horned_owl_male_leg_r.vox",
+     "desloc": [
+      -1,
+      0,
+      -6.5
+     ],
+     "espelhar": true
+    },
+    "leg_r": {
+     "arquivo": "coruja/horned_owl_male_leg_r.vox",
+     "desloc": [
+      -1,
+      0,
+      -6.5
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "chest": [
+     0,
+     4.5
+    ],
+    "head": [
+     3.5,
+     5
+    ],
+    "tail": [
+     -6,
+     -2
+    ],
+    "wing_in": [
+     2.5,
+     1,
+     1.5
+    ],
+    "wing_out": [
+     4.5,
+     3.5,
+     1
+    ],
+    "leg": [
+     1.5,
+     -2.5,
+     4.8
+    ],
+    "scaler": 0.75,
+    "feed": -0.65
+   }
+  },
+  "pavao": {
+   "veloren": "Peacock",
+   "corpo": "bird_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "pavao/peacock_male_head.vox",
+     "desloc": [
+      -1.5,
+      -4.5,
+      -7
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "pavao/peacock_male_chest.vox",
+     "desloc": [
+      -2.5,
+      -5.5,
+      -3.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "pavao/peacock_male_tail.vox",
+     "desloc": [
+      -10.5,
+      -14,
+      -2.5
+     ],
+     "espelhar": false
+    },
+    "wing_in_l": {
+     "arquivo": "pavao/peacock_male_wing_in_r.vox",
+     "desloc": [
+      -5,
+      -4,
+      -0.5
+     ],
+     "espelhar": true
+    },
+    "wing_in_r": {
+     "arquivo": "pavao/peacock_male_wing_in_r.vox",
+     "desloc": [
+      0,
+      -4,
+      -0.5
+     ],
+     "espelhar": false
+    },
+    "wing_out_l": {
+     "arquivo": "pavao/peacock_male_wing_out_r.vox",
+     "desloc": [
+      -7,
+      -8,
+      -1
+     ],
+     "espelhar": true
+    },
+    "wing_out_r": {
+     "arquivo": "pavao/peacock_male_wing_out_r.vox",
+     "desloc": [
+      0,
+      -8,
+      -1
+     ],
+     "espelhar": false
+    },
+    "leg_l": {
+     "arquivo": "pavao/peacock_male_leg_r.vox",
+     "desloc": [
+      -1.5,
+      0,
+      -9.5
+     ],
+     "espelhar": true
+    },
+    "leg_r": {
+     "arquivo": "pavao/peacock_male_leg_r.vox",
+     "desloc": [
+      -1.5,
+      0,
+      -9.5
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "chest": [
+     0,
+     7.5
+    ],
+    "head": [
+     3,
+     5
+    ],
+    "tail": [
+     -5.5,
+     1
+    ],
+    "wing_in": [
+     2,
+     1,
+     1
+    ],
+    "wing_out": [
+     5,
+     3,
+     0.5
+    ],
+    "leg": [
+     2,
+     -2,
+     7
+    ],
+    "scaler": 0.75,
+    "feed": -1.2
+   }
+  },
+  "morcego": {
+   "veloren": "Bat",
+   "corpo": "bird_medium",
+   "pecas": {
+    "head": {
+     "arquivo": "morcego/bat_male_head.vox",
+     "desloc": [
+      -4.5,
+      2,
+      -11
+     ],
+     "espelhar": false
+    },
+    "chest": {
+     "arquivo": "morcego/bat_male_chest.vox",
+     "desloc": [
+      -3.5,
+      -5,
+      -6.5
+     ],
+     "espelhar": false
+    },
+    "tail": {
+     "arquivo": "morcego/bat_male_tail.vox",
+     "desloc": [
+      -2.5,
+      -1.5,
+      -1.5
+     ],
+     "espelhar": false
+    },
+    "wing_in_l": {
+     "arquivo": "morcego/bat_male_wing_in_r.vox",
+     "desloc": [
+      -5,
+      -6,
+      -1
+     ],
+     "espelhar": true
+    },
+    "wing_in_r": {
+     "arquivo": "morcego/bat_male_wing_in_r.vox",
+     "desloc": [
+      0,
+      -6,
+      -1
+     ],
+     "espelhar": false
+    },
+    "wing_out_l": {
+     "arquivo": "morcego/bat_male_wing_out_r.vox",
+     "desloc": [
+      -9,
+      -10,
+      -1
+     ],
+     "espelhar": true
+    },
+    "wing_out_r": {
+     "arquivo": "morcego/bat_male_wing_out_r.vox",
+     "desloc": [
+      0,
+      -10,
+      -1
+     ],
+     "espelhar": false
+    },
+    "leg_l": {
+     "arquivo": "morcego/bat_male_leg_r.vox",
+     "desloc": [
+      -2,
+      2,
+      -8.5
+     ],
+     "espelhar": true
+    },
+    "leg_r": {
+     "arquivo": "morcego/bat_male_leg_r.vox",
+     "desloc": [
+      -2,
+      2,
+      -8.5
+     ],
+     "espelhar": false
+    }
+   },
+   "attr": {
+    "chest": [
+     0,
+     7
+    ],
+    "head": [
+     2.5,
+     5
+    ],
+    "tail": [
+     -8,
+     -4
+    ],
+    "wing_in": [
+     2,
+     2,
+     -2
+    ],
+    "wing_out": [
+     5,
+     3,
+     0
+    ],
+    "leg": [
+     2.5,
+     -1,
+     6
+    ],
+    "scaler": 0.75,
+    "feed": -0.55
+   }
+  }
+ }
+}

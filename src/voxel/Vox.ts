@@ -60,6 +60,8 @@ export interface OpcoesVox {
   deslocamento?: [number, number, number];
   /** Troca a cor de certos índices da paleta (ex.: folhas das árvores do Veloren). */
   recolorir?: Record<number, (x: number, y: number, z: number) => THREE.Color>;
+  /** Espelha no eixo x, como o Veloren faz com as peças do lado esquerdo. */
+  espelhar?: boolean;
 }
 
 /** Converte o modelo em geometria (Y para cima). */
@@ -71,7 +73,7 @@ export function geometriaVox(m: ModeloVox, op: OpcoesVox): THREE.BufferGeometry 
   for (const v of m.voxels) {
     const f = op.recolorir?.[v.i];
     const cor = f ? f(v.x, v.y, v.z) : m.paleta[v.i];
-    grade.set(chave(v.x, v.z, sy - 1 - v.y), cor);
+    grade.set(chave(op.espelhar ? sx - 1 - v.x : v.x, v.z, sy - 1 - v.y), cor);
   }
   const vol: Volume = {
     min: [0, 0, 0],
