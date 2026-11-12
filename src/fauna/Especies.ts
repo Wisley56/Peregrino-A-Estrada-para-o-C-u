@@ -14,6 +14,8 @@ export interface Peca {
   desloc: [number, number, number];
   /** O Veloren carrega o lado esquerdo espelhado. */
   espelhar: boolean;
+  /** Qual modelo do .vox (o `model_index` do Veloren), quando um arquivo guarda várias peças. Padrão: 0. */
+  indice?: number;
 }
 
 export interface Anatomia {

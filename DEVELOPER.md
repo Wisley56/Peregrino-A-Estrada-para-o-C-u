@@ -319,6 +319,10 @@ Os bichos vêm do Veloren. `npm run fauna` (`tools/fauna-veloren.mjs`) baixa os 
 `CATALOGO` e lê, nos manifestos `.ron` e nos `mod.rs` de animação, onde cada peça encaixa. O resultado fica em
 `src/fauna/especies.gerado.json`, que não se edita à mão.
 
+Alguns `.vox` do Veloren guardam várias peças num arquivo só (o rato: peito, cabeça, cauda e patas). O manifesto
+escolhe a peça por `model_index`, que o importador grava como `indice` e `carregarVox(url, indice)` respeita. Sem
+isso, todas as peças viram o primeiro modelo do arquivo.
+
 - **`Especies.ts`**: a ficha de cada espécie (nome, comportamento, velocidade, distância de fuga, se aceita
   carinho, voz, se nada, altitude de voo).
 - **`Corpo.ts`**: três esqueletos, `QuadrupedePequeno`, `QuadrupedeMedio` e `Ave`, com as animações do Veloren

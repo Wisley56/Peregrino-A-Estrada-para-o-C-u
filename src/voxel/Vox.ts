@@ -12,14 +12,19 @@ export interface ModeloVox {
   paleta: THREE.Color[]; // índice 1..255
 }
 
-export function lerVox(buf: ArrayBuffer): ModeloVox {
+/**
+ * Lê o modelo `indice` do arquivo. Um .vox pode guardar vários modelos (pares SIZE/XYZI, na ordem); o Veloren
+ * escolhe um deles pelo `model_index` do manifesto (o rato, por exemplo, tem cabeça, peito, cauda e patas num
+ * arquivo só).
+ */
+export function lerVox(buf: ArrayBuffer, indice = 0): ModeloVox {
   const d = new DataView(buf);
   const id = (o: number) => String.fromCharCode(d.getUint8(o), d.getUint8(o + 1), d.getUint8(o + 2), d.getUint8(o + 3));
   if (id(0) !== 'VOX ') throw new Error('arquivo .vox inválido');
   let tamanho: [number, number, number] = [0, 0, 0];
   const voxels: ModeloVox['voxels'] = [];
   let paletaBruta: Uint8Array | null = null;
-  let primeiroModelo = true;
+  let modelo = 0; // índice do par SIZE/XYZI em leitura
 
   const percorrer = (o: number, fim: number) => {
     while (o < fim) {
@@ -28,15 +33,17 @@ export function lerVox(buf: ArrayBuffer): ModeloVox {
       const filhos = d.getInt32(o + 8, true);
       const c = o + 12;
       if (nome === 'MAIN') percorrer(c + conteudo, c + conteudo + filhos);
-      else if (nome === 'SIZE' && primeiroModelo) {
+      else if (nome === 'SIZE' && modelo === indice) {
         tamanho = [d.getInt32(c, true), d.getInt32(c + 4, true), d.getInt32(c + 8, true)];
-      } else if (nome === 'XYZI' && primeiroModelo) {
-        const n = d.getInt32(c, true);
-        for (let k = 0; k < n; k++) {
-          const p = c + 4 + k * 4;
-          voxels.push({ x: d.getUint8(p), y: d.getUint8(p + 1), z: d.getUint8(p + 2), i: d.getUint8(p + 3) });
+      } else if (nome === 'XYZI') {
+        if (modelo === indice) {
+          const n = d.getInt32(c, true);
+          for (let k = 0; k < n; k++) {
+            const p = c + 4 + k * 4;
+            voxels.push({ x: d.getUint8(p), y: d.getUint8(p + 1), z: d.getUint8(p + 2), i: d.getUint8(p + 3) });
+          }
         }
-        primeiroModelo = false; // só usamos o primeiro modelo do arquivo
+        modelo++;
       } else if (nome === 'RGBA') {
         paletaBruta = new Uint8Array(buf, c, 1024);
       }
@@ -44,6 +51,7 @@ export function lerVox(buf: ArrayBuffer): ModeloVox {
     }
   };
   percorrer(8, buf.byteLength);
+  if (indice >= modelo) throw new Error(`o .vox tem ${modelo} modelo(s); não há o de índice ${indice}`);
 
   const paleta: THREE.Color[] = [new THREE.Color(0, 0, 0)];
   for (let i = 1; i < 256; i++) {
@@ -92,15 +100,22 @@ export function geometriaVox(m: ModeloVox, op: OpcoesVox): THREE.BufferGeometry 
   return malhaDoVolume(vol, op.escala, pivo);
 }
 
+const arquivos = new Map<string, Promise<ArrayBuffer>>();
 const cache = new Map<string, Promise<ModeloVox>>();
-export function carregarVox(url: string): Promise<ModeloVox> {
-  let p = cache.get(url);
+export function carregarVox(url: string, indice = 0): Promise<ModeloVox> {
+  const chave = `${url}#${indice}`;
+  let p = cache.get(chave);
   if (!p) {
-    p = fetch(url).then((r) => {
-      if (!r.ok) throw new Error(`não foi possível carregar ${url}`);
-      return r.arrayBuffer();
-    }).then(lerVox);
-    cache.set(url, p);
+    let bruto = arquivos.get(url);
+    if (!bruto) {
+      bruto = fetch(url).then((r) => {
+        if (!r.ok) throw new Error(`não foi possível carregar ${url}`);
+        return r.arrayBuffer();
+      });
+      arquivos.set(url, bruto);
+    }
+    p = bruto.then((b) => lerVox(b, indice));
+    cache.set(chave, p);
   }
   return p;
 }

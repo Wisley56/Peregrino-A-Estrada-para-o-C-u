@@ -88,10 +88,11 @@ function blocoDoManifesto(ron, especie) {
 
 function pecasDoManifesto(ron, especie) {
   const bloco = blocoDoManifesto(ron, especie);
-  const re = /(\w+):\s*\(\s*offset:\s*\(([^)]*)\),\s*(?:central|lateral):\s*\("([^"]+)"/g;
+  // `model_index` (opcional) escolhe um dos modelos de um .vox com várias peças (ex.: o rato)
+  const re = /(\w+):\s*\(\s*offset:\s*\(([^)]*)\),\s*(?:central|lateral):\s*\("([^"]+)"\),?(?:\s*model_index:\s*(\d+))?/g;
   const pecas = {};
   for (const m of bloco.matchAll(re)) {
-    pecas[m[1]] = { desloc: m[2].split(',').map((n) => Number(n.trim())), especificador: m[3] };
+    pecas[m[1]] = { desloc: m[2].split(',').map((n) => Number(n.trim())), especificador: m[3], indice: m[4] ? Number(m[4]) : 0 };
   }
   return pecas;
 }
@@ -140,7 +141,7 @@ async function main() {
         if (!r.ok) throw new Error(`${r.status} ao baixar ${caminho}`);
         fs.writeFileSync(destino, Buffer.from(await r.arrayBuffer()));
       }
-      pecas[osso] = { arquivo: `${id}/${arquivo}`, desloc: p.desloc, espelhar: ESPELHADAS.has(osso) };
+      pecas[osso] = { arquivo: `${id}/${arquivo}`, desloc: p.desloc, espelhar: ESPELHADAS.has(osso), ...(p.indice ? { indice: p.indice } : {}) };
     }
     dados[id] = { veloren: especie, corpo, pecas, attr };
     console.log(`✓ ${id.padEnd(10)} ${especie} (${corpo}): ${Object.keys(pecas).length} peças`);

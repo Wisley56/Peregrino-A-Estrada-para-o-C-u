@@ -612,7 +612,8 @@
       0,
       -3
      ],
-     "espelhar": false
+     "espelhar": false,
+     "indice": 1
     },
     "chest": {
      "arquivo": "rato/rat_rat.vox",
@@ -630,7 +631,8 @@
       -14,
       -4
      ],
-     "espelhar": false
+     "espelhar": false,
+     "indice": 2
     },
     "foot_fl": {
      "arquivo": "rato/rat_rat.vox",
@@ -639,7 +641,8 @@
       -2,
       -4
      ],
-     "espelhar": true
+     "espelhar": true,
+     "indice": 4
     },
     "foot_fr": {
      "arquivo": "rato/rat_rat.vox",
@@ -648,7 +651,8 @@
       -2,
       -4
      ],
-     "espelhar": false
+     "espelhar": false,
+     "indice": 4
     },
     "foot_bl": {
      "arquivo": "rato/rat_rat.vox",
@@ -657,7 +661,8 @@
       -2.5,
       -6
      ],
-     "espelhar": true
+     "espelhar": true,
+     "indice": 3
     },
     "foot_br": {
      "arquivo": "rato/rat_rat.vox",
@@ -666,7 +671,8 @@
       -2.5,
       -6
      ],
-     "espelhar": false
+     "espelhar": false,
+     "indice": 3
     }
    },
    "attr": {

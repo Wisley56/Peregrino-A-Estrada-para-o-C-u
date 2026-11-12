@@ -37,11 +37,11 @@ export interface Pose {
 }
 
 const geometrias = new Map<string, Promise<THREE.BufferGeometry>>();
-function geometria(arquivo: string, desloc: [number, number, number], espelhar: boolean) {
-  const chave = `${arquivo}|${espelhar ? 'e' : 'd'}|${desloc.join(',')}`;
+function geometria(arquivo: string, desloc: [number, number, number], espelhar: boolean, indice = 0) {
+  const chave = `${arquivo}#${indice}|${espelhar ? 'e' : 'd'}|${desloc.join(',')}`;
   let g = geometrias.get(chave);
   if (!g) {
-    g = carregarVox(BASE + arquivo).then((m) => geometriaVox(m, { escala: 1, deslocamento: desloc, espelhar }));
+    g = carregarVox(BASE + arquivo, indice).then((m) => geometriaVox(m, { escala: 1, deslocamento: desloc, espelhar }));
     geometrias.set(chave, g);
   }
   return g;
@@ -118,7 +118,7 @@ export abstract class Corpo {
       Object.entries(this.a.pecas).map(async ([nome, p]) => {
         const osso = this.ossos[nome];
         if (!osso) return;
-        const m = new THREE.Mesh(await geometria(p.arquivo, p.desloc, p.espelhar), materialVoxel);
+        const m = new THREE.Mesh(await geometria(p.arquivo, p.desloc, p.espelhar, p.indice), materialVoxel);
         m.rotation.x = Math.PI / 2; // a geometria vem no espaço do Three; o osso está no do Veloren
         m.castShadow = sombra;
         m.receiveShadow = true;
