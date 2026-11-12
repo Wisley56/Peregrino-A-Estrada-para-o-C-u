@@ -33,6 +33,7 @@ import { Sombra } from './entidades/Sombra';
 import { Preferencias } from './core/Preferencias';
 import { TelaDons } from './ui/Dons';
 import { Configuracoes } from './ui/Configuracoes';
+import type { AreaDev, ChefeDev, GanchosDev, OpcoesDev } from './dev/tipos';
 
 const TOTAL_SOMBRAS_VALE = 5;
 
@@ -98,6 +99,8 @@ export class Jogo {
   /** Ajoelhado no confessionário, conversando com o padre. */
   private emConfissao = false;
   readonly peregrino = new Peregrino(visualDe(identidadePadrao()));
+  /** Opções do painel de desenvolvedor (`src/dev`). Só existe no modo dev; em produção fica sempre null. */
+  dev: OpcoesDev | null = null;
   readonly pomba = new Pomba();
   private modoCriacao = false;
   private rumoCriacao = 0;
@@ -270,21 +273,28 @@ export class Jogo {
    */
   iniciarSlot(slot: number) {
     const temSave = this.estado.carregarSlot(slot);
-    this.mundo.reporSombras(this.estado.sombrasVencidas);
-    if (this.estado.flags.has('veu_oeste')) this.mundo.abrirVeu(true);
-    else this.mundo.fecharVeu();
     this.minimapa.esquecer('deserto');
     this.areaNoMapa = '';
-    this.deserto.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
-    this.meiodia.reiniciar(this.estado.sombrasVencidas);
-    this.cidade.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
-    this.banquete.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
-    this.peregrino.carregar(null);
-    this.montarCripta();
+    this.reconstruirMundo();
     if (!temSave) this.estado.checkpoint = this.mundo.inicio.toArray() as [number, number, number];
     this.posicionarNoCheckpoint();
     if (this.estado.identidade === null) this.abrirCriacao();
     else this.comecar();
+  }
+
+  /** Recria o que depende do progresso (sombras, véu, arenas, NPCs, a cripta) a partir do estado atual. */
+  private reconstruirMundo() {
+    const e = this.estado;
+    this.mundo.reporSombras(e.sombrasVencidas);
+    if (e.flags.has('veu_oeste')) this.mundo.abrirVeu(true);
+    else this.mundo.fecharVeu();
+    this.deserto.reiniciar(e.sombrasVencidas, e.flags);
+    this.meiodia.reiniciar(e.sombrasVencidas);
+    this.cidade.reiniciar(e.sombrasVencidas, e.flags);
+    this.banquete.reiniciar(e.sombrasVencidas, e.flags);
+    this.peregrino.carregar(null);
+    this.pesoBanquete = 0;
+    this.montarCripta();
   }
 
   /** Cria a fauna de todas as regiões (a mesma distribuição em toda partida). */
@@ -396,14 +406,7 @@ export class Jogo {
     this.entrada.permitirTrava = true;
     this.estado.zerar();
     this.estado.slot = null;
-    this.mundo.reporSombras(this.estado.sombrasVencidas);
-    this.mundo.fecharVeu();
-    this.deserto.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
-    this.meiodia.reiniciar(this.estado.sombrasVencidas);
-    this.cidade.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
-    this.banquete.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
-    this.peregrino.carregar(null);
-    this.montarCripta();
+    this.reconstruirMundo();
     this.estado.checkpoint = this.mundo.inicio.toArray() as [number, number, number];
     this.posicionarNoCheckpoint();
     this.aoVoltarAoTitulo();
@@ -1351,10 +1354,19 @@ export class Jogo {
   private quadro() {
     const bruto = this.relogio.getDelta();
     if (bruto > 0) this.qps += (1 / bruto - this.qps) * 0.05;
-    const dt = Math.min(0.05, bruto);
+    let dt = Math.min(0.05, bruto);
+    const dev = this.dev;
+    if (dev) {
+      // modo dev: câmera lenta, tempo congelado e avanço de um quadro por vez
+      dt *= dev.escalaTempo;
+      if (dev.escalaTempo === 0 && dev.passos > 0) {
+        dt = 1 / 60;
+        dev.passos--;
+      }
+    }
     const e = this.entrada;
     // pausa: Esc ou P, ou o ponteiro solto pelo Esc do navegador
-    if (this.comecou && !this.modoCriacao && !this.transitando && !this.morrendo) {
+    if (this.comecou && !this.modoCriacao && !this.transitando && !this.morrendo && !dev?.painelAberto) {
       if (this.telaDons.aberta) {
         if (e.apertou('Escape', 'KeyG')) this.fecharDons();
       } else if (this.pausado && e.apertou('Escape', 'KeyP')) this.retomar();
@@ -1444,6 +1456,7 @@ export class Jogo {
     const dialogo = this.hud.dialogoAberto;
     const parado = dialogo || this.morrendo || this.transitando;
     this.estado.tempo += dt;
+    if (this.dev?.energiaInfinita) this.estado.energia = this.estado.energiaMax;
 
     if (e.travado || e.mouseDx || e.mouseDy) {
       const k = this.prefs.sensibilidade;
@@ -1481,7 +1494,7 @@ export class Jogo {
     const correndo = e.segurando('ShiftLeft', 'ShiftRight') && !this.travado;
     // o ouro da Gula e a pedra no ombro pesam: mais devagar e com menos pulo
     const carga = this.pesoEfetivo();
-    const velocidade = (this.travado ? 3.8 : correndo ? 7.2 : 4.4) * per.fatorVelocidade * (this.torpor > 0 ? 0.5 : 1) * Math.max(0.45, 1 - carga * 0.1);
+    const velocidade = (this.travado ? 3.8 : correndo ? 7.2 : 4.4) * per.fatorVelocidade * (this.torpor > 0 ? 0.5 : 1) * Math.max(0.45, 1 - carga * 0.1) * (this.dev?.velocidade ?? 1);
     per.forcaPulo = per.carregando ? 0 : Math.max(0.55, 1 - carga * 0.12);
 
     const livre = !parado && per.acao === 'livre';
@@ -2058,7 +2071,7 @@ export class Jogo {
 
   private ferir(de: THREE.Vector3, dano = 0.5, semEmpurrao = false) {
     const per = this.peregrino;
-    if (per.invulneravel > 0 || this.morrendo) return;
+    if (per.invulneravel > 0 || this.morrendo || this.dev?.invencivel) return;
     this.estado.coracoes = Math.max(0, this.estado.coracoes - dano);
     per.invulneravel = 1.2;
     per.iniciar('ferido');
@@ -2119,4 +2132,179 @@ export class Jogo {
     }
     return melhor;
   }
+
+  // ───────────────────────────── modo dev ─────────────────────────────
+
+  /**
+   * As operações que o painel de desenvolvedor pode usar (`src/dev`). Só o modo dev chama isto; o painel não
+   * mexe em campos privados, e as regras continuam aqui.
+   */
+  ganchosDev(): GanchosDev {
+    // fora do modo dev não existe painel: o build troca DEV por false e descarta o resto desta função
+    if (!import.meta.env.DEV) throw new Error('ganchosDev só existe no modo dev');
+    const v = (x: number, z: number) => new THREE.Vector3(x, 0, z);
+    const m = this.mundo, d = this.deserto, md = this.meiodia, c = this.cidade, b = this.banquete;
+    const e = this.estado;
+    const norte = Math.PI, oeste = -Math.PI / 2, sul = 0;
+    const ponto = (nome: string, pos: THREE.Vector3, rumo = norte) => ({ nome, pos: pos.clone(), rumo });
+    const areas = (): AreaDev[] => [
+      { id: 'vale', nome: NOMES_AREA.vale, pontos: [
+        ponto('Início', m.inicio), ponto('Fogueira', m.fogueira.clone().add(v(2, 2))), ponto('Cruzeiro', m.cruzeiro.clone().add(v(0, 2.5))),
+        ponto('Capela', v(CAPELA.x, CAPELA.y + 14)), ponto('Escada da cripta', m.entradaCripta.clone().add(v(0, 2.4)), norte),
+        ponto('Véu do oeste', m.veu.clone().add(v(4, 0)), oeste), ponto('Fim da passagem', m.fimPassagem.clone().add(v(3, 0)), oeste),
+      ] },
+      { id: 'cripta', nome: NOMES_AREA.cripta, pontos: [
+        ponto('Chegada', this.cripta.chegada), ponto('Arena de Mamom', this.cripta.centroArena.clone().add(v(0, 9))),
+        ponto('Relicário', this.cripta.relicario.clone().add(v(0, 2.5))),
+      ] },
+      { id: 'deserto', nome: NOMES_AREA.deserto, pontos: [
+        ponto('Chegada', d.chegada, oeste), ponto('Poço', d.poco.clone().add(v(3, 0)), oeste), ponto('Caverna de Santo Antão', d.caverna.clone().add(v(0, 4))),
+        ponto('Rocha falsa', d.parede.clone().add(v(3, 0)), oeste), ponto('Fim da fenda', d.fimFenda.clone().add(v(2.5, 0)), oeste),
+        ponto('Estrada do sul', d.estradaSul.clone().add(v(0, -3)), sul),
+      ] },
+      { id: 'meiodia', nome: NOMES_AREA.meiodia, pontos: [ponto('Chegada', md.chegada, oeste), ponto('Praça (luta)', md.centro.clone().add(v(7, 0)), oeste)] },
+      { id: 'cidade', nome: NOMES_AREA.cidade, pontos: [
+        ponto('Chegada', c.chegada), ponto('Fonte', c.fonte.clone().add(v(0, 3))), ponto('Portas do palácio', c.portaPalacio.clone().add(v(0, 2.4))),
+        ponto('São Damião', c.damiao.clone().add(v(0, 6))), ponto('Pedreira', c.pedreira.clone().add(v(0, 3))), ponto('Toca do lobo', c.toca.clone().add(v(0, 4))),
+      ] },
+      { id: 'palacio', nome: NOMES_AREA.palacio, pontos: [ponto('Chegada', b.chegada), ponto('Salão (luta)', b.centro.clone().add(v(0, 6)))] },
+    ];
+    /** Desfaz uma vitória: tira a sombra das vencidas e as flags que ela deixou. */
+    const desvencer = (id: string, ...flags: string[]) => {
+      e.sombrasVencidas.delete(id);
+      for (const f of flags) e.flags.delete(f);
+    };
+    const chefe = (o: {
+      id: string; nome: string; area: IdArea;
+      entidade: () => Sombra | null; lutando: () => boolean; reiniciarLuta: () => void;
+      preparar: () => void; entrada: () => THREE.Vector3; rumo: number;
+    }): ChefeDev => ({
+      id: o.id,
+      nome: o.nome,
+      area: o.area,
+      entidade: o.entidade,
+      lutando: o.lutando,
+      vencido: () => e.sombrasVencidas.has(o.id),
+      lutar: () => {
+        o.reiniciarLuta();
+        o.preparar();
+        this.reconstruirMundo();
+        this.curar();
+        this.irPara(o.area, o.entrada(), o.rumo);
+      },
+      reiniciar: () => {
+        o.reiniciarLuta();
+        this.curar();
+        this.irPara(o.area, o.entrada(), o.rumo);
+      },
+      fase2: () => {
+        const s = o.entidade();
+        if (s?.ativa) s.vida = Math.min(s.vida, Math.floor(s.vidaMax / 2));
+      },
+      vencer: () => {
+        const s = o.entidade();
+        if (s && s.derrotar() === 'morreu') this.sombraVencida(s);
+      },
+    });
+    return {
+      estado: e,
+      peregrino: this.peregrino,
+      renderer: this.renderer,
+      areas,
+      chefes: () => [
+        chefe({
+          id: 'cripta_guardiao', nome: 'Mamom, o Guardião da Avareza', area: 'cripta',
+          entidade: () => this.cripta.guardiao, lutando: () => this.cripta.lutando, reiniciarLuta: () => this.cripta.reiniciarLuta(),
+          preparar: () => {
+            desvencer('cripta_guardiao', 'lamparina');
+            e.cor = 1;
+            for (const f of ['intro', 'cripta_laje', 'cripta_entrou', 'cripta_portao', 'cripta_dica_chama', 'cripta_dica_guardiao']) e.flags.add(f);
+          },
+          entrada: () => this.cripta.centroArena.clone().add(v(0, 4)), rumo: norte,
+        }),
+        chefe({
+          id: 'meiodia_acedia', nome: 'Acídia, o demônio do meio-dia', area: 'meiodia',
+          entidade: () => md.acedia, lutando: () => md.lutando, reiniciarLuta: () => md.reiniciarLuta(),
+          preparar: () => {
+            desvencer('meiodia_acedia', 'meiodia_vencido');
+            for (const f of ['intro', 'meiodia_entrou', 'meiodia_dica']) e.flags.add(f);
+          },
+          entrada: () => md.centro.clone().add(v(8, 0)), rumo: oeste,
+        }),
+        chefe({
+          id: 'palacio_gula', nome: 'Gula, o Banquete sem fim', area: 'palacio',
+          entidade: () => b.gula, lutando: () => b.lutando, reiniciarLuta: () => b.reiniciarLuta(),
+          preparar: () => {
+            desvencer('palacio_gula', 'gula_vencida');
+            for (const f of ['intro', 'cidade_damiao', 'cidade_lobo', 'palacio_entrou', 'palacio_dica']) e.flags.add(f);
+          },
+          entrada: () => b.centro.clone().add(v(0, 7)), rumo: norte,
+        }),
+      ],
+      info: () => {
+        const ch = this.chefeDaArea() as unknown as Sombra | null;
+        return {
+          qps: this.qps,
+          area: this.area.id,
+          arfagem: this.camera.arfagem,
+          guinada: this.camera.guinada,
+          chefe: ch ? `${ch.id} · ${ch.vida.toFixed(1)}/${ch.vidaMax} · ${ch.estado}` : null,
+          travado: this.travado ? ((this.travado as Partial<Sombra>).id ?? 'alvo') : null,
+          mira: this.miraPonto.clone(),
+          peso: this.pesoEfetivo(),
+          torpor: this.torpor,
+        };
+      },
+      irPara: (area, pos, rumo) => this.irPara(area, pos, rumo),
+      recarregarProgresso: () => {
+        this.reconstruirMundo();
+        this.aplicarAmbiente();
+        e.coracoes = Math.min(e.coracoes, e.coracoesMax);
+      },
+      iniciarTeste: (area) => {
+        e.zerar();
+        e.slot = null;
+        e.identidade = identidadePadrao();
+        e.flags.add('intro');
+        this.minimapa.esquecer('deserto');
+        this.areaNoMapa = '';
+        this.reconstruirMundo();
+        e.checkpoint = this.mundo.inicio.toArray() as [number, number, number];
+        this.posicionarNoCheckpoint();
+        this.comecar();
+        const destino = area && areas().find((a) => a.id === area);
+        if (destino && destino.id !== 'vale') this.irPara(destino.id, destino.pontos[0].pos, destino.pontos[0].rumo);
+      },
+      curar: () => this.curar(),
+      pularDialogo: () => {
+        this.dialogos.encerrar();
+        for (let i = 0; i < 80 && this.hud.dialogoAberto; i++) this.hud.avancar();
+      },
+      vencerSombra: (s) => {
+        if (s.derrotar() === 'morreu') this.sombraVencida(s);
+      },
+      sombrasDaArea: () => this.area.sombras.filter((s) => s.ativa),
+    };
+  }
+
+  /** Teleporta dentro da área ou troca de área (modo dev). */
+  private irPara(id: IdArea, pos: THREE.Vector3, rumo = Math.PI) {
+    const destino = this.areaPorId(id);
+    if (destino !== this.area) return this.trocarArea(destino, pos, rumo);
+    const y = destino.altura(pos.x, pos.z);
+    this.peregrino.teleportar(pos.x, y, pos.z);
+    this.peregrino.rumo = rumo;
+    this.camera.guinada = rumo + Math.PI;
+    this.camera.reposicionar();
+    this.pomba.raiz.position.set(pos.x, y + 3, pos.z);
+    this.travado = null;
+  }
+
+  private curar() {
+    this.estado.restaurar();
+    this.pesoBanquete = 0;
+    this.torpor = 0;
+    this.peregrino.carregar(null);
+  }
+
 }

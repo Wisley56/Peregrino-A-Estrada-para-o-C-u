@@ -18,6 +18,8 @@ jogo
   .then(() => {
     document.getElementById('veu')!.style.opacity = '0';
     menu.pronto();
+    // modo desenvolvedor (F9): o Vite troca DEV por false no build e o módulo nem chega ao jogo publicado
+    if (import.meta.env.DEV) void import('./dev/Dev').then((m) => m.instalarDev(jogo));
   })
   .catch((err) => {
     console.error(err);
