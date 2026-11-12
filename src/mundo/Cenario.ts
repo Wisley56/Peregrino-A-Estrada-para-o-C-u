@@ -1,65 +1,6 @@
 import * as THREE from 'three';
 import { Modelo, variar } from '../voxel/Modelo';
 
-/** Capela no alto do monte (arte por código, 0,5 m por voxel). Porta voltada para +z. */
-export function construirCapela() {
-  const m = new Modelo();
-  const W = 14, D = 20, H = 10;
-  const reboco = (x: number, y: number, z: number) => variar(0xe8dfcc, x, y, z, 0.03);
-  const pedra = (x: number, y: number, z: number) => variar(0x9b9284, x, y, z, 0.06);
-  const telha = (x: number, y: number, z: number) => ((x + z) % 3 === 0 ? 0x9a4030 : variar(0xa84a32, x, y, z, 0.04));
-  // paredes
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++)
-      for (let z = 0; z < D; z++) {
-        const parede = x === 0 || x === W - 1 || z === 0 || z === D - 1;
-        if (!parede) continue;
-        const porta = z === D - 1 && x >= 5 && x < 9 && y < 6;
-        const arcoPorta = z === D - 1 && x >= 6 && x < 8 && y === 6;
-        const janela = (x === 0 || x === W - 1) && (z === 5 || z === 10 || z === 15) && y >= 4 && y <= 6;
-        if (porta || arcoPorta) continue;
-        if (janela) {
-          const vitral = [0x3a6fd8, 0xd83a4a, 0xe8c45a, 0x3ab86a][(y + z) % 4];
-          m.ponto(x, y, z, vitral);
-          continue;
-        }
-        m.ponto(x, y, z, y < 2 ? pedra(x, y, z) : reboco(x, y, z));
-      }
-  // rosácea sobre a porta
-  [[6, 8], [7, 8], [6, 9], [7, 9]].forEach(([x, y], i) => m.ponto(x, y, D - 1, [0xd83a4a, 0x3a6fd8, 0xe8c45a, 0x9a4ad8][i]));
-  // empena e telhado (duas águas ao longo de z)
-  for (let k = 0; k < 8; k++) {
-    const y = H + k;
-    for (let z = -1; z <= D; z++) {
-      for (const x of [k - 1, W - k]) m.ponto(x, y, z, telha(x, y, z));
-      if (k > 0) for (const x of [k, W - k - 1]) if (z === -1 || z === D) m.ponto(x, y, z, telha(x, y, z));
-    }
-    for (let x = k; x < W - k; x++) {
-      m.ponto(x, y, 0, reboco(x, y, 0));
-      m.ponto(x, y, D - 1, reboco(x, y, D - 1));
-    }
-  }
-  for (let z = -1; z <= D; z++) for (let x = 6; x < 8; x++) m.ponto(x, H + 7, z, 0x8a3a2a);
-  // campanário e cruz
-  m.caixa(5, H + 6, D - 4, 4, 5, 3, reboco);
-  m.caixa(5, H + 6, D - 4, 4, 2, 3, null);
-  m.caixa(6, H + 6, D - 3, 2, 2, 1, 0xc9a24a); // sino
-  m.caixa(5, H + 6, D - 4, 1, 2, 1, reboco).caixa(8, H + 6, D - 4, 1, 2, 1, reboco);
-  m.caixa(5, H + 6, D - 2, 1, 2, 1, reboco).caixa(8, H + 6, D - 2, 1, 2, 1, reboco);
-  m.caixa(5, H + 11, D - 4, 4, 1, 3, telha);
-  m.caixa(7, H + 12, D - 3, 1, 5, 1, 0xe8c45a);
-  m.caixa(6, H + 15, D - 3, 3, 1, 1, 0xe8c45a);
-  // piso e altar
-  m.caixa(1, 0, 1, W - 2, 1, D - 2, (x, _y, z) => ((x + z) % 2 ? 0xb8b0a0 : 0xa8a090));
-  m.caixa(5, 1, 2, 4, 2, 2, 0xeae4d6);
-  m.caixa(5, 3, 2, 4, 1, 2, 0xd8c79a);
-  m.ponto(5, 4, 2, 0xfff1b0).ponto(8, 4, 2, 0xfff1b0);
-  m.caixa(6, 4, 1, 2, 5, 1, 0x7a5a36).caixa(5, 7, 1, 4, 1, 1, 0x7a5a36);
-  // degraus da entrada
-  m.caixa(4, 0, D, 6, 1, 2, pedra);
-  return m.malha(0.5, [7, 1, 10]);
-}
-
 /** Cruzeiro de beira de estrada (0,2 m por voxel). */
 export function construirCruzeiro() {
   const m = new Modelo();
