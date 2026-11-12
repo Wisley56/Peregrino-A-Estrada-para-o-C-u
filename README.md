@@ -1,5 +1,8 @@
 # ![Peregrino: A Estrada para o Céu](docs/imagens/banner.jpg)
 
+[![Estrelas no GitHub](https://img.shields.io/github/stars/Wisley56/Peregrino-A-Estrada-para-o-C-u?style=flat&logo=github&label=estrelas)](https://github.com/Wisley56/Peregrino-A-Estrada-para-o-C-u/stargazers)
+[![Issues abertas](https://img.shields.io/github/issues/Wisley56/Peregrino-A-Estrada-para-o-C-u?label=issues)](https://github.com/Wisley56/Peregrino-A-Estrada-para-o-C-u/issues)
+![Último commit](https://img.shields.io/github/last-commit/Wisley56/Peregrino-A-Estrada-para-o-C-u?label=%C3%BAltimo%20commit)
 ![Licença: GPL-3.0-or-later](https://img.shields.io/badge/licen%C3%A7a-GPL--3.0--or--later-blue)
 ![Versão](https://img.shields.io/badge/vers%C3%A3o-0.1.0-orange)
 ![Plataforma: navegador](https://img.shields.io/badge/plataforma-navegador-6e4aff)
@@ -42,8 +45,16 @@ por código, o som é sintetizado na hora e o projeto inteiro é software livre.
 O jogo roda em qualquer navegador moderno com WebGL 2, no Windows, no macOS e no Linux. Para rodar a partir do
 código:
 
-1. Instale o [Node.js](https://nodejs.org) (18 ou mais novo).
-2. Abra um terminal na pasta do projeto e rode `npm install` e depois `npm run dev`.
+1. Instale o [Node.js](https://nodejs.org) (18 ou mais novo) e o [Git](https://git-scm.com).
+2. Baixe o projeto e instale as dependências:
+
+   ```bash
+   git clone https://github.com/Wisley56/Peregrino-A-Estrada-para-o-C-u.git
+   cd Peregrino-A-Estrada-para-o-C-u
+   npm install
+   npm run dev
+   ```
+
 3. Abra <http://localhost:5180>.
 
 O progresso fica salvo no próprio navegador, em 3 espaços de jogo. Em **Configurações → Gráficos** há predefinições
@@ -71,6 +82,10 @@ de Baixa a Ultra, para ajustar o visual ao seu computador.
 Toda ajuda é bem-vinda, e não é preciso programar para ajudar. Quem joga e conta o que achou, quem desenha, quem
 compõe ou quem revisa os textos já faz o caminho andar.
 
+Achou um bug ou teve uma ideia? [Abra uma issue](https://github.com/Wisley56/Peregrino-A-Estrada-para-o-C-u/issues/new).
+Se o projeto te tocou, deixe uma ⭐ no [repositório](https://github.com/Wisley56/Peregrino-A-Estrada-para-o-C-u): ajuda
+mais gente a encontrar o caminho.
+
 Para quem quer mexer no código, o [guia do desenvolvedor](DEVELOPER.md) explica:
 
 - como rodar e gerar o build;
@@ -81,6 +96,8 @@ Para quem quer mexer no código, o [guia do desenvolvedor](DEVELOPER.md) explica
 
 ## Links úteis
 
+- [Repositório no GitHub](https://github.com/Wisley56/Peregrino-A-Estrada-para-o-C-u): o código-fonte.
+- [Issues](https://github.com/Wisley56/Peregrino-A-Estrada-para-o-C-u/issues): bugs, sugestões e ideias.
 - [Guia do desenvolvedor](DEVELOPER.md): a parte técnica do projeto.
 - [Créditos](CREDITOS.md): a origem e a licença de cada asset.
 - [Fontes de assets](docs/FONTES-DE-ASSETS.md): onde buscar assets livres e quais licenças são aceitas.
