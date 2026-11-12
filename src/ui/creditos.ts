@@ -16,13 +16,13 @@ export interface BlocoCreditos {
 export const CREDITOS: BlocoCreditos[] = [
   { funcao: 'Criação, roteiro e direção', nomes: ['Wisley Santos'] },
   { funcao: 'Programação', nomes: ['Wisley Santos'] },
-  { funcao: 'Arte voxel original', nomes: ['Wisley Santos'], nota: 'o peregrino, a pomba, as sombras, Mamom, Santo Antão, a Acídia, a capela, a cripta, o deserto e o Poço do Meio-Dia' },
+  { funcao: 'Arte voxel original', nomes: ['Wisley Santos'], nota: 'o peregrino, a pomba, as sombras, Mamom, Santo Antão, a Acídia, a capela, a cripta, o deserto, o Poço do Meio-Dia, a Cidade Dourada, São Francisco, o Salão do Banquete e a Gula' },
 
-  { funcao: 'Modelos voxel adicionais', nomes: ['Os contribuidores do Veloren'], nota: 'ovelhas, pinheiros, álamos, flores, grama, pedras e fogueira · GPL 3.0', parte: true },
+  { funcao: 'Modelos voxel adicionais', nomes: ['Os contribuidores do Veloren'], nota: 'bichos (29 espécies) e suas animações, pinheiros, álamos, flores, grama, pedras e fogueira · GPL 3.0', parte: true },
   { funcao: 'Som', nomes: ['Sintetizado em tempo real pelo próprio jogo'] },
   { funcao: 'Tipografia', nomes: ['Cinzel, de Natanael Gama', 'EB Garamond, de Georg Duffner e Octavio Pardo'], nota: 'SIL Open Font License' },
 
-  { funcao: 'Feito com', nomes: ['three.js', 'TypeScript', 'Vite', 'Fontsource'], parte: true },
+  { funcao: 'Feito com', nomes: ['three.js', 'Ink (inkle) e inkjs', 'TypeScript', 'Vite', 'Fontsource'], parte: true },
 
   { funcao: 'Agradecimentos especiais', nomes: ['À comunidade do software livre', 'Aos peregrinos de todos os caminhos'], parte: true },
 

@@ -11,6 +11,8 @@ funciona. Para a apresentação do jogo, veja o [README](README.md).
 - [Render e gráficos](#render-e-gráficos)
 - [Regras do jogo](#regras-do-jogo)
 - [Áreas e chefões](#áreas-e-chefões)
+- [Diálogos](#diálogos)
+- [NPCs e retratos](#npcs-e-retratos)
 - [Interface](#interface)
 - [Assets e licenças](#assets-e-licenças)
 - [Próximos passos](#próximos-passos)
@@ -26,6 +28,7 @@ npm run dev        # servidor de desenvolvimento em http://localhost:5180
 npm run typecheck  # só checa os tipos
 npm run build      # tsc + vite build: gera dist/ (site estático)
 npm run preview    # serve o dist/ para conferir o build
+npm run fauna      # baixa do Veloren os .vox dos bichos e regenera src/fauna/especies.gerado.json
 ```
 
 O `dist/` é um site estático e pode ser publicado em qualquer hospedagem de arquivos.
@@ -51,10 +54,16 @@ O protótipo 2D anterior (Phaser) continua em `../jogo`, como referência de sis
 
 ```
 src/
-  voxel/     Malha (greedy meshing e AO embutido), Vox (leitor .vox do MagicaVoxel/Veloren), Modelo (voxels por código)
-  mundo/     Area (interface comum), Terreno, Mundo (o Vale), Cripta, Deserto, PocoMeioDia,
-             Cenario (capela, cruzeiro, céu, entrada da cripta, véu, lamparina)
-  entidades/ Peregrino, Ovelha (Veloren), Sombra, Guardiao (Mamom e a interface Chefe), Acedia, Antao, Pomba
+  voxel/     Malha (greedy meshing e AO embutido), Vox (leitor .vox do MagicaVoxel/Veloren), Modelo (voxels por código),
+             Humano (gente do povo montada a partir de um figurino)
+  dialogos/  roteiros Ink (.ink): peregrino.ink inclui um arquivo por região
+  dialogo/   Dialogos (executa o Ink), Falantes (quem fala e com que estilo), Retratos (rostos da caixa de diálogo)
+  mundo/     Area (interface comum), Terreno, Mundo (o Vale), Cripta, Deserto, PocoMeioDia, Cidade (a Cidade Dourada),
+             CidadeModelos (casas, palácio, São Damião, iscas), Capela (capela de região com interior, confessionário
+             e CapelaRegional), Cenario (cruzeiro, céu, entrada da cripta, véu, lamparina)
+  fauna/     Especies (fichas), Corpo (esqueletos do Veloren), Animal (comportamento), Fauna (povoamento por área)
+  entidades/ Peregrino, Npc (base de quem conversa), Sombra, Guardiao (Mamom e a interface Chefe),
+             Acedia, Antao e Francisco (fichas de NPC com modelo próprio), Pomba
   core/      Aparencia (identidade e paletas), Camera, Entrada, Estado (save), Dons, Preferencias, Ruido, Som
   fx/        Efeitos (pós-processamento)
   ui/        Hud, Criacao, Menu, Minimapa, Pausa, Configuracoes, Dons (rosácea), IconesDons, Vitral, creditos
@@ -62,6 +71,8 @@ src/
 public/assets/veloren/   modelos .vox do Veloren (GPL-3.0)
 docs/FONTES-DE-ASSETS.md sites com assets livres e regras de licença
 docs/imagens/            banner e capturas de tela do README (1920×1080, gráficos no Ultra)
+tools/vite-plugin-ink.ts compila os roteiros Ink no build
+tools/fauna-veloren.mjs  importa a fauna do Veloren (modelos e montagem)
 ```
 
 ## Saves e preferências
@@ -134,6 +145,15 @@ Notas:
 - Começa com 5. Um golpe comum tira meio coração; a Corrente da Cobiça tira um inteiro.
 - Cada chefão vencido dá +1 coração e cura tudo.
 
+**Sacramentos** (cada capela de região tem os dois)
+
+- **Confissão** (confessionário): o peregrino entra no lado do penitente, ajoelha-se diante da grade e conversa
+  com o padre (nó `capela_confissao`, com escolhas). A absolvição (`~ evento("absolvicao")`) guarda o caminho como
+  um descanso, restaura tudo e põe o peregrino em estado de graça (`Estado.confessado`). Desistir no meio não vale.
+- **Eucaristia** (altar): só em estado de graça. Dá um coração dourado a mais (`Estado.comungou`, somado em
+  `coracoesMax`) e restaura tudo. Sem confissão, o Espírito Santo lembra, uma vez, que ela vem antes.
+- A queda (`Estado.cair()`) tira os dois, e o save é gravado na hora.
+
 **Graças**
 
 - Uma sombra comum dá 1 graça e um chefão dá 3. As ajudantes do Mamom (`cripta_ajudante*`) não dão nenhuma.
@@ -150,6 +170,21 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
 | 4 | rezando, meio coração a cada 4 s (depois de 4 s) | alcance de 45 m |
 | 5 | energia 130; torpor some duas vezes mais rápido | com a Ciência ativa, cajado e luz tiram +1 |
 
+| Nível | Piedade (São Francisco) |
+|---|---|
+| 1 | Mãos que servem: socorrer alguém custa 20 de energia |
+| 2 | Partilha: socorrer custa 12 |
+| 3 | Misericórdia: cada ato de piedade devolve um coração |
+| 4 | Pobreza alegre: o ouro da Gula pesa a metade |
+| 5 | Instrumento da paz: a oração rende o dobro junto de quem você ajudou |
+
+**Peso** (`Estado.peso`, gravado no save)
+
+- Cada isca da Gula pega soma 1. A pedra de São Damião no ombro soma 2 (`Jogo.pesoEfetivo`).
+- A velocidade cai 10% por ponto (até 45%) e o pulo, 12% (até 55%). Com a pedra, não há pulo.
+- O peso aparece num saco de ouro na cintura (`Peregrino.mostrarPeso`) e no HUD (`#peso`).
+- Dar o ouro a um pobre (`~ evento("doar_x")`) tira 1 de peso.
+
 **Oração**
 
 - Rende 5, depois 8, depois 12 de energia por segundo (depois de 3 s e de 6 s).
@@ -159,10 +194,31 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
 
 | Área | Arquivo | Destaques técnicos |
 |---|---|---|
-| O Vale | `mundo/Mundo.ts` | Terreno gerado, capela, cruzeiro, ovelhas do Veloren; a névoa a oeste exige a lamparina acesa |
+| O Vale | `mundo/Mundo.ts` | Terreno gerado, capela com interior, cruzeiro, fauna pastoril; a névoa a oeste exige a lamparina acesa |
 | Cripta dos Primeiros Peregrinos | `mundo/Cripta.ts` | Braseiros com chama de 14 s; arena de Mamom (`entidades/Guardiao.ts`) |
 | Deserto das Vozes | `mundo/Deserto.ts` | Miragens que viram sombras, vozes, rocha falsa revelada pela Ciência |
 | Poço do Meio-Dia | `mundo/PocoMeioDia.ts` | A Acídia (`entidades/Acedia.ts`), reflexos que só a Ciência desfaz, torpor |
+| Cidade Dourada | `mundo/Cidade.ts` | Cidade murada na Úmbria, peso, atos de piedade, São Damião reconstruída pedra a pedra, o lobo de Gubbio |
+| Palácio da Gula | `mundo/Banquete.ts` | Salão do Banquete; a Gula (`entidades/Gula.ts`), travessas como alvos, peso repartido com os pobres |
+
+**A Cidade Dourada** (fase 2)
+
+- Fica em (500, 0, 0). A estrada velha ao sul do Deserto (`Deserto.estradaSul`) só abre com `meiodia_vencido`.
+- Dentro dos muros: praça dourada com fonte (descanso), 21 casas, o mercado, a capela da cidade (Frei Leão) e o
+  palácio da Gula (o Salão do Banquete, abaixo). Fora: olivais, trigo, São Damião em ruínas, a pedreira, o casebre do
+  leproso e a toca do lobo.
+- A cor da cidade volta com as 4 sombras (`cidade_sombra_N`) e os 6 atos de piedade (`ATOS_CIDADE` em `Jogo.ts`):
+  - curar o leproso;
+  - ajudar Tomás, Rita e Beppo (socorrer ou dar o ouro);
+  - fazer as pazes com o lobo;
+  - reconstruir São Damião.
+- Quem foi ajudado volta a falar com o peregrino uma vez e retribui (`evento("retribuir_x")`), restaurando tudo.
+- São Damião: depois do leproso, Francisco pede as pedras. São 4 viagens da pedreira (`cidade_pedra_1..4`), e
+  `Cidade.definirEstagioDamiao` troca a malha e a colisão a cada pedra.
+- O lobo (`Animal` com `semFuga` e `seguir`) segue o peregrino depois do pacto. Quando os dois estão dentro dos
+  muros, ele passa a morar na praça (`mudarCasa`).
+- As iscas da Gula (cálice, prato, moedas, taça e coroa) dão um alívio na hora (coração ou energia) e 1 de peso.
+- Os nós Ink ficam em `dialogos/cidade.ink`, e os efeitos em `Jogo.eventoDaCidade`.
 
 **Mamom, o Guardião da Avareza**
 
@@ -181,6 +237,129 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
 - A névoa do torpor só se desfaz com oração.
 - Também ataca com o mormaço em anel.
 
+**Gula, o Banquete sem fim** (`entidades/Gula.ts`, arena `mundo/Banquete.ts`)
+
+- O Salão do Banquete fica em (500, 0, -330), área `'palacio'`. As portas de ouro da cidade abrem com
+  `cidade_damiao` e `cidade_lobo`. Quem o peregrino ajudou na cidade vem com ele (`Banquete.ajudantes`,
+  `valor("ajudantes")` no Ink).
+- 32 de vida. Enquanto há travessas na mesa (`Travessa`, alvos da mira), ela está saciada e nada a fere.
+  Derrubadas todas (luz ou cajado, via `Area.atingirLuz`/`Area.golpear`), ela fica faminta por 7,5 s
+  (estado `atordoada`) e aí o cajado fere. Depois o banquete volta; na fase 2 entra uma quarta travessa.
+- Ataques:
+  - iguarias: pratos caem 1,3 s depois da marca. Não ferem, mas dão peso (`Impacto.peso`, até 8);
+  - devorar: aspira o peregrino para a boca por 2,6 s (`Impacto.arrasto`, mais forte quanto mais peso), e morde de perto;
+  - barrigada: salta e solta um anel de vinho que se pula.
+- O peso (`Jogo.pesoBanquete`) some ao repartir com um pobre (F perto dele; com Piedade 3, cada um devolve um
+  coração uma vez por luta) ou rezando (jejum: −1 a cada 2,2 s).
+- Vencida: as travessas viram pão, os pobres sentam à mesa (descanso) e conta como mais um passo na cor da cidade.
+- Os nós Ink ficam em `dialogos/palacio.ink`.
+
+## Diálogos
+
+As conversas são escritas em **[Ink](https://github.com/inkle/ink)** (MIT), a linguagem de roteiro da inkle,
+usada em jogos comerciais. JSON escrito à mão não serve aqui: não tem desvio, condição nem escolha, e o erro só
+aparece quando a fala toca.
+
+**Como funciona**
+
+- `tools/vite-plugin-ink.ts` compila `src/dialogos/peregrino.ink` (e os `INCLUDE`) no build, como o inklecate.
+  Um erro de roteiro (nó inexistente, desvio quebrado, função não declarada) derruba o build com arquivo e linha.
+  No servidor de desenvolvimento, editar uma fala recarrega o jogo.
+- O jogo carrega só o runtime do inkjs (cerca de 34 KB com gzip). O compilador fica no build.
+- Uma única história para o jogo todo. Cada conversa é um nó, tocado com `jogo.dialogos.tocar('no', fim?)`.
+  Pedidos feitos durante outra conversa entram na fila.
+- O `Estado` (save) é a fonte da verdade. O Ink não guarda variáveis persistentes; ele consulta o jogo pelas
+  funções externas.
+
+**Convenções do roteiro**
+
+| Escrita | Efeito |
+|---|---|
+| `antao: texto` | fala de um falante de `dialogo/Falantes.ts` (o id define nome, estilo e retrato) |
+| `* [opção]` | escolha; o jogador escolhe com 1–9, setas ou clique |
+| `#pausa:1.4` | fecha a caixa por 1,4 s antes da fala |
+| `~ evento("dom_ciencia")` | efeito de jogo tratado em `Jogo.eventoDialogo` |
+| `~ marcar("flag")` | grava uma flag no save |
+
+Funções externas: `tem(flag)`, `primeira(flag)` (verdadeiro só na primeira vez, e já marca), `nivel(dom)`,
+`valor(chave)` (números do jogo, em `Jogo.valorDialogo`), `nome()` e `g(masculino, feminino)` para o gênero
+do peregrino. As consultas puras são registradas como seguras para a leitura antecipada do Ink; as que mudam o
+jogo, não.
+
+**Estilos da caixa**: `espirito` (dourado), `inscricao` (itálico), `vicio` (violeta). Falantes sem estilo usam
+a caixa comum.
+
+## Capelas
+
+`CapelaRegional` junta a capela, o padre, as caixas de colisão e os pisos em coordenadas do mundo. Uma área expõe a
+sua em `Area.capela`, e o `Jogo` liga sozinho a confissão, o sacrário, o altar e a câmera de interior
+(`interacoesDaCapela`). No confessionário, `Dialogos.apelidos` faz o nó comum `capela_confissao` falar com a voz
+do padre da região (padre no Vale, Frei Leão na cidade).
+
+`mundo/Capela.ts` monta a capela de uma região. A planta é sempre a mesma; o `EstiloCapela` muda as cores
+(reboco, pedra, telha, madeira, piso, vitrais, flores), e cada região passa o seu.
+
+- **Casca** em voxel de 0,25 m (9 × 14 m, paredes de 5 m): paredes com rodapé de pedra e lambri, vitrais em arco,
+  porta em arco com rosácea, piso em xadrez com tapete no corredor, presbitério um degrau acima.
+- **Parte de cima** (empenas, telhado em degraus, campanário com sino e cruz) é uma malha só, `telhado`, que some
+  quando o peregrino entra. Dentro, a câmera usa `subirAoBater`, como na cripta, com braço de 4,3 m, e enxerga as
+  paredes como chão alto (`Mundo.alturaCamera`).
+- **Mobília** em voxel de 0,125 m: bancos com genuflexório, grade de comunhão aberta no centro, altar com toalha,
+  velas e missal, sacrário com conopeu e a lâmpada do Santíssimo (luz vermelha que tremula), crucifixo (1/22 m),
+  ambão, sede, imagens de Nossa Senhora e de São José, velas votivas, pias de água benta, Via Sacra e arandelas.
+- **Confessionário** (0,1 m): lado do penitente aberto, com genuflexório e grade; o padre fica atrás da porta de
+  treliça. O peregrino cabe lá dentro.
+- `construirCapela()` devolve, em coordenadas locais, as caixas de colisão, os pisos elevados (que a `altura()` da
+  área soma ao terreno), o retângulo do interior, as luzes (apagadas longe, sem mudar o número de luzes) e os pontos
+  de interação: porta, comunhão, sacrário, entrada do confessionário, onde ajoelhar, a grade e o lugar do padre.
+
+## Fauna
+
+Os bichos vêm do Veloren. `npm run fauna` (`tools/fauna-veloren.mjs`) baixa os `.vox` de cada espécie do
+`CATALOGO` e lê, nos manifestos `.ron` e nos `mod.rs` de animação, onde cada peça encaixa. O resultado fica em
+`src/fauna/especies.gerado.json`, que não se edita à mão.
+
+- **`Especies.ts`**: a ficha de cada espécie (nome, comportamento, velocidade, distância de fuga, se aceita
+  carinho, voz, se nada, altitude de voo).
+- **`Corpo.ts`**: três esqueletos, `QuadrupedePequeno`, `QuadrupedeMedio` e `Ave`, com as animações do Veloren
+  traduzidas (`idle`, `run`, `feed`, `fly`). Os ossos ficam no espaço do Veloren (z para cima). A cada quadro,
+  `calcular()` escreve a pose-alvo e `posar()` aproxima os ossos dela (lerp/slerp com `k = min(1, 15·dt)`, como o
+  `interpolate` do Veloren). A animação recebe uma `Pose` (`vel`, `giro`, `subida`, `comer`, `voar`,
+  `bater`, `olhar`), que o `Animal` mede pelo deslocamento real. Assim, o passo acompanha a velocidade de verdade
+  e a curva inclina o corpo. A geometria é compartilhada entre os bichos da mesma espécie.
+- **`Animal.ts`**: comportamentos `pasto`, `arisco` (foge), `manso` (segue o peregrino), `ave_chao`, `ave_voo`
+  (levanta voo quando assustada) e `voo_continuo` (águia e morcego).
+- **`Fauna.ts`**: cada área declara `povoamento()`, ou seja, quem vive onde, quantos e em que raio. A Fauna sorteia
+  lugares válidos com semente fixa, só atualiza quem está a menos de 55 m e esconde quem passa de 95 m. De vez em
+  quando, o bicho mais perto faz a sua voz (sintetizada em `Som.voz`).
+- **Nova espécie**: acrescente-a no `CATALOGO` e em `FICHAS`, rode `npm run fauna` e coloque-a no `povoamento()`
+  da região. Registre o arquivo em `CREDITOS.md`.
+
+### Animação do peregrino
+
+`src/entidades/Peregrino.ts` é procedural. A fase do passo acompanha a velocidade, com o tronco inclinado à
+frente, o quadril girando e a cabeça compensando. Parado, ele respira, troca o peso de perna e às vezes olha em
+volta. Ao pousar de um salto, agacha conforme a velocidade de queda, e inclina o corpo nas curvas. O chapéu, o
+cajado e a lamparina usam molas amortecidas (`Mola`, integrada em passos de 1/120 s), o que dá movimento
+secundário. Ações como `golpe`, `rezar` e `carinho` sobrepõem a pose. No `carinho`, ele se ajoelha para os
+bichos pequenos ou fica de pé para os grandes (`carinhoAlto`).
+
+## NPCs e retratos
+
+- **`entidades/Npc.ts`**: base de todo personagem com quem se conversa. A ficha (`DefNpc`) diz o id, o falante,
+  o nó do roteiro e a aparência. O NPC respira, vira o corpo para o peregrino a menos de 9 m, acompanha com a
+  cabeça (até ±1 rad) e acena enquanto fala.
+- **`Jogo.falarCom(npc)`** cria a interação padrão ("F: falar com …") e liga `npc.falando` durante a conversa.
+- **`voxel/Humano.ts`**: monta gente do povo a partir de um `Figurino` (gênero, idade, pele, penteado, traje,
+  barba, acessório, auréola). A cabeça é 6³, como a do peregrino, e fica num grupo próprio para poder girar.
+  `figurinoDoPovo(semente, 'pobre' | 'povo' | 'rico')` sorteia multidões variadas e sempre iguais para a mesma
+  semente.
+- **Santos** não usam o figurino genérico. Cada um tem modelo próprio, com a iconografia clássica (o Santo Antão,
+  por exemplo, tem o bastão em tau e a barba longa). A ficha recebe uma função que devolve o modelo.
+- **`dialogo/Retratos.ts`**: na primeira fala de cada personagem, o rosto é renderizado uma vez com o próprio
+  renderer num alvo de 160×160, guardado como imagem e reaproveitado. O NPC registra o retrato ao nascer.
+  Falantes sem corpo (Espírito Santo, inscrições) ficam sem retrato.
+
 ## Interface
 
 Toda a interface é HTML e SVG desenhados por código, sem imagens.
@@ -188,8 +367,26 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 - **`Vitral.ts`**: moldura de vitral, rubi e arabescos.
 - **`Menu.ts`**: tela inicial, 3 espaços de save, créditos.
 - **`Criacao.ts`**: criação do personagem.
-- **`Hud.ts`**: corações inteiros e meios, barras, mira, diálogo, barra do chefão.
+- **`Hud.ts`**: corações inteiros e meios (o da Eucaristia em dourado), barras, mira, barra do chefão e a
+  caixa de diálogo (retrato, texto que corre, escolhas numeradas).
 - **`Minimapa.ts`**: minimapa redondo que gira com a câmera.
+- **Mira livre** (`Jogo.atualizarMiraLivre`, `Hud.mostrarRetic`), inspirada no Veloren e no Minecraft:
+  - a câmera olha 1,05 m acima da cabeça (`CameraTerceira.elevacaoMira`; 0,5 m na capela). O peregrino fica um
+    pouco abaixo do centro e a mira fica livre por cima dele, como no Veloren;
+  - um raio sai da câmera pelo centro da tela, até 45 m. Ele para na primeira sombra ou alvo, ou no que é maciço
+    (`Area.alturaCamera`, que na cidade inclui casas, palácio e o arco da porta). O trecho até o peregrino não conta;
+  - sem alvo travado, a luz vai para esse ponto, e o golpe e a luz viram o corpo para a mira;
+  - estilos (Configurações › Geral, `Preferencias.mira`):
+    - `cruz`: a do Minecraft, branca em `mix-blend-mode: difference`. Fica fora do `#hud` para inverter a cor
+      do próprio jogo atrás dela;
+    - `anel`: a do Veloren, círculo com contorno escuro e ponto central;
+    - `ponto`;
+    - `desligada`;
+  - sobre um inimigo, a mira cresce ou fica vermelha;
+  - ao alcance do cajado, aparece embaixo um pequeno cajado dourado (o indicador de ataque do Minecraft);
+  - um acerto pisca um X (`Hud.acertou`);
+  - sem energia ou com torpor, a mira fica fraca;
+  - ela some com a mira travada (aí vale o losango sobre o alvo), em diálogos, na oração, na confissão e nos menus.
 - **`Pausa.ts`**: menu de pausa.
 - **`Configuracoes.ts`**: abas Geral, Controles e Gráficos. Enquanto a janela está aberta, ela captura as teclas.
 - **`Dons.ts`** e **`IconesDons.ts`**: a rosácea dos sete dons, com ícones SVG.
@@ -206,7 +403,7 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 
 ## Próximos passos
 
-1. Portar do protótipo 2D o diálogo em JSON, as condições (`dom:x>=n`) e os gatilhos.
-2. Usar os humanoides do Veloren (`figure/` e `armor/`) para os NPCs da vila e os santos.
+1. O chefão da Gula, "O Banquete sem fim", no palácio da Cidade Dourada (as portas já estão lá, trancadas).
+2. Uma capela por região com `CapelaRegional` (o Vale e a cidade já têm a sua; falta o Deserto).
 3. Criar cenas para as conversas com os NPCs: câmera de diálogo, gestos e animações.
 4. Montar a trilha sonora a partir de gravações de domínio público (Musopen).

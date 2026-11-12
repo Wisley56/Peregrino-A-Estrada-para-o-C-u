@@ -122,7 +122,7 @@ quadros por segundo, para você ver o custo de cada ajuste.
 
 ## Créditos
 
-Os modelos voxel de ovelhas, árvores, flores, grama, pedras e fogueira vêm do [Veloren](https://veloren.net) (GPL-3.0),
+Os modelos voxel dos bichos, árvores, flores, grama, pedras e fogueira vêm do [Veloren](https://veloren.net) (GPL-3.0),
 o RPG voxel livre feito pela comunidade. As fontes são Cinzel e EB Garamond (SIL Open Font License). O detalhe de cada
 obra está em [CREDITOS.md](CREDITOS.md).
 
