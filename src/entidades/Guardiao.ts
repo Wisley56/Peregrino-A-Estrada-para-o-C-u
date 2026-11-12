@@ -26,6 +26,12 @@ export interface Impacto {
   /** Deixa o peregrino pesado (o torpor da acídia). */
   torpor?: boolean;
   som?: 'onda' | 'corrente' | 'moedas' | 'rugido' | 'roubo' | 'sol' | 'raio' | 'torpor' | 'dissolver';
+  /** Peso de banquete que cai sobre o peregrino (a chuva de iguarias da Gula). */
+  peso?: number;
+  /** Arrasta o peregrino neste quadro (deslocamento em metros: o devorar da Gula). */
+  arrasto?: THREE.Vector3;
+  /** O vício sussurra ao peregrino. */
+  sussurro?: string;
 }
 
 export interface InfoJogador {
@@ -33,6 +39,8 @@ export interface InfoJogador {
   noChao: boolean;
   esquivando: boolean;
   invulneravel: boolean;
+  /** Quanto o peregrino carrega (o devorar da Gula puxa mais forte quem pesa mais). */
+  peso?: number;
 }
 
 /** O que o jogo precisa de um chefão: o que ele acertou, o aviso da barra e onde está o peregrino. */
