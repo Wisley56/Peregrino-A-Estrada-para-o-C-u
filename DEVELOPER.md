@@ -26,7 +26,7 @@ funciona. Para a apresentação do jogo, veja o [README](README.md).
 npm install
 npm run dev        # servidor de desenvolvimento em http://localhost:5180
 npm run typecheck  # só checa os tipos
-npm run build      # tsc + vite build: gera dist/ (site estático)
+npm run build      # tsc + vite build + verificação de que o modo dev não vazou: gera dist/ (site estático)
 npm run preview    # serve o dist/ para conferir o build
 npm run fauna      # baixa do Veloren os .vox dos bichos e regenera src/fauna/especies.gerado.json
 ```
@@ -36,8 +36,49 @@ O `dist/` é um site estático e pode ser publicado em qualquer hospedagem de ar
 Parâmetros de URL para testes:
 
 - `?idade=jovem|adulto|idoso` força a idade do peregrino (teste do envelhecimento).
+- `?teste` abre uma sessão de teste sem save, pulando o menu; `?teste=palacio` (ou `cripta`, `deserto`, `meiodia`,
+  `cidade`) já começa na área. Só no modo dev.
 
 O protótipo 2D anterior (Phaser) continua em `../jogo`, como referência de sistemas e de narrativa.
+
+## Modo desenvolvedor
+
+Com `npm run dev`, o jogo carrega `src/dev/`: um painel para testar regiões, chefões e progresso sem jogar
+até lá.
+
+| Tecla | O que faz |
+|---|---|
+| F9 | Abre e fecha o painel (Esc também fecha). Aberto, o ponteiro fica solto e o jogo não pausa. |
+| F3 | Overlay de depuração: qps, draw calls e triângulos por quadro, posição, câmera, mira, chefão da área. |
+| F6 | Teleporta para onde a mira aponta (1 m antes do ponto). |
+| F7 | Congela e solta o tempo (a câmera continua livre). |
+| F8 | Avança um quadro com o tempo congelado. |
+
+Abas do painel:
+
+- **Ir**: os pontos de cada área (chegadas, arenas, NPCs), a posição atual (copia como `THREE.Vector3`), pular o
+  diálogo aberto e começar uma sessão de teste numa área.
+- **Chefões**: lutar agora (desfaz a vitória, cumpre o que a arena pede e põe o peregrino na entrada), reiniciar a
+  luta, ir para a fase 2 e vencer. Vencer passa pelo mesmo caminho de uma vitória de verdade (`Sombra.derrotar()`
+  e `Jogo.sombraVencida`): graças, coração e diálogo. Também vence as sombras comuns da área.
+- **Peregrino**: invencível, energia infinita, velocidade, curar, +10 graças e o nível de cada dom.
+- **Progresso**: etapas da história (`src/dev/Progresso.ts`, cumulativas: do começo à Gula vencida), cor do
+  Vale, flags (lidas do próprio código e dos `.ink`, com filtro) e sombras vencidas (clique para reviver).
+- **Tempo**: câmera lenta (×0,1 a ×4), tempo parado e avanço de 1, 10 ou 60 quadros.
+
+As opções de trapaça, a aba aberta e o overlay ficam lembrados em `localStorage` (`peregrino.dev`).
+
+**Segurança**
+
+- Só existe no modo dev. O `main.ts` importa `src/dev/Dev.ts` dentro de `if (import.meta.env.DEV)`; o Vite troca
+  isso por `false` no build e o módulo some. `Jogo.ganchosDev()` vira só um `throw` em produção.
+- O `npm run build` termina com `tools/verificar-build.mjs`, que falha se achar algum texto do painel em `dist/`.
+- O save fica protegido. A primeira ação do painel num espaço de jogo liga `Estado.semSalvar`: nada mais é gravado
+  até alguém clicar em "liberar" no selo DEV (canto inferior direito), com confirmação. A sessão de teste (`?teste`
+  ou o botão do painel) não tem espaço de jogo e nunca salva.
+- O painel não mexe em campos privados do `Jogo`. Ele usa `Jogo.ganchosDev()`, um contrato pequeno descrito em
+  `src/dev/tipos.ts`. Para um chefão ou área nova, acrescente-o em `ganchosDev()` (pontos em `areas`, luta em
+  `chefes`) e, se mudar a história, a etapa em `Progresso.ts`.
 
 ## Arquitetura
 
@@ -67,12 +108,14 @@ src/
   core/      Aparencia (identidade e paletas), Camera, Entrada, Estado (save), Dons, Preferencias, Ruido, Som
   fx/        Efeitos (pós-processamento)
   ui/        Hud, Criacao, Menu, Minimapa, Pausa, Configuracoes, Dons (rosácea), IconesDons, Vitral, creditos
+  dev/       modo desenvolvedor (só no npm run dev): Dev (painel F9, overlay F3), Progresso (etapas), tipos
   Jogo.ts    laço principal e regras
 public/assets/veloren/   modelos .vox do Veloren (GPL-3.0)
 docs/FONTES-DE-ASSETS.md sites com assets livres e regras de licença
 docs/imagens/            banner e capturas de tela do README (1920×1080, gráficos no Ultra)
 tools/vite-plugin-ink.ts compila os roteiros Ink no build
 tools/fauna-veloren.mjs  importa a fauna do Veloren (modelos e montagem)
+tools/verificar-build.mjs confere que o modo dev não foi para o build
 ```
 
 ## Saves e preferências
