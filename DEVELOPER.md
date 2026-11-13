@@ -105,9 +105,11 @@ src/
   fauna/     Especies (fichas), Corpo (esqueletos do Veloren), Animal (comportamento), Fauna (povoamento por área)
   entidades/ Peregrino, Npc (base de quem conversa), Sombra, Guardiao (Mamom e a interface Chefe),
              Acedia, Antao e Francisco (fichas de NPC com modelo próprio), Pomba
-  core/      Aparencia (identidade e paletas), Camera, Entrada, Estado (save), Dons, Preferencias, Ruido, Som
+  core/      Aparencia (identidade e paletas), Camera, Entrada (teclado, mouse e controle), Controle (gamepad),
+             Estado (save), Dons, Preferencias, Ruido, Som
   fx/        Efeitos (pós-processamento)
-  ui/        Hud, Criacao, Menu, Minimapa, Pausa, Configuracoes, Dons (rosácea), IconesDons, Vitral, creditos
+  ui/        Hud, Criacao, Menu, Minimapa, Pausa, Configuracoes, Dons (rosácea), IconesDons, Vitral, creditos,
+             NavegacaoControle (menus pelo controle), Rotulos (nomes dos botões e troca das dicas)
   dev/       modo desenvolvedor (só no npm run dev): Dev (painel F9, overlay F3), Progresso (etapas), tipos
   Jogo.ts    laço principal e regras
 public/assets/veloren/   modelos .vox do Veloren (GPL-3.0)
@@ -132,7 +134,7 @@ tools/verificar-build.mjs confere que o modo dev não foi para o build
 - Migração: um save com chefão vencido e sem a flag `graca_grande_<id>` recebe a diferença da graça grande.
 
 **Preferências** (`src/core/Preferencias.ts`) valem para todos os saves e ficam em `peregrino-preferencias`:
-`{ sensibilidade, graficos }`. Os valores lidos são validados; o que vier inválido volta ao padrão.
+`{ sensibilidade, mira, graficos, sensibilidadeControle, inverterY, vibracao }`. Os valores lidos são validados; o que vier inválido volta ao padrão.
 
 ## Voxels e malhas
 
@@ -406,6 +408,45 @@ bichos pequenos ou fica de pé para os grandes (`carinhoAlto`).
 - **`dialogo/Retratos.ts`**: na primeira fala de cada personagem, o rosto é renderizado uma vez com o próprio
   renderer num alvo de 160×160, guardado como imagem e reaproveitado. O NPC registra o retrato ao nascer.
   Falantes sem corpo (Espírito Santo, inscrições) ficam sem retrato.
+
+## Controle (gamepad)
+
+O jogo lê o controle pela Gamepad API, quadro a quadro, só no "mapeamento padrão" (Chrome, Edge e Firefox o
+entregam para Xbox, PlayStation, Switch Pro, 8BitDo e a maioria dos genéricos). O navegador só mostra o controle
+ao jogo depois que o jogador aperta um botão nele.
+
+- **`core/Controle.ts`**:
+  - lê o controle em uso; se outro controle tiver um botão apertado, ele assume;
+  - zona morta radial de 0,16 com reescala;
+  - os gatilhos contam como apertados a partir de 0,5 e soltam abaixo de 0,35;
+  - descobre a família (`xbox`/`playstation`) pelo id: vendor `054c`, ou o nome "Wireless Controller" sem marca;
+  - vibra com `vibrationActuator.playEffect('dual-rumble')`.
+- **`core/Entrada.ts`**: `lerControle(menu)` roda no começo de `Jogo.quadro`. No jogo, cada botão vira a tecla
+  que o jogo já lê (`MAPA_CONTROLE`), num conjunto à parte (`virtuais`) para o keyup do teclado não soltá-lo.
+  O jogo não sabe de onde veio o comando. Além disso:
+  - `eixo()` é analógico: o analógico meio inclinado anda devagar;
+  - L3 liga a corrida até o analógico voltar ao centro;
+  - o analógico direito tem curva 1,8 e vira giro de câmera em `giroControle`, com sensibilidade e inversão
+    próprias;
+  - `PadCima`/`PadBaixo` (direcional, ou um toque no analógico) só servem às escolhas de diálogo, para não
+    andar como as setas;
+  - `dispositivo` guarda o último aparelho usado (teclado, mouse ou controle). Trocar de aparelho põe a classe
+    `no-controle` no body (esconde o cursor e mostra o contorno dourado do foco) e troca as dicas.
+- **`ui/NavegacaoControle.ts`**: roda nos menus (tela inicial, criação, pausa, dons, configurações):
+  - o direcional dispara setas sintéticas (com repetição). Se a tela não as consumir (`preventDefault`), o foco
+    anda para o elemento mais próximo naquela direção: primeiro a fileira mais próxima, nela o mais alinhado;
+  - só contam elementos visíveis na camada de cima (teste com `elementFromPoint`);
+  - A clica o foco (ou manda Enter, se não há foco), B e Menu mandam Esc, View manda G;
+  - LB e RB trocam as abas (`[data-aba]`), ←/→ ajustam um controle deslizante e o analógico direito rola;
+  - uma tela nova não precisa de código de controle: basta usar botões, ou tratar as setas e o Enter.
+- **`ui/Rotulos.ts`**: os textos continuam escritos com as teclas ("F: falar", "segure R", "(Espaço)").
+  `rotularTeclas` os troca na hora de mostrar (`Hud.rotular`: dicas, avisos, diálogos e chips). Os textos fixos
+  das telas usam `data-controle="Voltar · {B}"`, preenchido por `trocarRotulosDaTela`. Ao mudar o mapa em
+  `MAPA_CONTROLE`, ajuste também `rotularTeclas` e o `MAPA` de `Configuracoes.ts`.
+- **Vibração** (`Jogo.tremer`): ao levar dano, ao acertar com o cajado e ao cair. Desliga em Configurações.
+- **Testar sem controle**: no console, troque `navigator.getGamepads` por uma função que devolve um objeto
+  `{ id, index: 0, connected: true, mapping: 'standard', axes: [0,0,0,0], buttons: [{ pressed, value }...] }`
+  e mude `buttons`/`axes` entre os quadros.
 
 ## Interface
 

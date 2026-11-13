@@ -62,20 +62,27 @@ de Baixa a Ultra, para ajustar o visual ao seu computador.
 
 ### Controles
 
-| Ação | Tecla |
-|---|---|
-| Andar / correr | WASD / Shift |
-| Girar a câmera | Mouse (clique para prender o ponteiro) |
-| Pular / esquivar | Espaço / C |
-| Travar a mira | Q, Tab ou botão do meio |
-| Golpe de cajado | Clique esquerdo ou J |
-| Luz | Botão direito ou K |
-| Rezar (parado) | Segurar R |
-| Interagir | F ou Enter |
-| Lamparina da Fé | L |
-| Dom da Ciência | E |
-| Os Sete Dons | G |
-| Pausa | Esc ou P |
+Dá para jogar no teclado e mouse ou num controle (Xbox, PlayStation e a maioria dos compatíveis, por USB ou
+Bluetooth). O navegador só mostra o controle ao jogo depois que você aperta um botão nele. As dicas da tela trocam
+sozinhas para os botões do aparelho que você está usando.
+
+| Ação | Teclado e mouse | Controle (Xbox / PlayStation) |
+|---|---|---|
+| Andar / correr | WASD / Shift | Analógico esquerdo / apertar o analógico (L3) |
+| Girar a câmera e mirar | Mouse (clique para prender o ponteiro) | Analógico direito |
+| Pular / esquivar | Espaço / C | A / B · ✕ / ○ |
+| Travar a mira | Q, Tab ou botão do meio | RB ou R3 · R1 ou R3 |
+| Golpe de cajado | Clique esquerdo ou J | X · □ |
+| Luz | Botão direito ou K | RT · R2 |
+| Rezar (parado) | Segurar R | Segurar LB · L1 |
+| Interagir e avançar diálogo | F ou Enter | Y ou A · △ ou ✕ |
+| Lamparina da Fé | L | Direcional ← |
+| Dom da Ciência | E | Direcional → ou LT · L2 |
+| Os Sete Dons | G | View · Create |
+| Pausa | Esc ou P | Menu · Options |
+
+Nos menus, o direcional ou o analógico escolhem, A/✕ confirma, B/○ volta, e LB/RB trocam de aba. Em
+**Configurações → Controles** ficam a sensibilidade da câmera no controle, inverter o eixo vertical e a vibração.
 
 ## Desenvolvimento
 
@@ -112,8 +119,8 @@ Para quem quer mexer no código, o [guia do desenvolvedor](DEVELOPER.md) explica
 
 ### **P:** Em quais plataformas ele roda?
 
-**R:** Em qualquer navegador moderno com WebGL 2, no Windows, no macOS e no Linux. O jogo foi feito para teclado e
-mouse.
+**R:** Em qualquer navegador moderno com WebGL 2, no Windows, no macOS e no Linux. Joga-se com teclado e
+mouse ou com um controle.
 
 ### **P:** Meu computador é fraco. Consigo jogar?
 
