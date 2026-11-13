@@ -33,6 +33,8 @@ import { Sombra } from './entidades/Sombra';
 import { Preferencias } from './core/Preferencias';
 import { TelaDons } from './ui/Dons';
 import { Configuracoes } from './ui/Configuracoes';
+import { NavegacaoControle } from './ui/NavegacaoControle';
+import { rotularTeclas, trocarRotulosDaTela } from './ui/Rotulos';
 import type { AreaDev, ChefeDev, GanchosDev, OpcoesDev } from './dev/tipos';
 
 const TOTAL_SOMBRAS_VALE = 5;
@@ -176,6 +178,8 @@ export class Jogo {
     fortaleceu: () => this.som.graca(),
   });
   private pausado = false;
+  private navUi = new NavegacaoControle();
+  private quadrosMenu = 0;
   /** Segundos de torpor (o vício da acídia): o peregrino fica pesado até rezar. */
   private torpor = 0;
   /** Segundos que ainda restam do dom da Ciência ligado. */
@@ -201,6 +205,13 @@ export class Jogo {
 
     this.camera = new CameraTerceira(innerWidth / innerHeight);
     this.entrada = new Entrada(this.renderer.domElement);
+    const ent = this.entrada;
+    this.hud.rotular = (t) => (ent.dispositivo === 'controle' ? rotularTeclas(t, ent.controle.familia) : t);
+    this.config.ligarControle(ent.controle);
+    ent.aoTrocarDispositivo = () => {
+      this.config.desenharControle();
+      trocarRotulosDaTela(ent.dispositivo === 'controle', ent.controle.familia);
+    };
     this.efeitos = new Efeitos(this.renderer, this.cena, this.camera.cam);
 
     this.cena.fog = new THREE.Fog(0xe8dcc4, 45, 150);
@@ -1365,6 +1376,13 @@ export class Jogo {
       }
     }
     const e = this.entrada;
+    // controle: nos menus ele navega pelos botões; no jogo vira as mesmas teclas do teclado
+    const menu = !this.comecou || this.pausado || this.telaDons.aberta || this.modoCriacao || this.config.aberta;
+    e.lerControle(menu);
+    if (menu) {
+      this.navUi.atualizar(e.controle, Math.min(0.05, bruto));
+      if ((this.quadrosMenu = (this.quadrosMenu + 1) % 30) === 0) trocarRotulosDaTela(e.dispositivo === 'controle', e.controle.familia);
+    } else this.navUi.soltar();
     // pausa: Esc ou P, ou o ponteiro solto pelo Esc do navegador
     if (this.comecou && !this.modoCriacao && !this.transitando && !this.morrendo && !dev?.painelAberto) {
       if (this.telaDons.aberta) {
@@ -1435,8 +1453,10 @@ export class Jogo {
   /** Câmera de retrato: o peregrino fica de frente, à direita do painel (ou acima dele, em tela estreita). */
   private quadroCriacao(dt: number) {
     const per = this.peregrino;
-    this.rumoCriacao -= this.entrada.mouseDx * 0.01;
-    if (!this.entrada.segurando('Mouse0')) this.rumoCriacao += dt * 0.25;
+    // girar o boneco: arrastando o mouse ou no analógico direito
+    const giro = this.entrada.controle.direito[0];
+    this.rumoCriacao -= this.entrada.mouseDx * 0.01 + giro * dt * 3;
+    if (!this.entrada.segurando('Mouse0') && !giro) this.rumoCriacao += dt * 0.25;
     per.rumo = this.rumoCriacao;
     per.atualizar(dt, this.area, new THREE.Vector3(), 0, false, null);
     const estreita = innerWidth < 760;
@@ -1462,11 +1482,15 @@ export class Jogo {
       const k = this.prefs.sensibilidade;
       this.camera.girar(this.travado ? 0 : e.mouseDx * k, e.mouseDy * k);
     }
+    if (e.camX || e.camY) {
+      const [gx, gy] = e.giroControle(dt, this.prefs.sensibilidadeControle, this.prefs.inverterY);
+      this.camera.girar(this.travado ? 0 : gx, gy);
+    }
 
     if (dialogo) {
       if (this.hud.escolhendo) {
-        if (e.apertou('ArrowUp', 'KeyW')) this.hud.moverEscolha(-1);
-        if (e.apertou('ArrowDown', 'KeyS')) this.hud.moverEscolha(1);
+        if (e.apertou('ArrowUp', 'KeyW', 'PadCima')) this.hud.moverEscolha(-1);
+        if (e.apertou('ArrowDown', 'KeyS', 'PadBaixo')) this.hud.moverEscolha(1);
         for (let i = 0; i < 9; i++) if (e.apertou(`Digit${i + 1}`, `Numpad${i + 1}`)) this.hud.escolher(i);
       }
       if (e.apertou('KeyF', 'Enter', 'Space', 'Mouse0')) this.hud.avancar();
@@ -1865,6 +1889,7 @@ export class Jogo {
         } else {
           this.som.acerto();
           this.hud.acertou();
+          this.tremer(0.15, 0.45, 70);
           if (r === 'morreu') this.sombraVencida(s);
         }
       }
@@ -2077,6 +2102,7 @@ export class Jogo {
     per.iniciar('ferido');
     this.efeitos.dano = 1;
     this.som.dano();
+    this.tremer(dano >= 1 ? 0.8 : 0.5, 0.7, dano >= 1 ? 320 : 200);
     if (this.estado.coracoes <= 0) return this.morrer();
     if (semEmpurrao) return;
     const empurra = per.pos.clone().sub(de).setY(0).normalize().multiplyScalar(1.2);
@@ -2086,8 +2112,14 @@ export class Jogo {
     if (this.area.altura(per.pos.x, per.pos.z) > antes.y + 1.05) per.pos.copy(antes);
   }
 
+  /** Vibração do controle, se o jogador não a desligou nas Configurações. */
+  private tremer(forte: number, fraco: number, ms: number) {
+    if (this.prefs.vibracao) this.entrada.vibrar(forte, fraco, ms);
+  }
+
   private morrer() {
     this.morrendo = true;
+    this.tremer(1, 1, 600);
     this.puxao = null;
     this.travado = null;
     this.hud.escurecer(true);

@@ -91,7 +91,7 @@ export class Criacao {
         <p class="nota">A idade não se escolhe: ela vem com o caminho. A prévia mostra como você ficará.</p>
         <button class="confirmar vb rubi">Começar a peregrinação</button>
         <button class="voltar">‹ Voltar ao início</button>
-        <div class="ajuda">↑↓ escolher · ←→ mudar · Enter confirmar · Esc voltar · arraste a cena para girar</div>
+        <div class="ajuda" data-controle="↑↓ escolher · ←→ mudar · {A} confirmar · {B} voltar · analógico direito gira">↑↓ escolher · ←→ mudar · Enter confirmar · Esc voltar · arraste a cena para girar</div>
       </div>`;
     document.body.appendChild(this.raiz);
     this.montar();

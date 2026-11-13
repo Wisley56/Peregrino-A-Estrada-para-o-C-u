@@ -35,7 +35,7 @@ export class Pausa {
           <p>O caminho fica salvo no último lugar de descanso. Voltar à tela inicial?</p>
           <nav class="lado"><button class="vb rubi" data-a="sim">Sim, voltar</button><button class="vb" data-a="nao">Ficar</button></nav>
         </div>
-        <p class="rodape">Esc ou P para continuar</p>
+        <p class="rodape" data-controle="{B} ou {MENU} para continuar">Esc ou P para continuar</p>
       </div></div>`;
     document.body.appendChild(this.raiz);
     this.info = this.raiz.querySelector('.nota')!;

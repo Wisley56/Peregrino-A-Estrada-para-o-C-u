@@ -7,6 +7,8 @@ const $ = <T extends HTMLElement>(s: string) => document.querySelector(s) as T;
 
 /** Interface em HTML sobre o canvas: corações, barras, dica, mira e diálogo. */
 export class Hud implements Palco {
+  /** Troca as teclas citadas nos textos pelos botões do controle, quando é ele que está em uso (ui/Rotulos). */
+  rotular: (texto: string) => string = (t) => t;
   private coracoes = $('#coracoes');
   private energia = $('#energia > div');
   private cor = $('#cor > div');
@@ -71,7 +73,7 @@ export class Hud implements Palco {
     this.energia.style.width = `${(e.energia / e.energiaMax) * 100}%`;
     this.cor.style.width = `${cor * 100}%`;
     const livres = e.gracasLivres;
-    this.gracas.textContent = e.gracas > 0 ? `✦ ${livres} ${livres === 1 ? 'graça' : 'graças'} · G` : '';
+    this.gracas.textContent = e.gracas > 0 ? this.rotular(`✦ ${livres} ${livres === 1 ? 'graça' : 'graças'} · G`) : '';
 
     if (this.tempoAviso > 0) {
       this.tempoAviso -= dt;
@@ -136,6 +138,7 @@ export class Hud implements Palco {
 
   /** Dom do Espírito Santo disponível (hoje só a Ciência). */
   mostrarDom(texto: string | null, ativo = false) {
+    if (texto) texto = this.rotular(texto);
     this.dom.style.display = texto ? 'block' : 'none';
     if (texto && this.dom.textContent !== texto) this.dom.textContent = texto;
     this.dom.classList.toggle('ativo', ativo);
@@ -154,6 +157,7 @@ export class Hud implements Palco {
 
   /** Item equipado (hoje só a Lamparina da Fé). */
   mostrarItem(texto: string | null, aceso = false) {
+    if (texto) texto = this.rotular(texto);
     this.item.style.display = texto ? 'block' : 'none';
     if (texto) this.item.textContent = texto;
     this.item.classList.toggle('acesa', aceso);
@@ -161,13 +165,13 @@ export class Hud implements Palco {
 
   mostrarDica(texto: string | null) {
     if (texto) {
-      this.dica.textContent = texto;
+      this.dica.textContent = this.rotular(texto);
       this.dica.classList.add('ativa');
     } else this.dica.classList.remove('ativa');
   }
 
   anunciar(texto: string, segundos = 3) {
-    this.aviso.textContent = texto;
+    this.aviso.textContent = this.rotular(texto);
     this.aviso.classList.add('ativa');
     this.tempoAviso = segundos;
   }
@@ -263,7 +267,7 @@ export class Hud implements Palco {
   }
 
   private exibir(p: Passo) {
-    this.atual = p;
+    this.atual = { ...p, texto: this.rotular(p.texto) };
     this.letras = 0;
     this.escolhaSel = 0;
     this.esconderEscolhas();

@@ -8,6 +8,10 @@ export const SENSIBILIDADE_MIN = 0.2;
 export const SENSIBILIDADE_MAX = 2;
 /** Um pouco abaixo do antigo 1,0, que era rápido demais para muita gente. */
 export const SENSIBILIDADE_PADRAO = 0.7;
+/** Giro da câmera pelo analógico direito (1 = cerca de meia volta por segundo com o analógico no fundo). */
+export const SENS_CONTROLE_MIN = 0.3;
+export const SENS_CONTROLE_MAX = 2;
+export const SENS_CONTROLE_PADRAO = 1;
 
 /**
  * Mira no centro da tela: `cruz` (a do Minecraft, que inverte a cor do fundo), `anel` (a redonda do Veloren),
@@ -58,6 +62,9 @@ interface Dados {
   sensibilidade: number;
   mira: EstiloMira;
   graficos: ConfigGraficos;
+  sensibilidadeControle: number;
+  inverterY: boolean;
+  vibracao: boolean;
 }
 
 function ler(): Partial<Dados> {
@@ -76,11 +83,21 @@ export class Preferencias {
   sensibilidade: number;
   mira: EstiloMira;
   graficos: ConfigGraficos;
+  /** Multiplica o giro da câmera pelo analógico direito do controle. */
+  sensibilidadeControle: number;
+  /** Analógico direito para cima olha para baixo (como num avião). */
+  inverterY: boolean;
+  /** Tremor do controle ao levar dano, acertar e cair. */
+  vibracao: boolean;
 
   constructor() {
     const d = ler();
     const s = Number(d.sensibilidade);
     this.sensibilidade = Number.isFinite(s) ? Math.min(SENSIBILIDADE_MAX, Math.max(SENSIBILIDADE_MIN, s)) : SENSIBILIDADE_PADRAO;
+    const sc = Number(d.sensibilidadeControle);
+    this.sensibilidadeControle = Number.isFinite(sc) ? Math.min(SENS_CONTROLE_MAX, Math.max(SENS_CONTROLE_MIN, sc)) : SENS_CONTROLE_PADRAO;
+    this.inverterY = d.inverterY === true;
+    this.vibracao = d.vibracao !== false;
     this.mira = um(d.mira, ESTILOS_MIRA, 'cruz');
     const g = (d.graficos ?? {}) as Partial<ConfigGraficos>;
     const p = GRAFICOS_PADRAO;
@@ -98,7 +115,10 @@ export class Preferencias {
 
   salvar() {
     try {
-      localStorage.setItem(CHAVE, JSON.stringify({ sensibilidade: this.sensibilidade, mira: this.mira, graficos: this.graficos } satisfies Dados));
+      localStorage.setItem(CHAVE, JSON.stringify({
+        sensibilidade: this.sensibilidade, mira: this.mira, graficos: this.graficos,
+        sensibilidadeControle: this.sensibilidadeControle, inverterY: this.inverterY, vibracao: this.vibracao,
+      } satisfies Dados));
     } catch {
       /* sem armazenamento */
     }

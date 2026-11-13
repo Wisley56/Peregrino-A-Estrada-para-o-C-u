@@ -54,7 +54,7 @@ export class TelaDons {
       <div class="palco">
         <header><h2>Os Sete Dons</h2><p>"Sobre ele repousará o Espírito do Senhor" (Is 11,2)</p></header>
         <div class="corpo"><div class="rosa"></div><aside class="detalhe"></aside></div>
-        <footer><p class="saldo"></p><p class="rodape">← → escolhe o dom · Enter fortalece · G ou Esc para voltar</p></footer>
+        <footer><p class="saldo"></p><p class="rodape" data-controle="← → escolhe o dom · {A} fortalece · {B} ou {VOLTAR} para voltar">← → escolhe o dom · Enter fortalece · G ou Esc para voltar</p></footer>
         <button type="button" class="fechar" data-a="voltar" aria-label="Voltar">✕</button>
       </div>`;
     document.body.appendChild(this.raiz);

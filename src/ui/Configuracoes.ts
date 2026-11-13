@@ -1,8 +1,23 @@
 import { rubiSVG } from './Vitral';
 import {
   ConfigGraficos, type EstiloMira, Preferencias, PREDEFINICOES, Predefinicao, predefinicaoDe,
-  SENSIBILIDADE_MAX, SENSIBILIDADE_MIN, SENSIBILIDADE_PADRAO,
+  SENSIBILIDADE_MAX, SENSIBILIDADE_MIN, SENSIBILIDADE_PADRAO, SENS_CONTROLE_MAX, SENS_CONTROLE_MIN, SENS_CONTROLE_PADRAO,
 } from '../core/Preferencias';
+import { type Controle, nomeDe } from '../core/Controle';
+import { botao, type NomeBotao } from './Rotulos';
+
+/** O mapa do controle mostrado na aba Controles (o mesmo de Entrada.MAPA_CONTROLE). */
+const MAPA: [string, [string, NomeBotao[] | string][]][] = [
+  ['Caminhar', [
+    ['Andar', 'analógico esquerdo'], ['Correr', 'apertar o analógico esquerdo (L3)'], ['Pular', ['A']], ['Esquivar', ['B']],
+    ['Girar a câmera', 'analógico direito'],
+  ]],
+  ['Combate', [['Golpe de cajado', ['X']], ['Luz (10 de energia)', ['RT']], ['Travar a mira', ['RB', 'R3']]]],
+  ['Fé e caminho', [
+    ['Rezar (parado)', ['LB']], ['Interagir / diálogo', ['Y', 'A']], ['Lamparina da Fé', ['ESQ']], ['Dom da Ciência', ['DIR', 'LT']],
+    ['Os Sete Dons', ['VOLTAR']], ['Pausa', ['MENU']],
+  ]],
+];
 
 export interface AcoesConfig {
   /** Os ajustes gráficos mudaram: o jogo remonta o render. */
@@ -74,6 +89,20 @@ export class Configuracoes {
           <div class="opcoes mira"><div class="linha"><div><b>Mira</b><small>A luz do cajado vai para onde a mira aponta. A cruz troca de cor com o fundo para nunca sumir.</small></div><div class="seg" data-mira></div></div></div>
         </div>
         <div class="pagina" data-pag="controles">
+          <h3 class="secao">Controle</h3>
+          <p class="estado-controle"></p>
+          <label class="ajuste" data-ajuste="controle">
+            <span>Sensibilidade da câmera no controle <b class="valor"></b></span>
+            <input type="range" min="${SENS_CONTROLE_MIN}" max="${SENS_CONTROLE_MAX}" step="0.05" />
+            <button class="padrao" type="button" data-a="padrao-controle">padrão</button>
+          </label>
+          <div class="opcoes controle">
+            <div class="linha"><div><b>Inverter eixo vertical</b><small>Analógico direito para cima olha para baixo.</small></div><div class="seg" data-inv></div></div>
+            <div class="linha"><div><b>Vibração</b><small>O controle treme ao levar dano, ao acertar uma sombra e ao cair.</small></div><div class="seg" data-vib></div></div>
+          </div>
+          <div class="teclas mapa-controle"></div>
+          <p class="ajuda dica-menu"></p>
+          <h3 class="secao">Teclado e mouse</h3>
           <p class="ajuda">O mouse gira a câmera (clique na tela para prendê-lo). Esc ou P pausa.</p>
         </div>
         <div class="pagina" data-pag="graficos">
@@ -81,7 +110,7 @@ export class Configuracoes {
           <div class="opcoes"></div>
           <p class="qps"></p>
         </div>
-        <button type="button" class="vb rubi voltar" data-a="voltar">Voltar · Esc</button>
+        <button type="button" class="vb rubi voltar" data-a="voltar" data-controle="Voltar · {B}">Voltar · Esc</button>
       </div></div>`;
     document.body.appendChild(this.raiz);
 
@@ -92,8 +121,8 @@ export class Configuracoes {
     antigo?.remove();
 
     // sensibilidade
-    const faixa = this.raiz.querySelector<HTMLInputElement>('.ajuste input')!;
-    const valor = this.raiz.querySelector<HTMLElement>('.ajuste .valor')!;
+    const faixa = this.raiz.querySelector<HTMLInputElement>('[data-pag="geral"] .ajuste input')!;
+    const valor = this.raiz.querySelector<HTMLElement>('[data-pag="geral"] .ajuste .valor')!;
     const mostrarSens = () => {
       faixa.value = String(this.prefs.sensibilidade);
       valor.textContent = `${Math.round(this.prefs.sensibilidade * 100)}%`;
@@ -111,6 +140,30 @@ export class Configuracoes {
     };
     mostrarMira();
 
+    // controle
+    const faixaC = this.raiz.querySelector<HTMLInputElement>('[data-ajuste="controle"] input')!;
+    const valorC = this.raiz.querySelector<HTMLElement>('[data-ajuste="controle"] .valor')!;
+    const mostrarSensC = () => {
+      faixaC.value = String(this.prefs.sensibilidadeControle);
+      valorC.textContent = `${Math.round(this.prefs.sensibilidadeControle * 100)}%`;
+    };
+    faixaC.addEventListener('input', () => {
+      this.prefs.sensibilidadeControle = Number(faixaC.value);
+      valorC.textContent = `${Math.round(this.prefs.sensibilidadeControle * 100)}%`;
+    });
+    faixaC.addEventListener('change', () => this.prefs.salvar());
+    mostrarSensC();
+    const seg = (sel: string, chave: 'inverterY' | 'vibracao', nomes: [string, string]) => {
+      this.raiz.querySelector(sel)!.innerHTML = ([false, true] as const)
+        .map((v, i) => `<button type="button" data-pref="${chave}" data-v="${v}" class="${this.prefs[chave] === v ? 'on' : ''}">${nomes[i]}</button>`)
+        .join('');
+    };
+    const mostrarOpcoesC = () => {
+      seg('[data-inv]', 'inverterY', ['Não', 'Sim']);
+      seg('[data-vib]', 'vibracao', ['Desligada', 'Ligada']);
+    };
+    mostrarOpcoesC();
+
     this.raiz.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('button');
       if (!b) return;
@@ -121,6 +174,17 @@ export class Configuracoes {
         return mostrarMira();
       }
       if (b.dataset.a === 'voltar') return this.fechar();
+      if (b.dataset.pref === 'inverterY' || b.dataset.pref === 'vibracao') {
+        this.prefs[b.dataset.pref] = b.dataset.v === 'true';
+        this.prefs.salvar();
+        if (b.dataset.pref === 'vibracao' && this.prefs.vibracao) this.controle?.vibrar(0.4, 0.6, 180); // para sentir
+        return mostrarOpcoesC();
+      }
+      if (b.dataset.a === 'padrao-controle') {
+        this.prefs.sensibilidadeControle = SENS_CONTROLE_PADRAO;
+        this.prefs.salvar();
+        return mostrarSensC();
+      }
       if (b.dataset.a === 'padrao') {
         this.prefs.sensibilidade = SENSIBILIDADE_PADRAO;
         this.prefs.salvar();
@@ -154,8 +218,34 @@ export class Configuracoes {
     );
   }
 
+  private controle: Controle | null = null;
+
+  /** O controle do jogo, para mostrar o nome dele e o mapa com os botões da família certa. */
+  ligarControle(c: Controle) {
+    this.controle = c;
+    this.desenharControle();
+  }
+
+  /** Redesenha o estado e o mapa do controle (ao conectar um, ou trocar de teclado para controle). */
+  desenharControle() {
+    const c = this.controle;
+    const f = c?.familia ?? 'xbox';
+    this.raiz.querySelector('.estado-controle')!.textContent = c?.conectado
+      ? `🎮 ${nomeDe(c.nome)}`
+      : 'Nenhum controle em uso. Conecte um (USB ou Bluetooth) e aperte qualquer botão nele: o navegador só o mostra ao jogo depois disso.';
+    this.raiz.querySelector('.mapa-controle')!.innerHTML = MAPA.map(
+      ([grupo, linhas]) =>
+        `<div><h3>${grupo}</h3>${linhas
+          .map(([acao, bs]) => `<div class="l">${acao} <span>${typeof bs === 'string' ? bs : bs.map((b) => `<kbd>${botao(b, f)}</kbd>`).join('')}</span></div>`)
+          .join('')}</div>`,
+    ).join('');
+    this.raiz.querySelector('.dica-menu')!.textContent =
+      `Nos menus: direcional ou analógico escolhem, ${botao('A', f)} confirma, ${botao('B', f)} volta, ${botao('LB', f)} e ${botao('RB', f)} trocam de aba.`;
+  }
+
   abrir(aba: Aba = 'geral') {
     this.aberta = true;
+    this.desenharControle();
     this.raiz.classList.add('aberto');
     this.mostrarAba(aba);
     this.medidor = window.setInterval(() => this.mostrarQps(), 500);
@@ -190,7 +280,7 @@ export class Configuracoes {
     this.raiz.querySelector('[data-pre]')!.innerHTML =
       NOMES_PRE.map(([id, nome]) => `<button type="button" data-pre="${id}" class="${g.predefinicao === id ? 'on' : ''}">${nome}</button>`).join('') +
       (g.predefinicao === 'personalizada' ? '<em>personalizada</em>' : '');
-    this.raiz.querySelector('.opcoes')!.innerHTML = OPCOES.map((o) => {
+    this.raiz.querySelector('[data-pag="graficos"] .opcoes')!.innerHTML = OPCOES.map((o) => {
       const botoes = o.valores
         .map(([v, nome], i) => `<button type="button" data-chave="${o.chave}" data-i="${i}" class="${g[o.chave] === v ? 'on' : ''}">${nome}</button>`)
         .join('');
