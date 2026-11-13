@@ -36,6 +36,7 @@ por código, o som é sintetizado na hora e o projeto inteiro é software livre.
 - **A Cripta dos Primeiros Peregrinos**: braseiros para acender e **Mamom, o Guardião da Avareza**, que guarda a
   Lamparina da Fé.
 - **O Deserto das Vozes**: miragens que tentam o peregrino, vozes ao vento e Santo Antão, que dá o dom da Ciência.
+  Perto do poço, uma capela de cúpulas brancas, como as dos mosteiros do Egito, onde um monge confessa.
 - **O Poço do Meio-Dia**: a **Acídia**, o demônio do meio-dia, escondida entre reflexos de si mesma.
 - **Os Sete Dons**: uma rosácea de vitral onde as graças conquistadas fortalecem cada dom.
 - **Seu peregrino**: nome, corpo, pele, cabelo, roupa e chapéu à sua escolha. Ele envelhece ao longo da história.

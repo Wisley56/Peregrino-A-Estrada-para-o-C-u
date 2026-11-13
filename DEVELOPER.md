@@ -241,7 +241,7 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
 |---|---|---|
 | O Vale | `mundo/Mundo.ts` | Terreno gerado, capela com interior, cruzeiro, fauna pastoril; a névoa a oeste exige a lamparina acesa |
 | Cripta dos Primeiros Peregrinos | `mundo/Cripta.ts` | Braseiros com chama de 14 s; arena de Mamom (`entidades/Guardiao.ts`) |
-| Deserto das Vozes | `mundo/Deserto.ts` | Miragens que viram sombras, vozes, rocha falsa revelada pela Ciência |
+| Deserto das Vozes | `mundo/Deserto.ts` | Miragens que viram sombras, vozes, rocha falsa revelada pela Ciência, capela de cúpulas |
 | Poço do Meio-Dia | `mundo/PocoMeioDia.ts` | A Acídia (`entidades/Acedia.ts`), reflexos que só a Ciência desfaz, torpor |
 | Cidade Dourada | `mundo/Cidade.ts` | Cidade murada na Úmbria, peso, atos de piedade, São Damião reconstruída pedra a pedra, o lobo de Gubbio |
 | Palácio da Gula | `mundo/Banquete.ts` | Salão do Banquete; a Gula (`entidades/Gula.ts`), travessas como alvos, peso repartido com os pobres |
@@ -343,6 +343,23 @@ do padre da região (padre no Vale, Frei Leão na cidade).
 
 `mundo/Capela.ts` monta a capela de uma região. A planta é sempre a mesma; o `EstiloCapela` muda as cores
 (reboco, pedra, telha, madeira, piso, vitrais, flores), e cada região passa o seu.
+
+| Região | Estilo | Confessor |
+|---|---|---|
+| Vale | `ESTILO_VALE`: reboco claro, telha vermelha | o padre (`padre`) |
+| Cidade Dourada | `ESTILO_UMBRIA`: pedra rosada do Subásio, vitrais no azul de Giotto | Frei Leão (`frei_leao`) |
+| Deserto das Vozes | `ESTILO_DESERTO`: adobe caiado, terraço com cúpulas, piso de terracota | o monge do deserto (`monge`) |
+
+`EstiloCapela.cobertura` escolhe o alto do prédio:
+
+- `telhado` (padrão): duas águas de telha, empenas em degraus e campanário em pirâmide;
+- `cupulas`: o terraço caiado com parapeito e ameias, gárgulas de madeira e três cúpulas com tambor e cruz (a maior
+  sobre o altar). O campanário ganha uma cupulazinha. É o estilo dos mosteiros que nasceram em volta de Antão (o de
+  Santo Antão, no Mar Vermelho). `cal` é a cor das cúpulas.
+
+A capela do deserto fica ao norte do poço, com a porta para o rastro (`CAPELA_DESERTO`). `gerarAlturas` aplana o
+chão em volta e abre uma trilha até o rastro. A primeira entrada toca `deserto_capela`, e o altar fala por
+`deserto_altar`, que aponta o próximo passo da região.
 
 - **Casca** em voxel de 0,25 m (9 × 14 m, paredes de 5 m): paredes com rodapé de pedra e lambri, vitrais em arco,
   porta em arco com rosácea, piso em xadrez com tapete no corredor, presbitério um degrau acima.
@@ -494,7 +511,5 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 
 ## Próximos passos
 
-1. O chefão da Gula, "O Banquete sem fim", no palácio da Cidade Dourada (as portas já estão lá, trancadas).
-2. Uma capela por região com `CapelaRegional` (o Vale e a cidade já têm a sua; falta o Deserto).
-3. Criar cenas para as conversas com os NPCs: câmera de diálogo, gestos e animações.
-4. Montar a trilha sonora a partir de gravações de domínio público (Musopen).
+1. Criar cenas para as conversas com os NPCs: câmera de diálogo, gestos e animações.
+2. Montar a trilha sonora a partir de gravações de domínio público (Musopen).
