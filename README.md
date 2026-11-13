@@ -38,6 +38,8 @@ por código, o som é sintetizado na hora e o projeto inteiro é software livre.
 - **O Deserto das Vozes**: miragens que tentam o peregrino, vozes ao vento e Santo Antão, que dá o dom da Ciência.
   Perto do poço, uma capela de cúpulas brancas, como as dos mosteiros do Egito, onde um monge confessa.
 - **O Poço do Meio-Dia**: a **Acídia**, o demônio do meio-dia, escondida entre reflexos de si mesma.
+- **Conversas encenadas**: ao falar com alguém, a câmera passa a planos de cinema (o rosto de quem fala e, nas
+  escolhas, o seu), e os personagens gesticulam: acenam, abrem os braços, abençoam, baixam a cabeça.
 - **Os Sete Dons**: uma rosácea de vitral onde as graças conquistadas fortalecem cada dom.
 - **Seu peregrino**: nome, corpo, pele, cabelo, roupa e chapéu à sua escolha. Ele envelhece ao longo da história.
 

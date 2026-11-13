@@ -323,6 +323,8 @@ aparece quando a fala toca.
 | `antao: texto` | fala de um falante de `dialogo/Falantes.ts` (o id define nome, estilo e retrato) |
 | `* [opção]` | escolha; o jogador escolhe com 1–9, setas ou clique |
 | `#pausa:1.4` | fecha a caixa por 1,4 s antes da fala |
+| `#gesto:sim` | gesto de quem fala (`#gesto:rita=acolher` para outro personagem em cena) |
+| `#plano:perto` | pede um enquadramento à câmera de conversa (`geral`, `perto`, `ombro`) |
 | `~ evento("dom_ciencia")` | efeito de jogo tratado em `Jogo.eventoDialogo` |
 | `~ marcar("flag")` | grava uma flag no save |
 
@@ -333,6 +335,48 @@ jogo, não.
 
 **Estilos da caixa**: `espirito` (dourado), `inscricao` (itálico), `vicio` (violeta). Falantes sem estilo usam
 a caixa comum.
+
+### Cenas de conversa
+
+Numa conversa com um NPC, a câmera e os corpos encenam o diálogo. Quando cada fala aparece, o Hud chama
+`Jogo.aoFalar`, e o jogo acha o corpo de quem fala com `Npc.doFalante(id, perto)` (o NPC visível mais perto com
+aquele falante).
+
+**Câmera de conversa** (`core/CameraConversa.ts`)
+
+- É uma camada sobre a câmera de terceira pessoa: a de jogo continua calculando por baixo, e a de conversa mistura
+  posição, direção e lente (60° → 44°) por um peso que sobe em 0,6 s ao começar e desce ao terminar.
+- Planos:
+
+  | Plano | Quando | Enquadramento |
+  |---|---|---|
+  | `npc` | o NPC fala | por cima do ombro do peregrino; o rosto do NPC num terço da tela |
+  | `peregrino` | as escolhas aparecem | o contraplano, por cima do ombro do NPC |
+  | `geral` | abertura e `#plano:geral` | os dois de lado |
+  | `perto` | `#plano:perto`, ou quando o ombro tapa o rosto | o rosto de quem fala |
+
+- Segue a regra dos 180 graus: o lado da linha entre os dois é escolhido no começo (o mesmo da câmera de jogo) e
+  mantido nos planos e contraplanos. Trocar de plano é corte seco; o plano se aproxima devagar enquanto dura.
+- Se a parede ou o corpo do outro tapar o rosto enquadrado (um raio contra o corpo de quem está em primeiro plano;
+  o Francisco, por exemplo, tem os braços erguidos), tenta abrir mais para o lado, depois o plano de perto, o outro
+  lado da linha e, por fim, o plano geral. Se nada couber, fica a câmera de jogo.
+- Falas sem corpo (o Espírito Santo, as placas) mantêm o plano atual. O peregrino se vira para quem fala.
+- Só entra fora de luta, confissão, queda e troca de área, com o NPC a menos de 8 m, e se a opção **Câmera nas
+  conversas** (Configurações → Geral, `Preferencias.cameraConversa`) estiver ligada. Faixas de cinema (`#cinema`)
+  descem e o painel de status e a mira somem (`body.em-conversa`).
+
+**Gestos** (`entidades/Gestos.ts`)
+
+- Cada `Npc` tem um `Gesticulador`. Os gestos são procedurais: curvas curtas que somam uma pose (tronco, cabeça
+  e braços) por cima do olhar e da respiração do NPC.
+- Gestos: `sim`, `nao`, `inclinar`, `ceu` (olhar o alto, braços de orante), `explicar`, `abencoar` (a mão traça
+  a cruz), `acolher`, `triste`, `surpresa`, `rezar` (mãos postas), `pensar` e `peito` (a mão no peito).
+- Enquanto a caixa escreve a fala, a cabeça acompanha as sílabas; numa fala longa sem gesto pedido, a mão livre
+  acompanha a frase (`explicar`).
+- Os braços do `Humano` são grupos com a articulação no ombro (`bracoD` em -x, `bracoE` em +x), e o objeto da
+  mão vai junto. `maoOcupada` diz qual mão segura algo, e os gestos de uma mão usam a outra.
+- Os santos de modelo inteiro (Antão, Francisco) guardam a pose da iconografia: neles o gesto vira uma inclinação
+  contida do corpo todo.
 
 ## Capelas
 
@@ -414,7 +458,7 @@ bichos pequenos ou fica de pé para os grandes (`carinhoAlto`).
 
 - **`entidades/Npc.ts`**: base de todo personagem com quem se conversa. A ficha (`DefNpc`) diz o id, o falante,
   o nó do roteiro e a aparência. O NPC respira, vira o corpo para o peregrino a menos de 9 m, acompanha com a
-  cabeça (até ±1 rad) e acena enquanto fala.
+  cabeça (até ±1 rad) e gesticula conforme o roteiro (veja [Cenas de conversa](#cenas-de-conversa)).
 - **`Jogo.falarCom(npc)`** cria a interação padrão ("F: falar com …") e liga `npc.falando` durante a conversa.
 - **`voxel/Humano.ts`**: monta gente do povo a partir de um `Figurino` (gênero, idade, pele, penteado, traje,
   barba, acessório, auréola). A cabeça é 6³, como a do peregrino, e fica num grupo próprio para poder girar.
@@ -511,5 +555,35 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 
 ## Próximos passos
 
-1. Criar cenas para as conversas com os NPCs: câmera de diálogo, gestos e animações.
-2. Montar a trilha sonora a partir de gravações de domínio público (Musopen).
+O roteiro segue o Documento base e o GDD complementar (na pasta acima do projeto). Já estão prontos o Vale, o
+Deserto e a Cidade Dourada, com Mamom, a Acídia e a Gula.
+
+### A base do jogo
+
+1. **As 8 regiões que faltam**, cada uma com santo guia, provação, chefão-vício com mecânica própria, capela no
+   estilo da região e a passagem do mundo cinza para a cor:
+
+   | Região | Santo guia | Provação | Dom |
+   |---|---|---|---|
+   | Ruas da Bahia | Santa Dulce dos Pobres | Cuidar dos doentes e esquecidos | Piedade |
+   | Mar da Tempestade | São Paulo | Naufrágio, perseverar na missão | Conselho |
+   | Catacumbas e Arena | Santas Perpétua e Felicidade, São Lourenço | Fidelidade sob ameaça | Fortaleza |
+   | O Castelo Interior | Santa Teresa d'Ávila | Atravessar as 7 moradas da alma | Entendimento |
+   | A Noite Escura | São João da Cruz | Seguir quando Deus parece em silêncio | Sabedoria |
+   | Campo de Auschwitz (capítulo sério) | São Maximiliano Kolbe | Dar a vida pelo outro | Todos |
+   | Mundo Digital (bônus) | São Carlo Acutis | Usar a tecnologia para o bem | Conselho |
+   | A Passagem (final) | Todos os santos | Travessia do rio de luz | — |
+
+   Os vícios que ainda não viraram chefão são a Soberba, a Inveja, a Ira e a Ilusão. Como há mais regiões do que
+   vícios, falta decidir o chefão de cada região.
+2. **Árvore de dons**: os níveis 1 a 5 de Conselho, Fortaleza, Entendimento e Sabedoria, as combinações de dons
+   (por exemplo, Fortaleza + Piedade protege os NPCs) e o ajuste do equilíbrio dos dons que já existem.
+3. **O final, A Passagem e a Morada Celeste**: o peregrino idoso, o rio de luz, os santos e as pessoas que ele
+   ajudou à espera, e Jesus chamando-o pelo nome. O final deve refletir a jornada de cada jogador e ter um
+   significado especial.
+4. **Trilha sonora** a partir de gravações de domínio público (Musopen), com tema cinza e restaurado por região.
+
+### Depois da base
+
+- Missões secundárias: 2 a 4 por região, com os NPCs locais.
+- As expansões planejadas.
