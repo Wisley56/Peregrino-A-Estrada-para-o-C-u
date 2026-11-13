@@ -844,6 +844,7 @@ export class Jogo {
             if (this.primeiraVez('meiodia_entrou')) this.dialogos.tocar('meiodia_chegada');
           }),
       },
+      ...this.interacoesDaCapela(d.capela, 'deserto_altar'),
     ];
     this.interacoes.meiodia = [
       {
@@ -1412,6 +1413,9 @@ export class Jogo {
     // dentro da capela o telhado some e a câmera passa por cima das paredes, como na cripta
     const cap = this.area.capela;
     const naCapela = !!cap && cap.dentro(this.peregrino.pos);
+    // a primeira vez na capela do deserto, o Espírito conta de quem ela é
+    if (naCapela && this.area === this.deserto && this.comecou && !this.hud.dialogoAberto && this.primeiraVez('deserto_capela'))
+      this.dialogos.tocar('deserto_capela');
     if (this.area !== this.cripta) {
       this.camera.subirAoBater = naCapela && !this.emConfissao;
       this.camera.arfagemMin = naCapela && !this.emConfissao ? 0.35 : ARFAGEM_LIVRE;
@@ -2032,7 +2036,10 @@ export class Jogo {
 
   private oracaoDobrada() {
     const p = this.peregrino.pos;
-    if (this.area === this.deserto) return p.distanceTo(this.deserto.cruz) < 4 || p.distanceTo(this.deserto.antao.pos) < 5;
+    if (this.area === this.deserto) {
+      const d = this.deserto;
+      return p.distanceTo(d.cruz) < 4 || p.distanceTo(d.antao.pos) < 5 || d.capela.dentro(p);
+    }
     if (this.area === this.cidade) {
       const c = this.cidade;
       if (p.distanceTo(c.cruzeiro) < 4 || p.distanceTo(c.francisco.pos) < 5 || c.capela.dentro(p)) return true;
@@ -2192,7 +2199,7 @@ export class Jogo {
       { id: 'deserto', nome: NOMES_AREA.deserto, pontos: [
         ponto('Chegada', d.chegada, oeste), ponto('Poço', d.poco.clone().add(v(3, 0)), oeste), ponto('Caverna de Santo Antão', d.caverna.clone().add(v(0, 4))),
         ponto('Rocha falsa', d.parede.clone().add(v(3, 0)), oeste), ponto('Fim da fenda', d.fimFenda.clone().add(v(2.5, 0)), oeste),
-        ponto('Estrada do sul', d.estradaSul.clone().add(v(0, -3)), sul),
+        ponto('Estrada do sul', d.estradaSul.clone().add(v(0, -3)), sul), ponto('Capela', d.capela.porta.clone().add(v(0, 3))),
       ] },
       { id: 'meiodia', nome: NOMES_AREA.meiodia, pontos: [ponto('Chegada', md.chegada, oeste), ponto('Praça (luta)', md.centro.clone().add(v(7, 0)), oeste)] },
       { id: 'cidade', nome: NOMES_AREA.cidade, pontos: [

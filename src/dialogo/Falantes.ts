@@ -19,6 +19,7 @@ export const FALANTES = {
   padre: { nome: 'Padre' },
   francisco: { nome: 'São Francisco' },
   frei_leao: { nome: 'Frei Leão' },
+  monge: { nome: 'Monge do deserto' },
   leproso: { nome: 'O leproso' },
   tomas: { nome: 'Tomás' },
   rita: { nome: 'Rita' },

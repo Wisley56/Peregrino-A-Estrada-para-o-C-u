@@ -12,6 +12,8 @@ import { construirCruzeiro, construirPlaca } from './Cenario';
 import { malhaDeColunas } from './Terreno';
 import type { FonteMapa } from '../ui/Minimapa';
 import { escurecer } from './PocoMeioDia';
+import { CapelaRegional, type EstiloCapela } from './Capela';
+import type { DefNpc } from '../entidades/Npc';
 
 /**
  * O Deserto das Vozes (segunda região). Fica longe do Vale (em ORIGEM) e é uma área separada,
@@ -40,6 +42,45 @@ const MESAS: [number, number, number, number, number][] = [
 const X_SUL = 14;
 /** Fenda no penhasco oeste (fechada pela parede falsa). */
 const FENDA = { z: 30, parede: -58.5, fim: -76 };
+
+/**
+ * A capela do deserto (centro, coordenadas locais), ao norte do poço, com a porta para o rastro. Tem 9 × 14 m;
+ * o terreno em volta é aplanado e uma trilha liga o adro ao rastro.
+ */
+const CAPELA_DESERTO = new THREE.Vector2(30, -25);
+const PORTA_CAPELA_Z = CAPELA_DESERTO.y + 8.5;
+
+/**
+ * A capela dos mosteiros do deserto do Egito (o de Santo Antão, no Mar Vermelho): adobe caiado, terraço com
+ * cúpulas brancas, piso de terracota, tapete de lã tingida e vidros cor de âmbar e turquesa.
+ */
+const ESTILO_DESERTO: EstiloCapela = {
+  reboco: 0xeadcc0,
+  pedra: 0xc2996a,
+  telha: 0xd8c8a8,
+  cumeeira: 0xb8a078,
+  madeira: 0x8e6238,
+  madeiraEscura: 0x5a3a1e,
+  pisoA: 0xc88e5a,
+  pisoB: 0xb07648,
+  marmore: 0xeee2c8,
+  tapete: 0x8a2a1e,
+  vitral: [0x2a8a9a, 0xb83a2a, 0xe0a83a, 0x3a9a7a, 0x2a4a9a],
+  flores: [0xd83a8a, 0xf2d24a, 0xffffff],
+  cobertura: 'cupulas',
+  cal: 0xf6f0e4,
+};
+
+/**
+ * O monge-sacerdote que confessa na capela do deserto: hábito negro com capuz, como os monges do Egito,
+ * barba longa e branca e o livro das orações.
+ */
+const MONGE: DefNpc = {
+  id: 'monge_deserto',
+  falante: 'monge',
+  no: 'capela_confissao',
+  visual: { genero: 'm', idade: 'idoso', pele: 0xc08a60, penteado: 'capuz', corCabelo: 0xe8e4dc, barba: 'longa', traje: 'habito', cor: 0x1e1a1c, cor2: 0x2a2226, acessorio: 'livro' },
+};
 
 type TipoMiragem = 'oasis' | 'ouro' | 'banquete' | 'casa';
 const MIRAGENS: { tipo: TipoMiragem; x: number; z: number; falas: string[] }[] = [
@@ -297,6 +338,8 @@ export class Deserto implements Area {
   readonly fogo: THREE.Vector3;
   readonly caverna: THREE.Vector3;
   readonly antao: Npc;
+  /** A capela do deserto, com o monge que confessa. */
+  readonly capela: CapelaRegional;
   readonly parede: THREE.Vector3;
   readonly fimFenda: THREE.Vector3;
   /** Fim do corredor do sul: a estrada para a Cidade Dourada. */
@@ -337,6 +380,19 @@ export class Deserto implements Area {
     for (const [i, dx, dz] of [[1, -3.5, 3], [2, 4, 3.5], [3, -2.5, -4.5], [4, 6.5, -1]]) {
       const palma = palmeira(i);
       palma.position.copy(w(POCO.x + dx, POCO.y + dz));
+      this.grupo.add(palma);
+      this.circulos.push({ x: palma.position.x, z: palma.position.z, r: 0.35 });
+    }
+
+    // a capela do deserto, com o monge no confessionário (o chão já foi aplanado em gerarAlturas)
+    const hc = this.altura(CAPELA_DESERTO.x + ORIGEM_DESERTO.x, CAPELA_DESERTO.y + ORIGEM_DESERTO.z);
+    this.capela = new CapelaRegional(ESTILO_DESERTO, CAPELA_DESERTO.x + ORIGEM_DESERTO.x, CAPELA_DESERTO.y + ORIGEM_DESERTO.z, hc, MONGE);
+    this.grupo.add(this.capela.grupo);
+    this.caixas.push(...this.capela.caixas);
+    // duas tamareiras no adro
+    for (const [i, dx] of [[7, -6.5], [8, 6.2]]) {
+      const palma = palmeira(i);
+      palma.position.copy(w(CAPELA_DESERTO.x + dx, PORTA_CAPELA_Z - 0.5));
       this.grupo.add(palma);
       this.circulos.push({ x: palma.position.x, z: palma.position.z, r: 0.35 });
     }
@@ -398,6 +454,7 @@ export class Deserto implements Area {
     for (let n = 0; n < 140; n++) {
       const lx = (rnd() - 0.5) * 116, lz = (rnd() - 0.5) * 116;
       if (distRastro(lx, lz) < 5 || Math.hypot(lx - POCO.x, lz - POCO.y) < 9) continue;
+      if (Math.abs(lx - CAPELA_DESERTO.x) < 10 && lz > CAPELA_DESERTO.y - 11 && lz < -5) continue; // a capela e a trilha
       if (MIRAGENS.some((mi) => Math.hypot(lx - mi.x, lz - mi.z) < 8)) continue;
       if (this.tipoEm(lx, lz) === 2) continue;
       const big = rnd() < 0.3;
@@ -505,6 +562,7 @@ export class Deserto implements Area {
   atualizar(dt: number, jogador: THREE.Vector3) {
     this.t += dt;
     this.antao.atualizar(dt, jogador);
+    this.capela.atualizar(dt, jogador);
     this.luzFogo.intensity = 5 + Math.sin(this.t * 13) * 1 + Math.sin(this.t * 31) * 0.6;
     // miragens: sussurram de longe; de perto, se desfazem e mostram a sombra
     let perto: Miragem | null = null;
@@ -575,8 +633,15 @@ export class Deserto implements Area {
         for (const mi of MIRAGENS) plano = Math.max(plano, 1 - suave(5, 8, Math.hypot(x - mi.x, z - mi.z)));
         plano = Math.max(plano, 1 - suave(6, 9, Math.hypot(x + 35, z + 32)));
         if (z > 38) plano = Math.max(plano, 1 - suave(3, 7, Math.abs(x - X_SUL)));
-        h = h + (base - h) * plano;
-        if (dr < 1.5) tipo = 1;
+        // a capela e o adro, e a trilha da porta até o rastro
+        const fora = Math.max(Math.abs(x - CAPELA_DESERTO.x) - 6.5, Math.abs(z - CAPELA_DESERTO.y - 1) - 9.5, 0);
+        plano = Math.max(plano, 1 - suave(0, 5, fora));
+        const trilha = Math.abs(x - CAPELA_DESERTO.x) < 1.3 && z > PORTA_CAPELA_Z && z < -6;
+        if (trilha) plano = 1;
+        const baseCapela = this.chao(CAPELA_DESERTO.x, CAPELA_DESERTO.y);
+        const naCapela = 1 - suave(0, 5, fora);
+        h = h + ((naCapela > 0 ? base + (baseCapela - base) * naCapela : base) - h) * plano;
+        if (dr < 1.5 || trilha) tipo = 1;
         if (Math.hypot(x - POCO.x, z - POCO.y) < 6 && this.ruido.fbm(x * 0.4, z * 0.4) > 0.5) tipo = 3;
         // mesas de arenito (penhascos)
         for (const [mx, mz, rx, rz, alt] of MESAS) {
@@ -654,6 +719,7 @@ export class Deserto implements Area {
         if (i < 0 || j < 0 || i >= TAM || j >= TAM) return 0x6a4a30;
         const b = this.caixaParede;
         if (!this.paredeAberta && x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1) return 0x8a5a36; // a rocha (falsa)
+        if (this.capela.noMapa(x, z)) return 0xf2ead8;
         const h = this.alturas[i * TAM + j];
         const c = this.corTopo(i, j, h);
         return this.tipo[i * TAM + j] === 2 ? escurecer(c, 0.72) : c;
@@ -664,6 +730,8 @@ export class Deserto implements Area {
   // ───────────────────────────── física ─────────────────────────────
 
   altura(x: number, z: number) {
+    const p = this.capela?.piso(x, z);
+    if (p != null) return p;
     const i = Math.floor(x - ORIGEM_DESERTO.x + META), j = Math.floor(z - ORIGEM_DESERTO.z + META);
     if (i < 0 || j < 0 || i >= TAM || j >= TAM) return 99;
     return this.alturas[i * TAM + j];

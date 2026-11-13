@@ -37,6 +37,29 @@ espirito: O deserto também tem cor! Nenhuma voz falsa sobrou entre as dunas.
 espirito: Agora só resta o que mora depois da fenda.
 -> END
 
+// ─────────────────────────────── a capela do deserto ───────────────────────────────
+// Dos mosteiros que nasceram em volta de Antão: adobe caiado, cúpulas brancas, um monge-sacerdote que confessa.
+
+=== deserto_capela ===
+espirito: Depois de Antão, outros vieram ao deserto para rezar perto dele. Esta capela é deles.
+espirito: Aqui um monge escuta confissões, e o Senhor está no sacrário. Ninguém atravessa o deserto sozinho.
+-> END
+
+=== deserto_altar ===
+{
+- not tem("dom_ciencia"):
+    espirito: Siga os marcos de pedra para oeste, até a caverna de Santo Antão.
+- not tem("deserto_parede"):
+    espirito: Antão falou de uma fenda no penhasco a oeste. Olhe para ela com a Ciência.
+- not tem("meiodia_vencido"):
+    espirito: Depois da fenda fica o Poço do Meio-Dia. Lá mora a Acídia, "o flagelo que devasta ao meio-dia" (Sl 91,6).
+    espirito: Quando o torpor pesar, não pare de rezar. Quem persevera se levanta.
+- else:
+    espirito: A estrada velha, ao sul, está aberta: ela sobe para a Cidade Dourada.
+    inscricao: "Vai, senta-te na tua cela, e a cela te ensinará tudo." (Abba Moisés, Ditos dos Padres do Deserto)
+}
+-> END
+
 // ─────────────────────────────── Santo Antão ───────────────────────────────
 
 === antao ===

@@ -33,6 +33,14 @@ export interface EstiloCapela {
   /** Cores dos vitrais. */
   vitral: number[];
   flores: number[];
+  /**
+   * `telhado` (padrão): duas águas de telha, empenas em degraus e campanário de pirâmide.
+   * `cupulas`: o terraço caiado com parapeito e cúpulas brancas dos mosteiros do deserto (o de Santo Antão, no
+   * Egito), e o campanário com uma cupulazinha.
+   */
+  cobertura?: 'telhado' | 'cupulas';
+  /** Cor das cúpulas e do terraço (com `cobertura: 'cupulas'`). */
+  cal?: number;
 }
 
 export const ESTILO_VALE: EstiloCapela = {
@@ -178,8 +186,47 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
     }
   // o que fica acima das paredes (empenas, campanário, telhado) é uma malha só, que some com o peregrino dentro
   const t = new Modelo();
+  const cupulas = e.cobertura === 'cupulas';
+  const cal = v(e.cal ?? 0xf4eee2, 0.02);
+  /** Cúpula: tambor curto com frisos de cor e meia esfera por cima, com uma cruz no alto. */
+  const cupula = (cx: number, cz: number, r: number, base: number, tambor: number) => {
+    for (let iy = base; iy < base + tambor; iy++)
+      for (let ix = Math.floor(cx - r); ix <= Math.ceil(cx + r); ix++)
+        for (let iz = Math.floor(cz - r); iz <= Math.ceil(cz + r); iz++) {
+          const d = Math.hypot(ix + 0.5 - cx, iz + 0.5 - cz);
+          if (d > r) continue;
+          // janelinhas do tambor: frestas escuras nos quatro lados
+          const fresta = iy === base + 1 && d > r - 1 && Math.min(Math.abs(ix + 0.5 - cx), Math.abs(iz + 0.5 - cz)) < 0.8;
+          t.ponto(ix, iy, iz, fresta ? 0x3a2a1c : iy === base ? pedra(ix, iy, iz) : cal(ix, iy, iz));
+        }
+    const topo = base + tambor;
+    for (let dy = 0; dy <= r; dy++)
+      for (let ix = Math.floor(cx - r); ix <= Math.ceil(cx + r); ix++)
+        for (let iz = Math.floor(cz - r); iz <= Math.ceil(cz + r); iz++)
+          if (Math.hypot(ix + 0.5 - cx, dy + 0.5, iz + 0.5 - cz) <= r + 0.3) t.ponto(ix, topo + dy, iz, cal(ix, topo + dy, iz));
+    const cy = topo + Math.round(r) + 1;
+    const x = Math.floor(cx), z = Math.floor(cz);
+    t.caixa(x, cy, z, 1, 5, 1, 0xe8c45a).caixa(x - 1, cy + 3, z, 3, 1, 1, 0xe8c45a);
+  };
+  if (cupulas) {
+    // terraço caiado sobre as paredes, parapeito com ameias baixas e gárgulas de madeira para a água
+    t.caixa(0, H, 0, W, 1, D, cal);
+    for (let ix = -1; ix <= W; ix++)
+      for (let iz = -1; iz <= D; iz++) {
+        const borda = ix <= 0 || ix >= W - 1 || iz <= 0 || iz >= D - 1;
+        if (!borda) continue;
+        t.ponto(ix, H, iz, pedra(ix, H, iz));
+        t.ponto(ix, H + 1, iz, cal(ix, H + 1, iz));
+        if ((ix + iz) % 3 === 0) t.ponto(ix, H + 2, iz, cal(ix, H + 2, iz));
+      }
+    for (const iz of [12, 30, 44]) t.caixa(-2, H, iz, 1, 1, 1, e.madeiraEscura).caixa(W + 1, H, iz, 1, 1, 1, e.madeiraEscura);
+    // a cúpula maior sobre o altar, e duas sobre a nave
+    cupula(W / 2, 9, 7, H + 1, 3);
+    cupula(W / 2, 24, 6, H + 1, 2);
+    cupula(W / 2, 37, 6, H + 1, 2);
+  }
   // empenas (frente e fundo), em degraus como nas capelas de pedra
-  for (let k = 0; k < PICO; k++) {
+  for (let k = 0; k < (cupulas ? 0 : PICO); k++) {
     const iy = H + k;
     for (let ix = 2 * k; ix < W - 2 * k; ix++)
       for (const iz of [0, 1, D - 2, D - 1]) {
@@ -190,7 +237,7 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
   // campanário sobre a fachada: base, sineira em arco, sino, cobertura e cruz
   const T0 = 13, T1 = 23, TZ0 = D - 6, TZ1 = D;
   const topoT = H + PICO + 1;
-  for (let iy = H + 4; iy < topoT + 7; iy++)
+  for (let iy = cupulas ? H + 1 : H + 4; iy < topoT + (cupulas ? 6 : 7); iy++)
     for (let ix = T0; ix < T1; ix++)
       for (let iz = TZ0; iz < TZ1; iz++) {
         const borda = ix === T0 || ix === T1 - 1 || iz === TZ0 || iz === TZ1 - 1;
@@ -205,9 +252,12 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
   t.caixa(T0 - 1, topoT + 5, TZ0 - 1, T1 - T0 + 2, 1, TZ1 - TZ0 + 2, pedra);
   t.caixa(16, topoT, TZ0 + 2, 4, 3, 2, (_x, y) => (y === topoT ? 0xb88a2a : 0xd8b04a)); // sino
   t.caixa(17, topoT + 3, TZ0 + 2, 2, 2, 2, 0x5a4a3a); // trave do sino
-  for (let k = 0; k < 6; k++) t.caixa(T0 + k, topoT + 6 + k, TZ0 + k - 1, T1 - T0 - 2 * k, 1, TZ1 - TZ0 - 2 * k + 2, (x, y, z) => ((x + z + y) % 3 ? e.telha : e.cumeeira));
-  t.caixa(16, topoT + 9, TZ0 + 1, 4, 1, 4, e.cumeeira); // remate da cobertura
-  t.caixa(17, topoT + 10, TZ0 + 2, 2, 8, 2, 0xe8c45a).caixa(15, topoT + 15, TZ0 + 2, 6, 2, 2, 0xe8c45a); // cruz
+  if (cupulas) cupula((T0 + T1) / 2, (TZ0 + TZ1) / 2, 4, topoT + 6, 1); // cupulazinha da sineira, com a cruz
+  else {
+    for (let k = 0; k < 6; k++) t.caixa(T0 + k, topoT + 6 + k, TZ0 + k - 1, T1 - T0 - 2 * k, 1, TZ1 - TZ0 - 2 * k + 2, (x, y, z) => ((x + z + y) % 3 ? e.telha : e.cumeeira));
+    t.caixa(16, topoT + 9, TZ0 + 1, 4, 1, 4, e.cumeeira); // remate da cobertura
+    t.caixa(17, topoT + 10, TZ0 + 2, 2, 8, 2, 0xe8c45a).caixa(15, topoT + 15, TZ0 + 2, 6, 2, 2, 0xe8c45a); // cruz
+  }
   // adro: degrau de pedra, canteiros de flores e lanternas
   m.caixa(11, 0, D + 1, 14, 1, 3, pedra);
   for (const x0 of [3, 26]) {
@@ -225,7 +275,7 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
 
   // ════════════════════════ telhado (some com o peregrino dentro) ════════════════════════
   // (as águas do telhado; as empenas e o campanário, montados acima, vão junto)
-  for (let k = 0; k < PICO; k++) {
+  for (let k = 0; k < (cupulas ? 0 : PICO); k++) {
     const iy = H + k;
     for (let iz = -2; iz < D + 2; iz++) {
       const telha = (x: number) => ((iz + k) % 4 === 0 ? e.cumeeira : variar(e.telha, x, iy, iz, 0.05));
@@ -233,7 +283,7 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
       for (const ix of [W - 2 * k, W - 2 * k + 1]) t.ponto(ix, iy, iz, telha(ix));
     }
   }
-  for (let iz = -2; iz < D + 2; iz++) t.caixa(2 * PICO - 2, H + PICO, iz, W - 4 * PICO + 4, 1, 1, e.cumeeira); // cumeeira
+  if (!cupulas) for (let iz = -2; iz < D + 2; iz++) t.caixa(2 * PICO - 2, H + PICO, iz, W - 4 * PICO + 4, 1, 1, e.cumeeira); // cumeeira
   const telhado = t.malha(C, [W / 2, 0, D / 2]);
   grupo.add(telhado);
 
