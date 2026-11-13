@@ -38,6 +38,14 @@ export interface Humano {
   cabeca: THREE.Group;
   /** Altura dos olhos em metros (para enquadrar o retrato). */
   alturaOlhos: number;
+  /**
+   * Braços articulados no ombro (para os gestos), com o que a mão segura. O direito do personagem fica em -x.
+   * Modelos inteiros (os santos com a iconografia fixa) não têm.
+   */
+  bracoD?: THREE.Group;
+  bracoE?: THREE.Group;
+  /** Qual mão está ocupada com um objeto (os gestos de uma mão usam a outra). */
+  maoOcupada?: 'd' | 'e';
 }
 
 const CABELO_GRISALHO = 0xcfcac2;
@@ -103,11 +111,12 @@ export function montarHumano(f: Figurino): Humano {
       break;
     }
   }
-  // ombros e braços com as mãos
-  c.caixa(-5, 11, -1, 2, 6, 3, roupa).caixa(4, 11, -1, 2, 6, 3, roupa);
-  c.caixa(-5, 10, -1, 2, 1, 3, pele).caixa(4, 10, -1, 2, 1, 3, pele);
+  // braços com as mãos, cada um num modelo próprio (giram no ombro); o objeto da mão vai junto com o braço
+  const bd = new Modelo().caixa(-5, 11, -1, 2, 6, 3, roupa).caixa(-5, 10, -1, 2, 1, 3, pele);
+  const be = new Modelo().caixa(4, 11, -1, 2, 6, 3, roupa).caixa(4, 10, -1, 2, 1, 3, pele);
   if (f.genero === 'f' && !crianca) c.caixa(-2, 13, 3, 5, 2, 1, roupa); // busto discreto
-  acessorio(c, f.acessorio, pele);
+  const maoOcupada = f.acessorio === 'cajado' || f.acessorio === 'muleta' ? 'd' : f.acessorio ? 'e' : undefined;
+  acessorio(maoOcupada === 'd' ? bd : be, f.acessorio, pele);
 
   // ── cabeça: 6×6×6 como a do peregrino, rosto em z = 5, base no pescoço ──
   const h = new Modelo();
@@ -138,14 +147,21 @@ export function montarHumano(f: Figurino): Humano {
   const cabeca = new THREE.Group();
   cabeca.position.y = PESCOCO * S;
   cabeca.add(malhaCabeca);
+  // ombros: o meio do braço em x e z, no alto da manga
+  const bracoD = new THREE.Group();
+  bracoD.position.set((-4 - 0.5) * S, PESCOCO * S, 0);
+  bracoD.add(bd.malha(S, [-4, PESCOCO, 0.5]));
+  const bracoE = new THREE.Group();
+  bracoE.position.set((5 - 0.5) * S, PESCOCO * S, 0);
+  bracoE.add(be.malha(S, [5, PESCOCO, 0.5]));
   const raiz = new THREE.Group();
-  raiz.add(corpo, cabeca);
+  raiz.add(corpo, cabeca, bracoD, bracoE);
   if (idoso) {
     // os anos pesam: a cabeça e os ombros vêm um pouco para a frente
     cabeca.position.z = 0.6 * S;
     cabeca.rotation.x = 0.12;
   }
-  return { raiz, corpo, cabeca, alturaOlhos: (PESCOCO + 2.5) * S };
+  return { raiz, corpo, cabeca, alturaOlhos: (PESCOCO + 2.5) * S, bracoD, bracoE, maoOcupada };
 }
 
 function penteado(h: Modelo, p: Penteado, cor: number, pano: number) {

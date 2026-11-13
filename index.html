@@ -18,6 +18,15 @@
     #jogo canvas { display: block; width: 100%; height: 100%; }
 
     #hud { position: fixed; inset: 0; pointer-events: none; }
+    /* conversa com um NPC: faixas de cinema, e somem a mira e o painel de status */
+    #cinema { position: absolute; inset: 0; pointer-events: none; }
+    #cinema::before, #cinema::after { content: ''; position: absolute; left: 0; right: 0; height: 8vh; background: #050308;
+      transform: scaleY(0); transition: transform 0.55s ease; }
+    #cinema::before { top: 0; transform-origin: top; }
+    #cinema::after { bottom: 0; transform-origin: bottom; }
+    body.em-conversa #cinema::before, body.em-conversa #cinema::after { transform: scaleY(1); }
+    #status, #retic, #retic-cruz { transition: opacity 0.4s; }
+    body.em-conversa #status, body.em-conversa #retic, body.em-conversa #retic-cruz, body.em-conversa #dica { opacity: 0; }
     #status { position: absolute; left: 18px; top: 16px; display: flex; flex-direction: column; gap: 8px; }
     #coracoes { display: flex; gap: 4px; font-size: 24px; line-height: 1; filter: drop-shadow(0 1px 2px #000); }
     #coracoes span.vazio, #coracoes span.meio > b { opacity: 0.25; }
@@ -461,6 +470,7 @@
 <body>
   <div id="jogo"></div>
   <div id="hud">
+    <div id="cinema"></div>
     <div id="status">
       <div id="coracoes"></div>
       <div class="rotulo">Energia espiritual</div>

@@ -6,6 +6,9 @@ import { retratoDe } from '../dialogo/Retratos';
 const $ = <T extends HTMLElement>(s: string) => document.querySelector(s) as T;
 
 /** Interface em HTML sobre o canvas: corações, barras, dica, mira e diálogo. */
+/** Letras por segundo na caixa de diálogo. */
+const VELOCIDADE_TEXTO = 48;
+
 export class Hud implements Palco {
   /** Troca as teclas citadas nos textos pelos botões do controle, quando é ele que está em uso (ui/Rotulos). */
   rotular: (texto: string) => string = (t) => t;
@@ -40,6 +43,11 @@ export class Hud implements Palco {
   private aoTerminar: (() => void) | null = null;
   private tempoAviso = 0;
   private ultimoCoracoes = -1;
+
+  /** Uma fala apareceu na caixa (`segundos`: quanto leva para ser escrita). A câmera e os gestos seguem isso. */
+  aoExibir: ((p: Passo, segundos: number) => void) | null = null;
+  /** As escolhas apareceram: é a vez do peregrino. */
+  aoEscolher: (() => void) | null = null;
 
   get dialogoAberto() {
     return this.fonte !== null;
@@ -89,7 +97,7 @@ export class Hud implements Palco {
       }
     }
     if (this.atual) {
-      this.letras = Math.min(this.atual.texto.length, this.letras + dt * 48);
+      this.letras = Math.min(this.atual.texto.length, this.letras + dt * VELOCIDADE_TEXTO);
       this.caixaTexto.textContent = this.atual.texto.slice(0, Math.floor(this.letras));
       if (this.letras >= this.atual.texto.length && this.atual.escolhas.length && !this.escolhasVisiveis) this.mostrarEscolhas();
     }
@@ -280,6 +288,7 @@ export class Hud implements Palco {
     this.caixa.classList.toggle('com-retrato', !!retrato);
     this.caixaTexto.textContent = '';
     this.caixa.style.display = 'block';
+    this.aoExibir?.(p, this.atual.texto.length / VELOCIDADE_TEXTO);
   }
 
   private mostrarEscolhas() {
@@ -297,6 +306,7 @@ export class Hud implements Palco {
     this.caixaEscolhas.style.display = '';
     this.caixaSeguir.style.display = 'none';
     this.marcarEscolha();
+    this.aoEscolher?.();
   }
 
   private marcarEscolha() {

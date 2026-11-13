@@ -65,6 +65,7 @@ interface Dados {
   sensibilidadeControle: number;
   inverterY: boolean;
   vibracao: boolean;
+  cameraConversa: boolean;
 }
 
 function ler(): Partial<Dados> {
@@ -89,6 +90,8 @@ export class Preferencias {
   inverterY: boolean;
   /** Tremor do controle ao levar dano, acertar e cair. */
   vibracao: boolean;
+  /** Planos de cinema nas conversas com os NPCs (desligada, a câmera de jogo fica onde está). */
+  cameraConversa: boolean;
 
   constructor() {
     const d = ler();
@@ -98,6 +101,7 @@ export class Preferencias {
     this.sensibilidadeControle = Number.isFinite(sc) ? Math.min(SENS_CONTROLE_MAX, Math.max(SENS_CONTROLE_MIN, sc)) : SENS_CONTROLE_PADRAO;
     this.inverterY = d.inverterY === true;
     this.vibracao = d.vibracao !== false;
+    this.cameraConversa = d.cameraConversa !== false;
     this.mira = um(d.mira, ESTILOS_MIRA, 'cruz');
     const g = (d.graficos ?? {}) as Partial<ConfigGraficos>;
     const p = GRAFICOS_PADRAO;
@@ -118,6 +122,7 @@ export class Preferencias {
       localStorage.setItem(CHAVE, JSON.stringify({
         sensibilidade: this.sensibilidade, mira: this.mira, graficos: this.graficos,
         sensibilidadeControle: this.sensibilidadeControle, inverterY: this.inverterY, vibracao: this.vibracao,
+        cameraConversa: this.cameraConversa,
       } satisfies Dados));
     } catch {
       /* sem armazenamento */

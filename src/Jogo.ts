@@ -6,9 +6,10 @@ import { Som } from './core/Som';
 import { identidadePadrao, visualDe } from './core/Aparencia';
 import { Efeitos } from './fx/Efeitos';
 import { Hud } from './ui/Hud';
-import { Dialogos } from './dialogo/Dialogos';
+import { Dialogos, type Passo } from './dialogo/Dialogos';
+import { CameraConversa, type PlanoConversa } from './core/CameraConversa';
 import { falante } from './dialogo/Falantes';
-import type { Npc } from './entidades/Npc';
+import { Npc } from './entidades/Npc';
 import { Fauna } from './fauna/Fauna';
 import { anatomia } from './fauna/Especies';
 import { iniciarRetratos } from './dialogo/Retratos';
@@ -180,6 +181,14 @@ export class Jogo {
   private pausado = false;
   private navUi = new NavegacaoControle();
   private quadrosMenu = 0;
+  /** Câmera de conversa: planos e contraplanos durante os diálogos com NPCs. */
+  private conversa = new CameraConversa();
+  /** Com quem o peregrino está conversando (o corpo do NPC que fala), ou null. */
+  private interlocutor: Npc | null = null;
+  /** NPCs que a conversa virou para o peregrino (e que voltam ao que faziam quando ela acaba). */
+  private viradosNaConversa = new Set<Npc>();
+  /** Quem está com a palavra no plano de perto. */
+  private vezDe: 'npc' | 'peregrino' = 'npc';
   /** Segundos de torpor (o vício da acídia): o peregrino fica pesado até rezar. */
   private torpor = 0;
   /** Segundos que ainda restam do dom da Ciência ligado. */
@@ -207,6 +216,8 @@ export class Jogo {
     this.entrada = new Entrada(this.renderer.domElement);
     const ent = this.entrada;
     this.hud.rotular = (t) => (ent.dispositivo === 'controle' ? rotularTeclas(t, ent.controle.familia) : t);
+    this.hud.aoExibir = (p, segundos) => this.aoFalar(p, segundos);
+    this.hud.aoEscolher = () => this.aoEscolhasDaConversa();
     this.config.ligarControle(ent.controle);
     ent.aoTrocarDispositivo = () => {
       this.config.desenharControle();
@@ -636,9 +647,85 @@ export class Jogo {
       rotulo: npc.def.rotulo ?? `F: falar com ${falante(npc.def.falante)?.nome ?? npc.def.id}`,
       agir: () => {
         npc.falando = true;
+        this.interlocutor = npc;
         this.dialogos.tocar(npc.def.no, () => (npc.falando = false));
       },
     };
+  }
+
+  /**
+   * Uma fala apareceu: acha o corpo de quem fala, passa a palavra (gestos, boca) e escolhe o plano da câmera de
+   * conversa.
+   */
+  private aoFalar(p: Passo, segundos: number) {
+    const per = this.peregrino.pos;
+    const corpo = p.id ? Npc.doFalante(p.id, per) : null;
+    if (corpo && corpo !== this.interlocutor) {
+      this.interlocutor?.calar();
+      this.interlocutor = corpo;
+    } else if (!corpo) this.interlocutor?.calar();
+    if (corpo) {
+      if (!corpo.falando) {
+        corpo.falando = true;
+        this.viradosNaConversa.add(corpo);
+      }
+      corpo.fala(segundos, p.gestos.find((g) => g.quem === null)?.gesto);
+    }
+    for (const g of p.gestos) if (g.quem) Npc.doFalante(g.quem, per)?.gestos.tocar(g.gesto);
+
+    const i = this.interlocutor;
+    if (!i || !this.conversaPermitida()) return;
+    this.vezDe = 'npc';
+    // sem corpo (o Espírito Santo, uma placa): fica no plano em que está, ou abre no geral
+    const plano: PlanoConversa | null =
+      p.plano === 'geral' ? 'geral' : p.plano === 'perto' ? (corpo ? 'perto' : null) : corpo ? 'npc' : null;
+    // uma conversa nova pode começar enquanto a anterior ainda sai de cena: recomeça do plano dela
+    if (!this.conversa.emConversa) this.conversa.comecar(this.camera.cam.position, this.olhosPeregrino(), i.olhos(), plano ?? 'geral');
+    else if (plano) this.conversa.mudar(plano);
+  }
+
+  /** As escolhas apareceram: o contraplano, no peregrino. */
+  private aoEscolhasDaConversa() {
+    this.interlocutor?.calar();
+    this.vezDe = 'peregrino';
+    if (this.conversa.emConversa) this.conversa.mudar('peregrino');
+  }
+
+  /** A câmera de conversa só entra fora de luta, de confissão e de queda, e se o jogador a quiser. */
+  private conversaPermitida() {
+    const i = this.interlocutor;
+    return (
+      this.prefs.cameraConversa && !!i && !this.emConfissao && !this.travado && !this.morrendo && !this.transitando &&
+      i.pos.distanceTo(this.peregrino.pos) < 8
+    );
+  }
+
+  private olhosPeregrino() {
+    return this.peregrino.pos.clone().add(new THREE.Vector3(0, 1.5, 0));
+  }
+
+  /** Atualiza a câmera de conversa por cima da de jogo (depois que ela se posicionou neste quadro). */
+  private atualizarConversa(dt: number, altura: (x: number, z: number) => number) {
+    if (!this.hud.dialogoAberto && (this.interlocutor || this.viradosNaConversa.size)) {
+      this.interlocutor?.calar();
+      this.interlocutor = null;
+      for (const n of this.viradosNaConversa) n.falando = false;
+      this.viradosNaConversa.clear();
+    }
+    if (this.conversa.emUso && !(this.hud.dialogoAberto && this.conversaPermitida())) this.conversa.terminar();
+    const livre = (de: THREE.Vector3, para: THREE.Vector3) => {
+      for (let k = 0; k <= 12; k++) {
+        const x = de.x + (para.x - de.x) * (k / 12) * 0.85;
+        const y = de.y + (para.y - de.y) * (k / 12) * 0.85;
+        const z = de.z + (para.z - de.z) * (k / 12) * 0.85;
+        if (altura(x, z) + 0.12 > y) return false;
+      }
+      return true;
+    };
+    const i = this.interlocutor;
+    const elenco = i ? { peregrino: this.olhosPeregrino(), corpoPeregrino: this.peregrino.raiz, npc: i.olhos(), corpoNpc: i.raiz } : null;
+    this.conversa.atualizar(dt, this.camera.cam, elenco, livre, this.vezDe);
+    document.body.classList.toggle('em-conversa', this.conversa.peso > 0.02);
   }
 
   private valorDialogo(chave: string): number {
@@ -1085,7 +1172,7 @@ export class Jogo {
   }
 
   /** Falar com alguém da cidade (vira para o peregrino enquanto a conversa dura). */
-  private conversa(npc: () => Npc, no: string, rotulo: string | (() => string), raio = 2.6): Interacao {
+  private conversaCom(npc: () => Npc, no: string, rotulo: string | (() => string), raio = 2.6): Interacao {
     return {
       pos: () => npc().pos,
       raio,
@@ -1093,6 +1180,7 @@ export class Jogo {
       agir: () => {
         const n = npc();
         n.falando = true;
+        this.interlocutor = n;
         this.dialogos.tocar(no, () => (n.falando = false));
       },
     };
@@ -1135,10 +1223,10 @@ export class Jogo {
         },
       },
       this.falarCom(c.francisco),
-      this.conversa(() => c.homemDaEstrada, 'leproso', () => (f('cidade_leproso') ? 'F: falar com o homem curado' : f('dom_piedade') ? 'F: socorrer o leproso' : 'F: falar com o leproso')),
+      this.conversaCom(() => c.homemDaEstrada, 'leproso', () => (f('cidade_leproso') ? 'F: falar com o homem curado' : f('dom_piedade') ? 'F: socorrer o leproso' : 'F: falar com o leproso')),
       this.falarCom(c.mercador),
       ...c.pobres.map((p) =>
-        this.conversa(() => p.npc, p.id, () =>
+        this.conversaCom(() => p.npc, p.id, () =>
           f(`cidade_ajudou_${p.id}`) ? `F: falar com ${NOME_POBRE[p.id]}` : this.estado.peso > 0 ? `F: dar o ouro a ${NOME_POBRE[p.id]}` : f('dom_piedade') ? `F: socorrer ${NOME_POBRE[p.id]}` : `F: falar com ${NOME_POBRE[p.id]}`,
         ),
       ),
@@ -1258,7 +1346,7 @@ export class Jogo {
         agir: () => this.trocarArea(c, c.portaPalacio.clone().add(new THREE.Vector3(0, 0, 2.4)), 0),
       },
       ...b.ajudantes.map(repartir),
-      ...b.ajudantes.map((a) => ({ ...this.conversa(() => a.npc, `palacio_${a.id}`, `F: falar com ${NOME_AJUDANTE[a.id]}`), ativa: () => a.presente && b.vencido })),
+      ...b.ajudantes.map((a) => ({ ...this.conversaCom(() => a.npc, `palacio_${a.id}`, `F: falar com ${NOME_AJUDANTE[a.id]}`), ativa: () => a.presente && b.vencido })),
       {
         pos: () => b.centro,
         raio: 3,
@@ -1401,7 +1489,7 @@ export class Jogo {
     }
     if (this.comecou) {
       const borda = e.giroDeBorda();
-      if (borda && !this.travado) this.camera.girar(borda * 520 * dt * this.prefs.sensibilidade, 0);
+      if (borda && !this.travado && !this.conversa.emUso) this.camera.girar(borda * 520 * dt * this.prefs.sensibilidade, 0);
       // Temor de Deus 3 (Pequenez): as sombras comuns custam mais a notar o peregrino
       Sombra.percepcao = this.estado.nivel('temor') >= 3 ? 0.7 : 1;
       this.atualizar(dt);
@@ -1435,6 +1523,7 @@ export class Jogo {
     const chao = area.alturaCamera ? (x: number, z: number) => area.alturaCamera!(x, z) : (x: number, z: number) => area.altura(x, z);
     const alturaCam = naCapela ? (x: number, z: number) => cap!.alturaCamera(x, z, chao) : chao;
     this.camera.atualizar(dt, this.peregrino.pos, alvoCam, alturaCam);
+    if (this.comecou) this.atualizarConversa(dt, alturaCam);
     if (this.modoCriacao) this.quadroCriacao(dt);
     this.hud.posicionarMira(this.travado ? this.travado.centro().add(new THREE.Vector3(0, 0.9, 0)) : null, this.camera.cam);
     this.atualizarMiraLivre(dt);
@@ -1482,11 +1571,11 @@ export class Jogo {
     this.estado.tempo += dt;
     if (this.dev?.energiaInfinita) this.estado.energia = this.estado.energiaMax;
 
-    if (e.travado || e.mouseDx || e.mouseDy) {
+    if ((e.travado || e.mouseDx || e.mouseDy) && !this.conversa.emUso) {
       const k = this.prefs.sensibilidade;
       this.camera.girar(this.travado ? 0 : e.mouseDx * k, e.mouseDy * k);
     }
-    if (e.camX || e.camY) {
+    if ((e.camX || e.camY) && !this.conversa.emUso) {
       const [gx, gy] = e.giroControle(dt, this.prefs.sensibilidadeControle, this.prefs.inverterY);
       this.camera.girar(this.travado ? 0 : gx, gy);
     }
@@ -1555,7 +1644,9 @@ export class Jogo {
 
     const pular = !parado && e.apertou('Space') && per.acao === 'livre';
     if (pular && per.noChao) this.som.pulo();
-    per.atualizar(dt, this.area, desejo, velocidade, pular, this.travado ? this.travado.pos : null);
+    // na conversa, o peregrino se vira para quem fala com ele
+    const olharPara = this.travado ? this.travado.pos : dialogo && this.interlocutor ? this.interlocutor.pos : null;
+    per.atualizar(dt, this.area, desejo, velocidade, pular, olharPara);
     if (!parado) this.atualizarPuxao(dt);
 
     if (per.velocidadeHoriz > 0.5 && per.noChao) {

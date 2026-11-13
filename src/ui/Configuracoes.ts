@@ -86,7 +86,8 @@ export class Configuracoes {
             <button class="padrao" type="button" data-a="padrao">padrão</button>
           </label>
           <p class="ajuda">Gira a câmera ao mover o mouse e ao encostar o cursor na borda da tela.</p>
-          <div class="opcoes mira"><div class="linha"><div><b>Mira</b><small>A luz do cajado vai para onde a mira aponta. A cruz troca de cor com o fundo para nunca sumir.</small></div><div class="seg" data-mira></div></div></div>
+          <div class="opcoes mira"><div class="linha"><div><b>Mira</b><small>A luz do cajado vai para onde a mira aponta. A cruz troca de cor com o fundo para nunca sumir.</small></div><div class="seg" data-mira></div></div>
+          <div class="linha"><div><b>Câmera nas conversas</b><small>Planos de cinema ao conversar com alguém: o rosto de quem fala e, nas escolhas, o seu.</small></div><div class="seg" data-conv></div></div></div>
         </div>
         <div class="pagina" data-pag="controles">
           <h3 class="secao">Controle</h3>
@@ -153,7 +154,7 @@ export class Configuracoes {
     });
     faixaC.addEventListener('change', () => this.prefs.salvar());
     mostrarSensC();
-    const seg = (sel: string, chave: 'inverterY' | 'vibracao', nomes: [string, string]) => {
+    const seg = (sel: string, chave: 'inverterY' | 'vibracao' | 'cameraConversa', nomes: [string, string]) => {
       this.raiz.querySelector(sel)!.innerHTML = ([false, true] as const)
         .map((v, i) => `<button type="button" data-pref="${chave}" data-v="${v}" class="${this.prefs[chave] === v ? 'on' : ''}">${nomes[i]}</button>`)
         .join('');
@@ -161,6 +162,7 @@ export class Configuracoes {
     const mostrarOpcoesC = () => {
       seg('[data-inv]', 'inverterY', ['Não', 'Sim']);
       seg('[data-vib]', 'vibracao', ['Desligada', 'Ligada']);
+      seg('[data-conv]', 'cameraConversa', ['Desligada', 'Ligada']);
     };
     mostrarOpcoesC();
 
@@ -174,7 +176,7 @@ export class Configuracoes {
         return mostrarMira();
       }
       if (b.dataset.a === 'voltar') return this.fechar();
-      if (b.dataset.pref === 'inverterY' || b.dataset.pref === 'vibracao') {
+      if (b.dataset.pref === 'inverterY' || b.dataset.pref === 'vibracao' || b.dataset.pref === 'cameraConversa') {
         this.prefs[b.dataset.pref] = b.dataset.v === 'true';
         this.prefs.salvar();
         if (b.dataset.pref === 'vibracao' && this.prefs.vibracao) this.controle?.vibrar(0.4, 0.6, 180); // para sentir

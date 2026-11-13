@@ -35,7 +35,7 @@ espirito: Siga a estrada até a capela no alto do monte. Eu estarei com você.
 
 === capela_confissao ===
 // O peregrino está ajoelhado no confessionário; o padre fala do outro lado da grade.
-padre: Em nome do Pai, e do Filho, e do Espírito Santo.
+padre: Em nome do Pai, e do Filho, e do Espírito Santo. #gesto:abencoar
 { primeira("confissao_padre"):
     padre: Seja bem-vind{g("o","a")}, {nome()}. Não tenha medo: aqui quem escuta é Deus, e Ele já estava à sua espera.
     padre: Diga com simplicidade aquilo que pesa no seu coração.
@@ -57,9 +57,9 @@ padre: Em nome do Pai, e do Filho, e do Espírito Santo.
 padre: Agora, arrependid{g("o","a")}, faça o seu ato de contrição.
 * [Meu Deus, porque sois tão bom, arrependo-me de vos ter ofendido. Ajudai-me a não tornar a pecar.]
 - padre: Deus, Pai de misericórdia, que pela morte e ressurreição de seu Filho reconciliou o mundo consigo, te conceda o perdão e a paz.
-padre: E eu te absolvo dos teus pecados, em nome do Pai, e do Filho, e do Espírito Santo.
+padre: E eu te absolvo dos teus pecados, em nome do Pai, e do Filho, e do Espírito Santo. #gesto:abencoar
 ~ evento("absolvicao")
-padre: Vá em paz, e que o Senhor caminhe com você.
+padre: Vá em paz, e que o Senhor caminhe com você. #gesto:sim
 { primeira("confissao_explicada"):
     espirito: Você está em estado de graça. Sempre que se confessar, o caminho fica guardado aqui.
     espirito: Agora pode comungar: vá até a grade, diante do altar, e receba o Pão do Céu.

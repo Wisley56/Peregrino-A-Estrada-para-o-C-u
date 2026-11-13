@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { IdFalante } from '../dialogo/Falantes';
 import { registrarRetrato } from '../dialogo/Retratos';
 import { montarHumano, type Figurino, type Humano } from '../voxel/Humano';
+import { Gesticulador, type Gesto } from './Gestos';
 
 /** Ficha de um personagem com quem se conversa. */
 export interface DefNpc {
@@ -25,7 +26,26 @@ const LIMITE_CABECA = 1.0;
  * e gesticula enquanto fala. Não tem física própria; fica onde a área o pôs.
  */
 export class Npc {
+  /** Todos os NPCs criados (de todas as áreas), para achar o corpo de quem fala no roteiro. */
+  private static todos: Npc[] = [];
+
+  /** O NPC visível mais perto de `perto` que fala como `falante` (até `raio` metros), ou null. */
+  static doFalante(falante: string, perto: THREE.Vector3, raio = 14): Npc | null {
+    let melhor: Npc | null = null;
+    let d2 = raio * raio;
+    for (const n of Npc.todos) {
+      if (n.def.falante !== falante || !n.visivel) continue;
+      const d = n.pos.distanceToSquared(perto);
+      if (d < d2) {
+        d2 = d;
+        melhor = n;
+      }
+    }
+    return melhor;
+  }
+
   readonly raiz = new THREE.Group();
+  readonly gestos: Gesticulador;
   readonly pos: THREE.Vector3;
   readonly humano: Humano;
   /** Verdadeiro enquanto a conversa com ele está aberta. */
@@ -49,6 +69,39 @@ export class Npc {
     this.raiz.add(this.humano.raiz);
     this.raiz.position.copy(this.pos);
     this.raiz.rotation.y = rumo;
+    this.gestos = new Gesticulador(this.humano);
+    this.inclinacaoCabeca = this.humano.cabeca.rotation.x;
+    Npc.todos.push(this);
+  }
+
+  private inclinacaoCabeca: number;
+  private olharY = 0;
+
+  /** Está na cena (ele e todos os pais visíveis e ligados ao mundo). */
+  get visivel() {
+    let o: THREE.Object3D | null = this.raiz;
+    for (; o; o = o.parent) {
+      if (!o.visible) return false;
+      if (o.type === 'Scene') return true;
+    }
+    return false;
+  }
+
+  /** Onde estão os olhos dele, no mundo (para a câmera de conversa). */
+  olhos(destino = new THREE.Vector3()) {
+    this.raiz.updateWorldMatrix(true, false);
+    return destino.set(0, this.humano.alturaOlhos, 0).applyMatrix4(this.raiz.matrixWorld);
+  }
+
+  /** Começa uma fala dele: `segundos` é o tempo da caixa escrevendo; `gesto`, o pedido pelo roteiro. */
+  fala(segundos: number, gesto?: Gesto) {
+    if (gesto) this.gestos.tocar(gesto);
+    this.gestos.falar(segundos);
+  }
+
+  /** A fala passou para outro: ele para de mexer a boca (e só escuta). */
+  calar() {
+    this.gestos.calar();
   }
 
   atualizar(dt: number, jogador: THREE.Vector3) {
@@ -61,12 +114,14 @@ export class Npc {
     this.raiz.rotation.y += angulo(alvoCorpo - this.raiz.rotation.y) * Math.min(1, dt * (this.falando ? 4 : 2));
     const cabeca = this.humano.cabeca;
     const alvoCabeca = perto ? THREE.MathUtils.clamp(angulo(paraJogador - this.raiz.rotation.y), -LIMITE_CABECA, LIMITE_CABECA) : Math.sin(this.t * 0.4) * 0.25;
-    cabeca.rotation.y += (alvoCabeca - cabeca.rotation.y) * Math.min(1, dt * 5);
-    // respiração; ao falar, um aceno leve de cabeça
+    this.olharY += (alvoCabeca - this.olharY) * Math.min(1, dt * 5);
+    // respiração e os gestos de conversa (a cabeça soma o gesto ao olhar)
     this.humano.corpo.scale.y = 1 + Math.sin(this.t * 1.6) * 0.008;
-    const aceno = this.falando ? Math.sin(this.t * 7) * 0.05 : 0;
-    cabeca.rotation.z = aceno * 0.4;
-    cabeca.position.y = this.alturaPescoco + Math.max(0, aceno) * 0.02;
+    const g = this.gestos.atualizar(dt);
+    cabeca.rotation.x = this.inclinacaoCabeca + g.cabX;
+    cabeca.rotation.y = this.olharY + g.cabY;
+    cabeca.rotation.z = g.cabZ;
+    cabeca.position.y = this.alturaPescoco + Math.max(0, g.cabX) * 0.012;
   }
 
 }

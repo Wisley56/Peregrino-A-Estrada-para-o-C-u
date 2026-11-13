@@ -83,16 +83,16 @@ espirito: Olhe as cores da cidade! Não foi o ouro que voltou a brilhar: foram a
 }
 
 = encontro
-francisco: Paz e bem, {nome()}! O Senhor te dê a paz. Eu sou Francisco, filho de Pedro Bernardone, o mercador de panos.
-francisco: Você conhece aquela cidade lá no alto? Eu nasci nela. Era o rei das festas: o melhor vestido, a mesa mais farta, o vinho que não acabava.
+francisco: Paz e bem, {nome()}! O Senhor te dê a paz. Eu sou Francisco, filho de Pedro Bernardone, o mercador de panos. #gesto:inclinar
+francisco: Você conhece aquela cidade lá no alto? Eu nasci nela. Era o rei das festas: o melhor vestido, a mesa mais farta, o vinho que não acabava. #gesto:explicar
 * [Por que deixou tudo?]
-    francisco: Um dia, a cavalo, encontrei um leproso na estrada. Senti nojo. Quis fugir dele.
+    francisco: Um dia, a cavalo, encontrei um leproso na estrada. Senti nojo. Quis fugir dele. #gesto:triste
 * [O que aconteceu com você?]
-    francisco: Fiquei doente, depois fui à guerra e voltei preso. E um dia, a cavalo, encontrei um leproso na estrada. Senti nojo.
-- francisco: Mas desci do cavalo, dei-lhe o que tinha e beijei a mão dele. E o que me parecia amargo se converteu em doçura da alma e do corpo.
-francisco: Depois, rezando aqui nesta capelinha caída, ouvi o Crucificado: "Francisco, vai e repara a minha casa, que está em ruínas."
+    francisco: Fiquei doente, depois fui à guerra e voltei preso. E um dia, a cavalo, encontrei um leproso na estrada. Senti nojo. #gesto:triste
+- francisco: Mas desci do cavalo, dei-lhe o que tinha e beijei a mão dele. E o que me parecia amargo se converteu em doçura da alma e do corpo. #gesto:peito
+francisco: Depois, rezando aqui nesta capelinha caída, ouvi o Crucificado: "Francisco, vai e repara a minha casa, que está em ruínas." #gesto:ceu
 espirito: Francisco aprendeu a ver Cristo em quem sofre. Isso é o dom da Piedade.
-francisco: Receba-o, {g("meu irmão", "minha irmã")}. Não é coisa sua: é Deus amando os outros através das suas mãos.
+francisco: Receba-o, {g("meu irmão", "minha irmã")}. Não é coisa sua: é Deus amando os outros através das suas mãos. #gesto:abencoar
 ~ evento("dom_piedade")
 espirito: Agora, junto de quem sofre, aperte F para socorrer. Socorrer gasta {valor("custo_piedade")} de energia; quem é ajudado volta depois para retribuir. #pausa:1.4
 francisco: O leproso que mora junto à estrada não tem ninguém. Vá até ele e faça o que eu fiz.
@@ -100,27 +100,27 @@ francisco: O leproso que mora junto à estrada não tem ninguém. Vá até ele e
 
 = sobre_leproso
 francisco: Você ainda não foi ao leproso? Ele mora no casebre junto à estrada, perto do cruzeiro.
-francisco: Não tenha medo dele. Tenha medo de passar ao lado e não ver.
+francisco: Não tenha medo dele. Tenha medo de passar ao lado e não ver. #gesto:nao
 -> END
 
 = casa
 { valor("pedras") == 0:
     francisco: O leproso me contou o que você fez! Agora me ajude com outra coisa: esta casa do Senhor está caindo.
     francisco: Na pedreira velha, um pouco a sudoeste daqui, há pedras boas. Traga uma de cada vez e a assente aqui, na parede.
-    francisco: Pedra por pedra. Foi assim que eu comecei: não com um sermão, mas com as mãos.
+    francisco: Pedra por pedra. Foi assim que eu comecei: não com um sermão, mas com as mãos. #gesto:sim
 - else:
     francisco: Já {valor("pedras") == 1: há uma pedra|há {valor("pedras")} pedras} no lugar. Continue: pedra por pedra se levanta a casa do Senhor.
 }
 -> END
 
 = sobre_lobo
-francisco: São Damião está de pé! Ouça o sino, {nome()}.
+francisco: São Damião está de pé! Ouça o sino, {nome()}. #gesto:acolher
 francisco: Agora, tem um irmão que sofre e ninguém percebe: o lobo da toca, a leste. A cidade o odeia porque ele tem fome e ataca os rebanhos.
-francisco: Ele não é mau: tem fome. Vá até ele, sem cajado e sem medo, e proponha a paz em nome de Deus.
+francisco: Ele não é mau: tem fome. Vá até ele, sem cajado e sem medo, e proponha a paz em nome de Deus. #gesto:explicar
 -> END
 
 = paz
-francisco: Louvado sejas, meu Senhor, com todas as tuas criaturas! Com o irmão sol, a irmã lua, o irmão lobo.
+francisco: Louvado sejas, meu Senhor, com todas as tuas criaturas! Com o irmão sol, a irmã lua, o irmão lobo. #gesto:ceu
 francisco: Agora resta o banquete. A Gula só perde para quem aprendeu a repartir. Quando as portas se abrirem, não vá sozinho: os que você ajudou irão com você.
 { primeira("cidade_portas_abertas"):
     espirito: Ouviu? Lá no alto da cidade, as portas de ouro do palácio se abriram.
@@ -128,9 +128,9 @@ francisco: Agora resta o banquete. A Gula só perde para quem aprendeu a reparti
 -> END
 
 = vitoria
-francisco: Irmão! Os sinos da cidade inteira estão tocando. Dizem que no palácio agora se come pão com os pobres.
+francisco: Irmão! Os sinos da cidade inteira estão tocando. Dizem que no palácio agora se come pão com os pobres. #gesto:acolher
 francisco: A Gula queria encher você até não sobrar lugar para nada. Mas o coração só se enche de verdade quando se esvazia para os outros.
-francisco: Vá em paz. A estrada para o Céu continua, e eu rezo por você. Paz e bem!
+francisco: Vá em paz. A estrada para o Céu continua, e eu rezo por você. Paz e bem! #gesto:abencoar
 -> END
 
 // ─────────────────────────────── O leproso ───────────────────────────────
@@ -143,33 +143,33 @@ francisco: Vá em paz. A estrada para o Céu continua, e eu rezo por você. Paz 
 }
 
 = medo
-leproso: Não chegue perto! Sou leproso. Fique longe, pela sua saúde.
-leproso: Deixe alguma coisa na tigela, se quiser, e vá embora. Todos vão embora.
+leproso: Não chegue perto! Sou leproso. Fique longe, pela sua saúde. #gesto:surpresa
+leproso: Deixe alguma coisa na tigela, se quiser, e vá embora. Todos vão embora. #gesto:triste
 -> END
 
 = socorrer
-leproso: Você de novo? Por que voltou? Ninguém volta.
+leproso: Você de novo? Por que voltou? Ninguém volta. #gesto:surpresa
 * [Ajoelhar-se e cuidar das feridas dele]
     { valor("energia") >= valor("custo_piedade"):
-        leproso: …você tocou em mim.
+        leproso: …você tocou em mim. #gesto:surpresa
         ~ evento("curar_leproso")
-        leproso: Há anos ninguém tocava em mim. Eu já tinha esquecido que era gente.
+        leproso: Há anos ninguém tocava em mim. Eu já tinha esquecido que era gente. #gesto:peito
         espirito: Quem serve o pobre serve o próprio Cristo. A ferida dele está fechando.
-        leproso: Vá em paz. Eu não esqueço de você. Quando precisar, eu vou estar lá.
+        leproso: Vá em paz. Eu não esqueço de você. Quando precisar, eu vou estar lá. #gesto:sim
     - else:
         espirito: Você está sem força. Segure R e reze um pouco: a piedade nasce da oração.
     }
 * [Ir embora]
-    leproso: Eu sabia.
+    leproso: Eu sabia. #gesto:triste
 - -> END
 
 = curado
 { primeira("cidade_retribuiu_leproso"):
-    leproso: Olhe para mim! As feridas fecharam. Eu fui à cidade, e me deixaram entrar.
-    leproso: Guardei para você este pão. É pouco, mas é tudo o que eu tenho.
+    leproso: Olhe para mim! As feridas fecharam. Eu fui à cidade, e me deixaram entrar. #gesto:acolher
+    leproso: Guardei para você este pão. É pouco, mas é tudo o que eu tenho. #gesto:peito
     ~ evento("retribuir_leproso")
 - else:
-    leproso: Deus te pague, {g("meu irmão", "minha irmã")}. Rezo por você todas as noites.
+    leproso: Deus te pague, {g("meu irmão", "minha irmã")}. Rezo por você todas as noites. #gesto:rezar
 }
 -> END
 
@@ -178,44 +178,44 @@ leproso: Você de novo? Por que voltou? Ninguém volta.
 === tomas ===
 { tem("cidade_ajudou_tomas") and not tem("cidade_retribuiu_tomas"):
     ~ marcar("cidade_retribuiu_tomas")
-    tomas: Você voltou! Eu reconheço o seu passo. Tome: ensinei os meus netos a rezar por você. É o que um cego pode dar.
+    tomas: Você voltou! Eu reconheço o seu passo. Tome: ensinei os meus netos a rezar por você. É o que um cego pode dar. #gesto:acolher
     ~ evento("retribuir_tomas")
     -> END
 }
 { tem("cidade_ajudou_tomas"):
-    tomas: Deus te abençoe, {g("filho", "filha")}. Eu conto a todos quem me ajudou.
+    tomas: Deus te abençoe, {g("filho", "filha")}. Eu conto a todos quem me ajudou. #gesto:abencoar
     -> END
 }
-tomas: Uma esmola para um velho cego? Os ricos passam por esta porta o dia inteiro, e nenhum para.
+tomas: Uma esmola para um velho cego? Os ricos passam por esta porta o dia inteiro, e nenhum para. #gesto:triste
 -> ajudar("tomas")
 
 === rita ===
 { tem("cidade_ajudou_rita") and not tem("cidade_retribuiu_rita"):
     ~ marcar("cidade_retribuiu_rita")
-    rita: Você! Arrumei trabalho na casa do padeiro, graças ao que você fez. Leve este pão, ainda quente.
+    rita: Você! Arrumei trabalho na casa do padeiro, graças ao que você fez. Leve este pão, ainda quente. #gesto:acolher
     ~ evento("retribuir_rita")
     -> END
 }
 { tem("cidade_ajudou_rita"):
-    rita: Meus filhos dormiram de barriga cheia. Que Deus te guarde no caminho.
+    rita: Meus filhos dormiram de barriga cheia. Que Deus te guarde no caminho. #gesto:rezar
     -> END
 }
-rita: Meu marido morreu no inverno. Tenho três filhos em casa e nada para pôr na mesa.
-rita: Enquanto isso, ali no palácio, jogam comida fora todas as noites.
+rita: Meu marido morreu no inverno. Tenho três filhos em casa e nada para pôr na mesa. #gesto:triste
+rita: Enquanto isso, ali no palácio, jogam comida fora todas as noites. #gesto:explicar
 -> ajudar("rita")
 
 === beppo ===
 { tem("cidade_ajudou_beppo") and not tem("cidade_retribuiu_beppo"):
     ~ marcar("cidade_retribuiu_beppo")
-    beppo: Ei! Aprendi uma música com os frades. Quer ouvir? "Louvado sejas, meu Senhor, pela irmã água…"
+    beppo: Ei! Aprendi uma música com os frades. Quer ouvir? "Louvado sejas, meu Senhor, pela irmã água…" #gesto:acolher
     ~ evento("retribuir_beppo")
     -> END
 }
 { tem("cidade_ajudou_beppo"):
-    beppo: Os frades me deixaram dormir no convento! Eu vou ser frade também, quando crescer.
+    beppo: Os frades me deixaram dormir no convento! Eu vou ser frade também, quando crescer. #gesto:sim
     -> END
 }
-beppo: Moço… você tem alguma coisa de comer? Faz dois dias que eu durmo aqui na escada.
+beppo: Moço… você tem alguma coisa de comer? Faz dois dias que eu durmo aqui na escada. #gesto:triste
 -> ajudar("beppo")
 
 /// Escolhas comuns aos pobres: dar o ouro da Gula, socorrer com a Piedade, ou seguir.
@@ -264,11 +264,11 @@ espirito: O lobo mostra os dentes. Está magro, com as costelas aparecendo.
 
 === mercador ===
 { tem("cidade_lobo_praca"):
-    mercador: Quem diria: o lobo, deitado na praça! E foi você que o trouxe…
-    mercador: Talvez eu também esteja com fome de outra coisa. Vou levar pão à viúva da praça.
+    mercador: Quem diria: o lobo, deitado na praça! E foi você que o trouxe… #gesto:surpresa
+    mercador: Talvez eu também esteja com fome de outra coisa. Vou levar pão à viúva da praça. #gesto:pensar
     -> END
 }
-mercador: Bem-vindo à cidade mais rica da Úmbria! Ouro na praça, ouro nos telhados.
-mercador: Só tome cuidado fora dos muros: um lobo enorme anda comendo os nossos rebanhos. Ninguém sai depois do pôr do sol.
-mercador: E não ligue para os mendigos. Se a gente dá, eles voltam.
+mercador: Bem-vindo à cidade mais rica da Úmbria! Ouro na praça, ouro nos telhados. #gesto:acolher
+mercador: Só tome cuidado fora dos muros: um lobo enorme anda comendo os nossos rebanhos. Ninguém sai depois do pôr do sol. #gesto:explicar
+mercador: E não ligue para os mendigos. Se a gente dá, eles voltam. #gesto:nao
 -> END

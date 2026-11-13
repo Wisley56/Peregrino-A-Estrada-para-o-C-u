@@ -71,12 +71,12 @@ espirito: Aqui um monge escuta confissões, e o Senhor está no sacrário. Ningu
 }
 
 = encontro
-antao: Paz a você, {nome()}. Eu sou Antão. Você atravessou as vozes e chegou até aqui.
-antao: Quando eu era jovem, ouvi na igreja: "Se queres ser perfeito, vai, vende o que tens, dá aos pobres, e depois vem e segue-me." Vendi tudo e vim para o deserto.
-antao: Aqui as vozes me mostraram ouro no caminho, banquetes, a saudade de casa. Tudo parecia bom. Tudo era armadilha.
-antao: Um dia vi as armadilhas do inimigo espalhadas pela terra inteira e perguntei: "Quem pode escapar delas?" E ouvi uma voz: "A humildade."
+antao: Paz a você, {nome()}. Eu sou Antão. Você atravessou as vozes e chegou até aqui. #gesto:inclinar
+antao: Quando eu era jovem, ouvi na igreja: "Se queres ser perfeito, vai, vende o que tens, dá aos pobres, e depois vem e segue-me." Vendi tudo e vim para o deserto. #gesto:explicar
+antao: Aqui as vozes me mostraram ouro no caminho, banquetes, a saudade de casa. Tudo parecia bom. Tudo era armadilha. #gesto:nao
+antao: Um dia vi as armadilhas do inimigo espalhadas pela terra inteira e perguntei: "Quem pode escapar delas?" E ouvi uma voz: "A humildade." #gesto:ceu
 espirito: Antão aprendeu a distinguir o verdadeiro do falso. Isso é o dom da Ciência.
-antao: Receba-o. Quando alguma coisa parecer bonita demais, olhe de novo, com os olhos de Deus.
+antao: Receba-o. Quando alguma coisa parecer bonita demais, olhe de novo, com os olhos de Deus. #gesto:abencoar
 ~ evento("dom_ciencia")
 espirito: Aperte E para usar a Ciência. Ela gasta 15 de energia e, por alguns segundos, mostra o que as coisas são de verdade. #pausa:1.4
 antao: A oeste, onde o penhasco parece fechado, há uma fenda. Olhe para ela com a Ciência.
@@ -91,11 +91,11 @@ antao: O penhasco a oeste esconde uma fenda. Chegue perto dele e use a Ciência 
 -> END
 
 = vitoria
-antao: Você voltou, {nome()}. Eu vi a água subir no poço: o demônio do meio-dia foi vencido.
-antao: Ele vai voltar outras vezes, em outros dias quentes. Quando voltar, faça o que fez hoje: reze, e continue a caminhar.
+antao: Você voltou, {nome()}. Eu vi a água subir no poço: o demônio do meio-dia foi vencido. #gesto:acolher
+antao: Ele vai voltar outras vezes, em outros dias quentes. Quando voltar, faça o que fez hoje: reze, e continue a caminhar. #gesto:explicar
 -> END
 
 = meiodia
-antao: Depois da fenda mora o demônio do meio-dia. Ele não grita: ele cansa. Faz a alma achar que nada vale a pena.
-antao: Quando o cansaço chegar, não pare de rezar. Vá com Deus.
+antao: Depois da fenda mora o demônio do meio-dia. Ele não grita: ele cansa. Faz a alma achar que nada vale a pena. #gesto:pensar
+antao: Quando o cansaço chegar, não pare de rezar. Vá com Deus. #gesto:abencoar
 -> END

@@ -1,6 +1,11 @@
 import { Story } from 'inkjs';
 import roteiro from '../dialogos/peregrino.ink';
 import { falante, type Falante } from './Falantes';
+import { ehGesto, type Gesto } from '../entidades/Gestos';
+
+/** Enquadramentos que o roteiro pode pedir com `#plano:nome` (o padrão é escolhido pela câmera de conversa). */
+export const PLANOS = ['geral', 'perto', 'ombro'] as const;
+export type Plano = (typeof PLANOS)[number];
 
 /** O que o jogo oferece ao roteiro. O save (Estado) continua sendo a fonte da verdade. */
 export interface ContextoDialogo {
@@ -24,6 +29,10 @@ export interface Passo {
   pausa: number;
   /** Escolhas que aparecem depois desta fala. */
   escolhas: string[];
+  /** Gestos pedidos com `#gesto:nome` (de quem fala, `quem` null) ou `#gesto:id=nome`. */
+  gestos: { quem: string | null; gesto: Gesto }[];
+  /** Enquadramento pedido com `#plano:geral|perto|ombro`. */
+  plano?: Plano;
 }
 
 /** Quem mostra as falas (o Hud). */
@@ -121,10 +130,35 @@ export class Dialogos {
         texto: quem && m ? m[2] : linha,
         pausa: Number.isFinite(pausa) ? pausa : 0,
         escolhas: h.canContinue ? [] : h.currentChoices.map((c) => c.text),
+        gestos: this.gestosDas(tags),
+        plano: planoDas(tags),
       };
     }
     // escolhas logo no começo de um nó, sem fala antes delas
-    if (h.currentChoices.length) return { id: null, falante: null, texto: '', pausa: 0, escolhas: h.currentChoices.map((c) => c.text) };
+    if (h.currentChoices.length) return { id: null, falante: null, texto: '', pausa: 0, escolhas: h.currentChoices.map((c) => c.text), gestos: [] };
     return null;
   }
+
+  private gestosDas(tags: string[]) {
+    const lista: Passo['gestos'] = [];
+    for (const t of tags) {
+      if (!t.startsWith('gesto:')) continue;
+      const corpo = t.slice(6).trim();
+      const [a, b] = corpo.includes('=') ? corpo.split('=').map((x) => x.trim()) : [null, corpo];
+      if (!ehGesto(b)) {
+        if (import.meta.env.DEV) console.warn(`[ink] gesto desconhecido: "${t}"`);
+        continue;
+      }
+      lista.push({ quem: a ? (this.apelidos[a] ?? a) : null, gesto: b });
+    }
+    return lista;
+  }
+}
+
+function planoDas(tags: string[]): Plano | undefined {
+  const p = tags.find((t) => t.startsWith('plano:'))?.slice(6).trim();
+  if (!p) return undefined;
+  if ((PLANOS as readonly string[]).includes(p)) return p as Plano;
+  if (import.meta.env.DEV) console.warn(`[ink] plano desconhecido: "${p}"`);
+  return undefined;
 }

@@ -38,17 +38,17 @@ espirito: A Cidade Dourada está livre. Volte a Francisco, em São Damião: ele 
 
 // Depois da vitória, à mesa dos pobres
 === palacio_tomas ===
-tomas: Eu não vejo a mesa, mas sinto o cheiro do pão. É o melhor banquete da minha vida.
+tomas: Eu não vejo a mesa, mas sinto o cheiro do pão. É o melhor banquete da minha vida. #gesto:peito
 -> END
 
 === palacio_rita ===
-rita: Meus filhos estão comendo no palácio. Quem diria! Que Deus lhe pague, peregrino.
+rita: Meus filhos estão comendo no palácio. Quem diria! Que Deus lhe pague, peregrino. #gesto:rezar
 -> END
 
 === palacio_beppo ===
-beppo: Tem peixe! E pão! E ninguém manda a gente embora!
+beppo: Tem peixe! E pão! E ninguém manda a gente embora! #gesto:acolher
 -> END
 
 === palacio_leproso ===
-leproso: Antes, nem da porta da cidade eu passava. Hoje como no palácio, ao lado de todo mundo.
+leproso: Antes, nem da porta da cidade eu passava. Hoje como no palácio, ao lado de todo mundo. #gesto:acolher
 -> END
