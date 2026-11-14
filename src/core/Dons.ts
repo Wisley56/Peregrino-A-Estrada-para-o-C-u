@@ -8,7 +8,12 @@ export type IdDom = 'sabedoria' | 'entendimento' | 'conselho' | 'fortaleza' | 'c
 export interface NivelDom {
   nome: string;
   texto: string;
+  /** Nível que só se abre mais adiante na história: a flag que o abre e o aviso na árvore enquanto está fechado. */
+  trava?: { flag: string; texto: string };
 }
+
+/** A Piedade 4 e 5: Francisco planta, Irmã Dulce faz florescer (docs/regioes/01-ruas-da-bahia.md, seção 7). */
+const PELA_DULCE = { flag: 'bahia_piedade_aperfeicoada', texto: 'Aperfeiçoado nas Ruas da Bahia, com Irmã Dulce.' };
 
 export interface Dom {
   id: IdDom;
@@ -68,10 +73,16 @@ export const DONS: Dom[] = [
     origem: 'São Francisco de Assis, na Cidade Dourada',
     niveis: [
       { nome: 'Mãos que servem', texto: 'F junto a quem sofre: socorrer custa 20 de energia. Quem foi ajudado volta depois para retribuir.' },
-      { nome: 'Partilha', texto: 'Socorrer custa só 12 de energia.' },
+      { nome: 'Partilha', texto: 'Socorrer custa só 12 de energia, e o ouro da Gula pesa a metade.' },
       { nome: 'Misericórdia', texto: 'Cada ato de piedade cura um coração inteiro.' },
-      { nome: 'Pobreza alegre', texto: 'O ouro da Gula pesa a metade.' },
-      { nome: 'Instrumento da paz', texto: 'Rezando perto de quem você ajudou, a oração rende o dobro: eles rezam com você.' },
+      {
+        nome: 'Carregar o fardo', trava: PELA_DULCE,
+        texto: 'Quem você leva nas costas pesa a metade, e as sombras comuns hesitam diante de quem carrega um sofredor.',
+      },
+      {
+        nome: 'Coração de carne', trava: PELA_DULCE,
+        texto: 'Rezando perto de quem você ajudou, a oração rende o dobro: eles rezam com você. E o olhar da indiferença não o prende mais.',
+      },
     ],
   },
   {

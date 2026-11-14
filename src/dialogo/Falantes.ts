@@ -32,6 +32,9 @@ export const FALANTES = {
   carta: { nome: 'Carta', estilo: 'inscricao' },
   dono_casa: { nome: 'O dono da casa' },
   comerciante: { nome: 'O dono do armazém' },
+  medico: { nome: 'O médico voluntário' },
+  menino: { nome: 'O menino' },
+  enfermo: { nome: 'Quem veio do Largo' },
   // os esquecidos das Ruas da Bahia (entidades/Enfermos.ts)
   zefa: { nome: 'Dona Zefa' },
   lucia: { nome: 'Lúcia' },

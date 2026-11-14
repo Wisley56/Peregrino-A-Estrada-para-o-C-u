@@ -428,7 +428,18 @@ const LUGARES_DULCE = {
   casaFora: [CASA.x + 4.6, CASA.y - 1.6, 0.4],
   convento: [CONVENTO.x - 2.8, CONVENTO.y + 1.4, -Math.PI / 2],
   galinheiro: [GALINHEIRO.x + 3.4, GALINHEIRO.y + 1.2, 0],
+  // no hospital, no corredor entre as duas fileiras de catres, de frente para a porta
+  hospital: [GALINHEIRO.x - 1.5, GALINHEIRO.y - 0.15, 0],
 } as const;
+/** O médico voluntário, no corredor da enfermaria do hospital, olhando os catres do fundo. */
+const MEDICO_LUGAR: [number, number, number] = [GALINHEIRO.x + 2.3, GALINHEIRO.y - 0.1, Math.PI];
+const MEDICO: DefNpc = {
+  id: 'medico_hospital',
+  falante: 'medico',
+  no: 'bahia_medico',
+  rotulo: 'F: falar com o médico',
+  visual: { genero: 'm', idade: 'adulto', pele: 0xb07a52, penteado: 'curto', corCabelo: 0x2a2420, barba: 'curta', traje: 'avental', cor: 0xf2f2ee, cor2: 0x3a3a44, acessorio: 'bolsa' },
+};
 /** A madre superiora, à porta do convento, ao sul da esteira do menino. */
 const SUPERIORA_LUGAR: [number, number, number] = [CONVENTO.x - 2.6, CONVENTO.y - 4.6, -Math.PI / 2];
 export type LugarDulce = keyof typeof LUGARES_DULCE;
@@ -526,6 +537,12 @@ export class BahiaBaixa extends MapaDaBahia {
   readonly superiora: Npc;
   /** O galinheiro, que vira enfermaria (e, depois da vitória, o hospital). */
   readonly hospital: Hospital;
+  /** O médico voluntário, no hospital (só no terceiro estágio). */
+  readonly medico: Npc;
+  private circuloMedico!: { x: number; z: number; r: number };
+  /** As paredes que colidem em cada estágio: as do galinheiro e enfermaria, e as do hospital (com o topo de cada). */
+  private paredesGalinheiro: [Caixa, number][] = [];
+  private paredesHospital: [Caixa, number][] = [];
   /** O dono da casa abandonada, que chega e expulsa Dulce e o menino. */
   readonly dono: Npc;
   /**
@@ -601,8 +618,27 @@ export class BahiaBaixa extends MapaDaBahia {
     this.predios.push({ ret: [CONVENTO.x, CONVENTO.y - 4, 14, 28], cor: 0xf4f0e8 });
     this.hospital = new Hospital(this.w(GALINHEIRO.x, GALINHEIRO.y));
     this.grupo.add(this.hospital.grupo);
-    for (const [x0, z0, w, d] of [[-5, -3.5, 10, 0.4], [-5, 3.1, 4, 0.4], [1.5, 3.1, 3.5, 0.4], [-5, -3.5, 0.4, 7], [4.6, -3.5, 0.4, 7]] as Ret[])
-      this.caixaLocal(GALINHEIRO.x + x0, GALINHEIRO.y + z0, w, d, CHAO + 2.8);
+    const parede = (lista: [Caixa, number][], [x0, z0, w, d]: Ret, topo: number) => {
+      this.caixaLocal(GALINHEIRO.x + x0, GALINHEIRO.y + z0, w, d, topo);
+      lista.push([this.caixas[this.caixas.length - 1], topo]);
+    };
+    for (const r of [[-5, -3.5, 10, 0.4], [-5, 3.1, 4, 0.4], [1.5, 3.1, 3.5, 0.4], [-5, -3.5, 0.4, 7], [4.6, -3.5, 0.4, 7]] as Ret[])
+      parede(this.paredesGalinheiro, r, CHAO + 2.8);
+    // o hospital: as paredes de fora (com o andar de cima), as divisórias com as passagens, a entrada curva, as
+    // colunas e os vasos, e o pátio (mureta baixa, a mangueira e o banco)
+    const ALTO = CHAO + 5.9, TERREO = CHAO + 3, MURETA = CHAO + 0.55;
+    for (const r of [[-8.5, -3.5, 17, 0.3], [-8.5, 3.2, 7.75, 0.3], [0.75, 3.2, 7.75, 0.3], [-8.5, -3.5, 0.3, 7], [8.2, -3.5, 0.3, 7]] as Ret[])
+      parede(this.paredesHospital, r, ALTO);
+    for (const x of [-5, 5]) for (const r of [[x, -3.5, 0.25, 3], [x, 0.75, 0.25, 2.75]] as Ret[]) parede(this.paredesHospital, r, TERREO);
+    for (const s of [-1, 1]) {
+      for (const a of [0.55, 0.8, 1.05, 1.3, 1.55]) parede(this.paredesHospital, [s * Math.sin(a) * 2 - 0.15, 3.5 + Math.cos(a) * 2 - 0.15, 0.3, 0.3], CHAO + 2.9);
+      parede(this.paredesHospital, [s * 1.7 - 0.15, 5.0, 0.3, 0.3], CHAO + 2.9);
+      parede(this.paredesHospital, [s * 3.375 - 0.4, 3.85, 0.8, 0.8], CHAO + 0.8);
+    }
+    for (const r of [[12.75, -3.5, 0.25, 7], [8.5, -3.5, 4.5, 0.25], [8.5, 3.25, 1.5, 0.25], [11.5, 3.25, 1.5, 0.25]] as Ret[])
+      parede(this.paredesHospital, r, MURETA);
+    parede(this.paredesHospital, [10.75, -0.05, 0.5, 0.5], CHAO + 4); // o tronco da mangueira
+    parede(this.paredesHospital, [9.5, -3.0, 2.3, 0.5], CHAO + 0.6); // o banco
     this.predios.push({ ret: [GALINHEIRO.x - 5, GALINHEIRO.y - 3.5, 10, 7], cor: 0x8a7458 });
 
     // o Bonfim, no alto da Colina Sagrada, de frente para o sul, com o gradil das fitas no adro
@@ -761,6 +797,11 @@ export class BahiaBaixa extends MapaDaBahia {
     this.superiora = new Npc(SUPERIORA, this.w(SUPERIORA_LUGAR[0], SUPERIORA_LUGAR[1]), SUPERIORA_LUGAR[2]);
     this.grupo.add(this.superiora.raiz);
     this.circulo(SUPERIORA_LUGAR[0], SUPERIORA_LUGAR[1], 0.45);
+    // o médico voluntário, no hospital
+    this.medico = new Npc(MEDICO, this.w(MEDICO_LUGAR[0], MEDICO_LUGAR[1]), MEDICO_LUGAR[2]);
+    this.grupo.add(this.medico.raiz);
+    this.circuloMedico = { x: this.medico.pos.x, z: this.medico.pos.z, r: 0.4 };
+    this.circulos.push(this.circuloMedico);
     this.colocarComerciante('loja');
     this.colocarDulce('calcada', true);
     this.abrirCasa(false);
@@ -837,6 +878,7 @@ export class BahiaBaixa extends MapaDaBahia {
     if (this.dono.raiz.visible) this.dono.atualizar(dt, jogador);
     this.comerciante.atualizar(dt, jogador);
     this.superiora.atualizar(dt, jogador);
+    if (this.medico.raiz.visible) this.medico.atualizar(dt, jogador);
     this.capela.atualizar(dt, jogador);
     this.salaDosMilagres.atualizar(jogador);
     this.bonfimFora.visible = !this.capela.dentro(jogador);
@@ -882,6 +924,12 @@ export class BahiaBaixa extends MapaDaBahia {
     for (const id of this.abrigados.keys()) this.mostrarAbrigado(id, flags.has(`bahia_recolhido_${id}`));
     this.hospital.aplicar(flags);
     this.salaDosMilagres.aplicar(flags);
+    // o hospital (depois da vitória): as paredes dele colidem no lugar das do galinheiro, e o médico está lá
+    const hospital = flags.has('bahia_coracao_vencido');
+    for (const [c, topo] of this.paredesGalinheiro) c.topo = hospital ? -PAREDE : topo;
+    for (const [c, topo] of this.paredesHospital) c.topo = hospital ? topo : -PAREDE;
+    this.medico.raiz.visible = hospital;
+    this.circuloMedico.x = hospital ? this.medico.pos.x : 1e6;
     for (const id of this.abrigados.keys()) if (flags.has(`bahia_leito_${id}`)) this.mostrarAbrigado(id, false);
     // o comerciante: depois da resposta mansa ele está no convento com a doação, até entregá-la
     const doou = flags.has('bahia_comerciante_doou');
@@ -893,7 +941,7 @@ export class BahiaBaixa extends MapaDaBahia {
     // depois da enfermaria, o menino está num catre dela
     const enfermaria = flags.has('bahia_enfermaria');
     if (abrigado) {
-      this.colocarDulce(flags.has('bahia_galinheiro_licenca') ? 'galinheiro' : 'convento', false);
+      this.colocarDulce(hospital ? 'hospital' : flags.has('bahia_galinheiro_licenca') ? 'galinheiro' : 'convento', false);
       this.deitarMenino(enfermaria ? null : 'convento');
     } else {
       this.colocarDulce(expulsos ? 'casaFora' : 'calcada', true);
@@ -949,7 +997,7 @@ export class BahiaBaixa extends MapaDaBahia {
   povoamento(): Povoamento[] {
     const c = (lx: number, lz: number): [number, number] => [lx + this.origem.x, lz + this.origem.z];
     return [
-      { especie: 'galinha', quantidade: 5, centro: c(GALINHEIRO.x, GALINHEIRO.y + 6), raio: 4 },
+      { especie: 'galinha', quantidade: 5, centro: c(GALINHEIRO.x - 9, GALINHEIRO.y + 5), raio: 3 },
       { especie: 'gato', quantidade: 3, centro: c(14, 26), raio: 14 },
       { especie: 'cao', quantidade: 2, centro: c(-4, -10), raio: 12 },
     ];

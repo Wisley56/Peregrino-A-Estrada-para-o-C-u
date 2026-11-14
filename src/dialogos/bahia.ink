@@ -48,6 +48,75 @@ espirito: Ninguém mais vai passar ao largo. Escute: as portas estão se abrindo
 espirito: Volte ao hospital, lá embaixo. Irmã Dulce espera por você.
 -> END
 
+=== bahia_restaurada ===
+espirito: Escute: é o sino do Bonfim. #plano:geral
+espirito: A cor voltou às Ruas da Bahia. Não foi tinta: foram as portas que se abriram.
+espirito: A Piedade foi aperfeiçoada. Na árvore dos dons (G), abriram-se os níveis IV e V: Carregar o fardo e Coração de carne.
+espirito: E no Bonfim, na Sala dos Milagres, quem você carregou deixou o seu obrigado.
+-> END
+
+// ─── O hospital: quem está nos catres, o médico, a cadeira e a capelinha ───
+
+=== bahia_leito_zefa ===
+zefa: Catre de ferro, lençol branco e mingau quente de manhã. O meu Zé vem me ver no domingo.
+-> END
+
+=== bahia_leito_lucia ===
+lucia: Já tusso menos. De noite eu canto baixinho, para o menino dormir.
+-> END
+
+=== bahia_leito_bento ===
+bento: A maré levou a canoa e me deixou aqui. Foi a maré mais boa da minha vida.
+-> END
+
+=== bahia_leito_raimundo ===
+raimundo: Carreguei saco a vida inteira. Nunca pensei que um dia iam me carregar.
+-> END
+
+=== bahia_leito_ana ===
+ana: Rezo o terço por você toda noite, {g("meu filho", "minha filha")}. É o que eu tenho para dar.
+-> END
+
+=== bahia_leito_joao ===
+joao: Quando eu sarar, quero ficar aqui ajudando. Alguém tem de carregar os próximos.
+-> END
+
+=== bahia_leito_menino ===
+{
+- tem("bahia_coracao_vencido"):
+    menino: A Irmã disse que eu já posso ajudar a levar a água. Eu levo dois baldes!
+- else:
+    espirito: Ele dorme sem febre. Ninguém sabia o nome dele. Agora todo mundo sabe.
+}
+-> END
+
+=== bahia_leito_largo ===
+{ shuffle:
+- enfermo: Eu fiquei no largo, e a cidade passava por cima. Até alguém parar.
+- enfermo: Quando você parou, eu senti a pedra rachar. Aqui dentro.
+- enfermo: Os vizinhos me trouxeram no colo. Os mesmos que antes nem olhavam.
+}
+-> END
+
+=== bahia_medico ===
+{ shuffle:
+- medico: Sou do posto de saúde. Venho à tarde, depois do serviço. Aqui ninguém cobra. #gesto:inclinar
+- medico: Ela me pediu uma hora por semana. Já são todas as tardes, e não me arrependo de nenhuma. #gesto:sim
+- medico: Remédio a gente arruma. O que faltava nesta cidade era alguém que parasse. #gesto:explicar
+}
+-> END
+
+=== bahia_cadeira ===
+espirito: Uma cadeira de madeira, num canto do quarto. Nenhuma cama. #plano:perto
+espirito: Por cerca de trinta anos, Irmã Dulce dormiu sentada numa cadeira assim.
+espirito: Quem dorme sentado acorda depressa quando alguém chama.
+-> END
+
+=== bahia_capelinha ===
+espirito: A capelinha do hospital: o altar, o sacrário e dois bancos. #plano:geral
+espirito: Aqui se reza pelos doentes, e os doentes rezam por quem cuida deles. Reze (R): aqui a oração rende em dobro.
+-> END
+
 === bahia_galinheiro ===
 espirito: Um galinheiro velho, ao lado do convento. Chão de terra, telha de zinco, poleiros.
 espirito: Parece pouco. Mas o que é pequeno, nas mãos de Deus, pode virar abrigo para muitos.
@@ -133,6 +202,7 @@ espirito: É aqui que mora boa parte de quem a cidade esqueceu.
 
 === dulce ===
 {
+- tem("bahia_coracao_vencido"): -> no_hospital
 - not tem("bahia_dulce_conheceu"): -> encontro
 - not tem("bahia_casa_aberta"): -> abrigo
 - not tem("bahia_casa_expulsos"): -> entregar
@@ -271,6 +341,33 @@ espirito: Limpe o galinheiro, ao lado do convento: os poleiros, o cocho e a palh
 - dulce: Um galinheiro, {g("meu filho", "minha filha")}. Quem diria. Nosso Senhor também nasceu entre os bichos. #gesto:ceu
 - dulce: Suba a Colina Sagrada. O Senhor do Bonfim espera você. #gesto:explicar
 }
+-> END
+
+// ─── A cor volta (seção 6, passo 9): no hospital, Dulce aperfeiçoa a Piedade (seção 7). Falas do roteiro. ───
+= no_hospital
+{ not tem("bahia_piedade_aperfeicoada"): -> o_dom }
+{ shuffle:
+- dulce: O doutor vem toda tarde, depois do serviço, sem cobrar nada. Diz que aqui aprendeu para que estudou. #gesto:acolher
+- dulce: A Lúcia canta para os outros dormirem. Quem diria que a tosse ia virar cantiga. #gesto:sim
+- dulce: Se passar pelo Bonfim, amarre uma fitinha por mim, {g("meu filho", "minha filha")}. #gesto:ceu
+- dulce: Ainda falta muita coisa: remédio, lençol, gente para o turno da noite. Mas falta com alegria. #gesto:explicar
+}
+-> END
+
+= o_dom
+dulce: {g("Meu filho", "Minha filha")}! Você ouviu? Lá em cima, as portas se abriram. #plano:geral #gesto:ceu
+dulce: Os vizinhos desceram a ladeira com eles nos braços: os cinco do Largo do Cruzeiro. Gente que nunca tinha olhado para o lado.
+dulce: E não pararam mais. Um trouxe tijolo, outro cal, outro uma cama. O doutor do posto veio ver um e ficou. #gesto:explicar
+dulce: Olhe em volta. De um galinheiro, Deus fez um hospital. #gesto:acolher
+espirito: "Estive doente e me visitastes" (Mt 25,36).
+dulce: São Francisco plantou em você a piedade. Aqui ela cresceu do jeito que cresce: com peso nas costas. #plano:perto
+* [Quem aprendeu fui eu.]
+    dulce: É sempre assim. A gente vem para dar e sai recebendo. #gesto:sim
+* [A senhora fez quase tudo.]
+    dulce: Eu só pedi. Quem carregou foi você. E quem fez foi Deus. #gesto:ceu
+- dulce: Daqui para a frente, quem você achar caído não é peso. É irmão. #gesto:abencoar
+~ evento("piedade_aperfeicoada")
+dulce: Vá com Deus. E quando passar por alguém na calçada, pare. #gesto:inclinar
 -> END
 
 // Ela manda o peregrino pedir: ela não pode deixar os doentes sozinhos.

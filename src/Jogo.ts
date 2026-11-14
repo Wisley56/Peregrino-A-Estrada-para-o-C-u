@@ -205,6 +205,8 @@ export class Jogo {
   private torpor = 0;
   /** O olhar do Coração de Pedra: por uns segundos o peregrino passa ao largo (não socorre, anda devagar). */
   private indiferenca = 0;
+  private corSuave = -1;
+  private areaDaCor: unknown = null;
   /** Segundos que ainda restam do dom da Ciência ligado. */
   private tempoCiencia = 0;
   readonly deserto = new Deserto({
@@ -1100,9 +1102,28 @@ export class Jogo {
 
   // ───────────────────────────── ruas da bahia ─────────────────────────────
 
-  /** A cor da Bahia. Por enquanto só volta quando a região é restaurada (a provação vem nos próximos passos). */
+  /**
+   * A cor da Bahia: cada passo da provação devolve um pouco (no máximo a metade), e a vitória sobre o Coração de
+   * Pedra devolve toda.
+   */
   private corDaBahia() {
-    return this.estado.flags.has('bahia_restaurada') ? 1 : 0;
+    const f = this.estado.flags;
+    if (f.has('bahia_coracao_vencido') || f.has('bahia_restaurada')) return 1;
+    let c = ENFERMOS.filter((e) => f.has(`bahia_recolhido_${e.id}`)).length * 0.04;
+    if (f.has('bahia_menino_abrigado')) c += 0.06;
+    if (f.has('bahia_comerciante_doou')) c += 0.08;
+    if (f.has('bahia_enfermaria')) c += 0.12;
+    return c;
+  }
+
+  /** A cor que se vê: segue a da região devagar (a cor volta aos poucos), e salta ao trocar de área. */
+  private corVisivel(dt: number) {
+    const alvo = this.corAtual();
+    if (this.areaDaCor !== this.area || this.corSuave < 0) {
+      this.areaDaCor = this.area;
+      this.corSuave = alvo;
+    } else this.corSuave += Math.sign(alvo - this.corSuave) * Math.min(Math.abs(alvo - this.corSuave), dt * 0.3);
+    return this.corSuave;
   }
 
   /** A cada quadro na Cidade Baixa: Irmã Dulce chama o peregrino quando ele passa perto dela pela primeira vez. */
@@ -1142,6 +1163,10 @@ export class Jogo {
       return;
     }
     const d = b.dulceEmCena;
+    if (b.hospital.estagio === 3 && !f.has('bahia_piedade_aperfeicoada') && b.hospital.dentro(this.peregrino.pos) && this.nasCostas === null) {
+      if (this.primeiraVez('bahia_hospital_entrou')) this.falarCom(d).agir();
+      return;
+    }
     if (f.has('bahia_dulce_conheceu') || d.pos.distanceTo(this.peregrino.pos) > 6.5) return;
     if (this.primeiraVez('bahia_dulce_chamou')) this.falarCom(d).agir();
   }
@@ -1249,6 +1274,10 @@ export class Jogo {
       this.passagemDoGalinheiro();
       return true;
     }
+    if (nome === 'piedade_aperfeicoada') {
+      this.piedadeAperfeicoada();
+      return true;
+    }
     if (nome === 'doacao') {
       this.bahiaBaixa.mostrarDoacao(true);
       this.atoDaBahia('bahia_comerciante_doou', 'Um coração de pedra se abriu');
@@ -1347,6 +1376,18 @@ export class Jogo {
     }, 3400);
   }
 
+  /**
+   * A cena no hospital (passo 9): Irmã Dulce aperfeiçoa a Piedade (os níveis 4 e 5 se abrem), o sino do Bonfim toca
+   * e a região está restaurada.
+   */
+  private piedadeAperfeicoada() {
+    if (this.estado.flags.has('bahia_piedade_aperfeicoada')) return;
+    this.estado.flags.add('bahia_piedade_aperfeicoada');
+    this.atoDaBahia('bahia_restaurada', 'A Piedade foi aperfeiçoada: os níveis IV e V se abriram (G)');
+    for (let i = 0; i < 3; i++) setTimeout(() => this.som.sino(), 900 + i * 1700);
+    this.dialogos.tocar('bahia_restaurada');
+  }
+
   /** Um ato de piedade da Bahia: graça, luz e, com Misericórdia (Piedade 3), um coração. */
   private atoDaBahia(flag: string, aviso: string) {
     if (this.estado.flags.has(flag)) return;
@@ -1403,14 +1444,14 @@ export class Jogo {
       ...b.hospital.sujeiras.map((s) => ({
         pos: () => s.pos,
         raio: 1.9,
-        ativa: () => f('bahia_galinheiro_licenca') && !f(`bahia_galinheiro_${s.id}`) && this.nasCostas === null,
+        ativa: () => b.hospital.estagio === 1 && f('bahia_galinheiro_licenca') && !f(`bahia_galinheiro_${s.id}`) && this.nasCostas === null,
         rotulo: s.rotulo,
         agir: () => this.limparGalinheiro(s.id),
       })),
       ...[...b.hospital.vagas].map(([id, vaga]) => ({
         pos: () => vaga.pos,
         raio: 1.3,
-        ativa: () => f('bahia_galinheiro_limpo') && !f(`bahia_esteira_${id}`) && this.nasCostas === null,
+        ativa: () => b.hospital.estagio === 1 && f('bahia_galinheiro_limpo') && !f(`bahia_esteira_${id}`) && this.nasCostas === null,
         rotulo: 'F: estender uma esteira',
         agir: () => this.estenderEsteira(id),
       })),
@@ -1484,6 +1525,16 @@ export class Jogo {
         agir: () => this.dialogos.tocar(`bahia_milagre_${id}`),
       })),
       { pos: () => b.alagados, raio: 2.6, rotulo: 'F: olhar os Alagados', agir: () => this.dialogos.tocar('bahia_alagados') },
+      { ...this.conversaCom(() => b.medico, 'bahia_medico', 'F: falar com o médico', 2), ativa: () => b.medico.raiz.visible && this.nasCostas === null },
+      ...b.hospital.leitos.map((l): Interacao => ({
+        pos: () => l.pos,
+        raio: 0.9,
+        ativa: () => b.hospital.estagio >= l.estagio && this.nasCostas === null && !this.dialogos.ocupado,
+        rotulo: `F: falar com ${l.nome}`,
+        agir: () => this.dialogos.tocar(l.no),
+      })),
+      { pos: () => b.hospital.cadeira, raio: 1.3, ativa: () => b.hospital.estagio === 3, rotulo: 'F: olhar a cadeira', agir: () => this.dialogos.tocar('bahia_cadeira') },
+      { pos: () => b.hospital.altar, raio: 1.5, ativa: () => b.hospital.estagio === 3, rotulo: 'F: olhar a capelinha', agir: () => this.dialogos.tocar('bahia_capelinha') },
     ];
   }
 
@@ -1543,8 +1594,9 @@ export class Jogo {
 
   /** O que pesa no peregrino: o ouro da Gula (Piedade 4 o deixa pela metade) e a pedra no ombro. */
   private pesoEfetivo() {
-    const ouro = this.estado.peso * (this.estado.nivel('piedade') >= 4 ? 0.5 : 1);
-    return ouro + this.pesoBanquete + (this.peregrino.carregando ? 2 : 0);
+    const ouro = this.estado.peso * (this.estado.nivel('piedade') >= 2 ? 0.5 : 1);
+    const fardo = this.peregrino.carregando ? (this.nasCostas && this.estado.nivel('piedade') >= 4 ? 1 : 2) : 0;
+    return ouro + this.pesoBanquete + fardo;
   }
 
   /** Um ato de piedade feito: graça, luz e, com Misericórdia (Piedade 3), um coração. */
@@ -2000,7 +2052,8 @@ export class Jogo {
       const borda = e.giroDeBorda();
       if (borda && !this.travado && !this.conversa.emUso) this.camera.girar(borda * 520 * dt * this.prefs.sensibilidade, 0);
       // Temor de Deus 3 (Pequenez): as sombras comuns custam mais a notar o peregrino
-      Sombra.percepcao = this.estado.nivel('temor') >= 3 ? 0.7 : 1;
+      // Piedade 4 (Carregar o fardo): diante de quem carrega um sofredor, as sombras comuns hesitam
+      Sombra.percepcao = (this.estado.nivel('temor') >= 3 ? 0.7 : 1) * (this.nasCostas && this.estado.nivel('piedade') >= 4 ? 0.5 : 1);
       this.atualizar(dt);
       this.atualizarTorpor(dt);
       this.atualizarMinimapa();
@@ -2046,7 +2099,8 @@ export class Jogo {
     if (this.modoCriacao) this.quadroCriacao(dt);
     this.hud.posicionarMira(this.travado ? this.travado.centro().add(new THREE.Vector3(0, 0.9, 0)) : null, this.camera.cam);
     this.atualizarMiraLivre(dt);
-    this.hud.atualizar(dt, this.estado, this.corAtual(), this.area === this.cidade || this.area === this.banquete ? 'Cor da Cidade' : this.area === this.bahiaBaixa || this.area === this.bahiaAlta ? 'Cor da Bahia' : this.area === this.deserto || this.area === this.meiodia ? 'Cor do Deserto' : 'Cor do Vale');
+    const cor = this.corVisivel(dt);
+    this.hud.atualizar(dt, this.estado, cor, this.area === this.cidade || this.area === this.banquete ? 'Cor da Cidade' : this.area === this.bahiaBaixa || this.area === this.bahiaAlta ? 'Cor da Bahia' : this.area === this.deserto || this.area === this.meiodia ? 'Cor do Deserto' : 'Cor do Vale');
 
     // sol acompanha o peregrino para a sombra ficar nítida por perto
     const p = this.peregrino.pos;
@@ -2058,7 +2112,7 @@ export class Jogo {
     this.ceu.position.copy(this.camera.cam.position); // o céu acompanha a câmera (o deserto fica longe da origem)
     // o torpor tira a cor do mundo
     const peso = Math.min(1, this.torpor / 2);
-    this.efeitos.renderizar(dt, this.modoCriacao ? 1 : this.corAtual() * (1 - peso * 0.8));
+    this.efeitos.renderizar(dt, this.modoCriacao ? 1 : cor * (1 - peso * 0.8));
     this.entrada.fimDoQuadro();
   }
 
@@ -2371,7 +2425,10 @@ export class Jogo {
         this.peregrino.iniciar('ferido');
       }
       if (imp.sussurro) this.hud.sussurrar(imp.sussurro, 2.8);
-      if (imp.indiferenca) {
+      if (imp.indiferenca && this.estado.nivel('piedade') >= 5) {
+        // Piedade 5 (Coração de carne): o olhar da indiferença não prende mais
+        if (this.indiferenca <= 0) this.hud.anunciar('O olhar cinzento passa: um coração de carne não se deixa prender.', 1.6);
+      } else if (imp.indiferenca) {
         this.indiferenca = imp.indiferenca;
         this.som.torpor();
         this.peregrino.iniciar('ferido');
@@ -2683,7 +2740,12 @@ export class Jogo {
           (this.estado.flags.has('cidade_leproso') && p.distanceTo(c.homemDaEstrada.pos) < 5);
       return false;
     }
-    if (this.area === this.bahiaBaixa) return this.bahiaBaixa.capela.dentro(p);
+    if (this.area === this.bahiaBaixa) {
+      const b = this.bahiaBaixa, h = b.hospital;
+      if (b.capela.dentro(p) || h.naCapelinha(p)) return true;
+      // Piedade 5: na enfermaria e no hospital, quem você carregou reza com você
+      return this.estado.nivel('piedade') >= 5 && h.estagio >= 2 && h.dentro(p);
+    }
     if (this.area !== this.mundo) return false;
     return p.distanceTo(this.mundo.cruzeiro) < 4 || Math.hypot(p.x - CAPELA.x, p.z - CAPELA.y) < 5;
   }
@@ -2845,6 +2907,7 @@ export class Jogo {
       { id: 'palacio', nome: NOMES_AREA.palacio, pontos: [ponto('Chegada', b.chegada), ponto('Salão (luta)', b.centro.clone().add(v(0, 6)))] },
       { id: 'bahiabaixa', nome: NOMES_AREA.bahiabaixa, pontos: [
         ponto('Chegada (rampa do mercado)', this.bahiaBaixa.chegada, Math.PI / 2), ponto('Irmã Dulce e o menino', this.bahiaBaixa.dulceEmCena.pos.clone().add(v(-7, 0)), Math.PI / 2), ponto('Elevador Lacerda', this.bahiaBaixa.elevador, -Math.PI / 2),
+        ponto('Hospital (dentro)', this.bahiaBaixa.hospital.entrada, Math.PI),
         ponto('Mercado Modelo', this.bahiaBaixa.mercado.clone().add(v(4, 0)), -Math.PI / 2), ponto('Largo de Roma e o galinheiro', this.bahiaBaixa.galinheiro.clone().add(v(0, 6))),
         ponto('Bonfim', this.bahiaBaixa.bonfim.clone().add(v(0, 10))), ponto('Alagados', this.bahiaBaixa.alagados.clone().add(v(3, 0)), -Math.PI / 2),
         ponto('Armazém do comerciante', this.bahiaBaixa.armazemPorta, Math.PI / 2),

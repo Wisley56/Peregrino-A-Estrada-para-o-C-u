@@ -106,7 +106,7 @@ export class TelaDons {
   /** Custo do próximo nível, ou null se o dom não foi recebido, está completo ou ainda não existe no jogo. */
   private proximoCusto(id: IdDom) {
     const n = this.estado.nivel(id);
-    if (n < 1 || n >= 5 || !domPorId(id).niveis.length) return null;
+    if (n < 1 || n >= 5 || !domPorId(id).niveis.length || this.estado.travado(id)) return null;
     return CUSTO_NIVEL[n + 1];
   }
 
@@ -243,11 +243,15 @@ export class TelaDons {
         .map((v, i) => {
           const k = i + 1;
           const classe = k <= n ? 'feito' : k === n + 1 ? 'proximo' : '';
-          const preco = k === 1 ? 'recebido' : k <= n ? '✓' : `${CUSTO_NIVEL[k]} ✦`;
+          const fechado = k > n && v.trava && !this.estado.flags.has(v.trava.flag);
+          const preco = k === 1 ? 'recebido' : k <= n ? '✓' : fechado ? '🔒' : `${CUSTO_NIVEL[k]} ✦`;
           return `<li class="${classe}"><span class="num">${ROMANOS[i]}</span><div><b>${v.nome}</b><em>${preco}</em><p>${v.texto}</p></div></li>`;
         })
         .join('');
-      const botao = custo === null
+      const trava = this.estado.travado(d.id);
+      const botao = trava
+        ? `<p class="falta">🔒 ${trava.texto}</p>`
+        : custo === null
         ? `<p class="completo">✦ Dom completo. Glória ao Pai, ao Filho e ao Espírito Santo.</p>`
         : `<button type="button" class="vb rubi" data-a="fortalecer" ${custo > livres ? 'disabled' : ''}>
              Fortalecer · ${custo} ${custo === 1 ? 'graça' : 'graças'}</button>

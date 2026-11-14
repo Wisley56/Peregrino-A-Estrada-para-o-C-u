@@ -217,13 +217,17 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
 | 4 | rezando, meio coração a cada 4 s (depois de 4 s) | alcance de 45 m |
 | 5 | energia 130; torpor some duas vezes mais rápido | com a Ciência ativa, cajado e luz tiram +1 |
 
-| Nível | Piedade (São Francisco) |
+| Nível | Piedade (São Francisco planta, Irmã Dulce faz florescer) |
 |---|---|
 | 1 | Mãos que servem: socorrer alguém custa 20 de energia |
-| 2 | Partilha: socorrer custa 12 |
+| 2 | Partilha: socorrer custa 12, e o ouro da Gula pesa a metade |
 | 3 | Misericórdia: cada ato de piedade devolve um coração |
-| 4 | Pobreza alegre: o ouro da Gula pesa a metade |
-| 5 | Instrumento da paz: a oração rende o dobro junto de quem você ajudou |
+| 4 | Carregar o fardo: quem vai nas costas pesa a metade, e as sombras comuns hesitam (`Sombra.percepcao` × 0,5) |
+| 5 | Coração de carne: a oração rende o dobro junto de quem você ajudou; o olhar da indiferença não prende mais |
+
+Os níveis 4 e 5 da Piedade têm `trava` (`NivelDom.trava`, `Estado.travado`): só se compram depois da cena com Irmã
+Dulce no hospital (`bahia_piedade_aperfeicoada`). Na árvore aparecem com cadeado. Quem já os tinha num save antigo
+os mantém (o save guarda o número do nível, não o nome).
 
 **Peso** (`Estado.peso`, gravado no save)
 
@@ -372,7 +376,7 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
   "semanas depois", vem a enfermaria (`bahia_enfermaria`, uma graça): paredes caiadas com barra azul, catres de
   ferro (os seis e o menino), lamparinas com luz e a bacia. Com o peregrino dentro, o telhado some e a câmera
   passa por cima das paredes, como na capela (`dentro`, `alturaCamera`). O Hospital Irmã Dulce (o terceiro
-  estágio) vem com a vitória sobre o Coração de Pedra.
+  estágio) vem com a vitória sobre o Coração de Pedra (abaixo, "A cor volta").
 - **O Bonfim por dentro** (`mundo/Capela.ts`, `mundo/SalaDosMilagres.ts`): a fachada (`igreja(IGREJA_BONFIM, true)`,
   com a porta central aberta) é um objeto à parte que some com o peregrino dentro; a nave é uma `CapelaRegional`
   com `ESTILO_BONFIM` (`embutida`: sem adro, campanário nem telhado; `interiorBonfim`: barra de azulejo, retábulo e
@@ -394,6 +398,19 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
   pula). Na segunda fase ele leva a mão ao ouvido ("Não é comigo."): fica surdo, os olhos aparecem e tudo acelera.
   Vencido: a pedra desmorona, sobra um coração de carne batendo, `bahia_coracao_vencido`, o diálogo
   `bahia_coracao_vencido` (Ez 36,26) e o largo se esvazia. Diálogo de entrada: `bahia_coracao`.
+- **A cor volta** (passo 9; `mundo/HospitalModelos.ts`): com `bahia_coracao_vencido`, o galinheiro vira o Hospital
+  Irmã Dulce (`Hospital.estagio` 3; as paredes que colidem trocam em `BahiaBaixa.reiniciar`). Por fora: dois
+  andares caiados com barra verde-água, a entrada curva de vidro (`materialVidro`) sob a marquise em arco, as
+  colunas, os vasos com palmeirinhas, o letreiro em letras verdes (só as letras, sem o logotipo) e o pátio com a
+  mangueira. Por dentro: a enfermaria com os seis, o menino e, na frente, os cinco do Largo; a capelinha a oeste
+  (altar, sacrário, bancos; a oração rende em dobro, `naCapelinha`) e o quarto de Irmã Dulce a leste, com a
+  cadeira (`bahia_cadeira`). Cada catre conversa (`Hospital.leitos`, nós `bahia_leito_<id>`, `bahia_leito_menino`,
+  `bahia_leito_largo`), e há o médico voluntário (`bahia_medico`). Na primeira entrada, Irmã Dulce chama
+  (`bahia_hospital_entrou`; o nó `dulce` vai para `no_hospital` e `o_dom`): o evento `piedade_aperfeicoada` abre a
+  Piedade 4 e 5, marca `bahia_restaurada` (uma graça), o sino do Bonfim toca três vezes (`Som.sino`) e vem
+  `bahia_restaurada`. A **cor da Bahia** (`Jogo.corDaBahia`) volta aos poucos com a provação (até a metade: os
+  recolhidos, o menino, a doação, a enfermaria) e toda com a vitória; a cor na tela segue o alvo devagar
+  (`Jogo.corVisivel`). As galinhas foram para o quintal, a oeste.
 
 ## Diálogos
 
@@ -654,8 +671,8 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 O roteiro segue o Documento base e o GDD complementar (na pasta acima do projeto). Já estão prontos o Vale, o
 Deserto e a Cidade Dourada, com Mamom, a Acídia e a Gula. Das Ruas da Bahia, já estão prontos o mapa (Cidade
 Baixa e Cidade Alta), Irmã Dulce, a casa abandonada, a mecânica de carregar, os esquecidos, o comerciante e o galinheiro que vira
-enfermaria, o interior do Bonfim com a Sala dos Milagres e o Coração de Pedra. A seguir: "a cor volta" (o passo 9:
-o hospital, a despedida de Dulce e o dom da Piedade) e os níveis 4 e 5 da Piedade.
+enfermaria, o interior do Bonfim com a Sala dos Milagres, o Coração de Pedra e "a cor volta": o Hospital Irmã
+Dulce e a Piedade aperfeiçoada (níveis 4 e 5). A provação da Bahia está completa.
 
 ### A base do jogo
 

@@ -1,9 +1,14 @@
 import * as THREE from 'three';
 import { aleatorio } from '../core/Ruido';
 import { Modelo, variar } from '../voxel/Modelo';
-import { ENFERMOS, corpoDoEnfermo } from '../entidades/Enfermos';
+import { ENFERMOS, corpoDoEnfermo, deitado } from '../entidades/Enfermos';
 import { menino } from '../entidades/Dulce';
+import { figurinoDoPovo, montarHumano } from '../voxel/Humano';
 import { esteira } from './BahiaModelos';
+import {
+  D3, H3, altarzinho, bancoCapelinha, cadeira, crucifixo, entradaFachada, entradaVidro, hospitalAndar, hospitalPiso, hospitalTerreo,
+  letreiro, mangueira, materialVidro, mesinhaDoQuarto, patio,
+} from './HospitalModelos';
 
 /**
  * O galinheiro do Convento de Santo Antônio, que cresce com a provação até virar o Hospital Irmã Dulce
@@ -13,7 +18,9 @@ import { esteira } from './BahiaModelos';
  *    O peregrino limpa, estende as esteiras e traz os doentes do abrigo, um por um.
  * 2. **Enfermaria**: depois de uma passagem de tempo, paredes caiadas com barra azul, telha, catres de ferro,
  *    lamparinas e a bacia. Os seis e o menino, cada um no seu catre.
- * 3. **Hospital Irmã Dulce**: depois da vitória sobre o Coração de Pedra (ainda por fazer).
+ * 3. **Hospital Irmã Dulce**: depois da vitória sobre o Coração de Pedra, o prédio de alvenaria (modelos em
+ *    `HospitalModelos.ts`): a enfermaria grande com os seis, o menino e, na fileira da frente, os cinco do Largo
+ *    do Cruzeiro; a capelinha a oeste, o quarto de Irmã Dulce (a cadeira) a leste e o pátio com a mangueira.
  *
  * Tudo vem das flags do save (`aplicar`), como o resto da Bahia. As posições são relativas ao centro do galinheiro
  * (a porta fica em +z).
@@ -178,6 +185,19 @@ function lamparina() {
   return m.malha(0.125, [0.5, 0, 0]);
 }
 
+/** Os catres da fileira da frente do hospital (a cabeceira junto à fachada): os cinco do Largo do Cruzeiro. */
+const CATRE_FRENTE = [-3.9, -2.6, 1.6, 2.9, 4.2];
+/** Quantos vieram do Largo (os mesmos figurinos da luta, em `LargoDoCruzeiro`). */
+export const DO_LARGO = 5;
+
+/** Quem está num catre e pode conversar: o nó do roteiro, o nome para o rótulo e desde que estágio está lá. */
+export interface Leito {
+  pos: THREE.Vector3;
+  nome: string;
+  no: string;
+  estagio: 2 | 3;
+}
+
 interface Vaga {
   pos: THREE.Vector3;
   /** A esteira ainda enrolada, a esteira estendida (vazia) e a esteira com o enfermo deitado. */
@@ -192,8 +212,18 @@ export class Hospital {
   readonly vagas = new Map<string, Vaga>();
   /** Um ponto dentro, junto à porta (para onde o peregrino vai na passagem de tempo). */
   readonly entrada: THREE.Vector3;
+  /** Os catres com gente (enfermaria e hospital), para conversar. */
+  readonly leitos: Leito[] = [];
+  /** No hospital: junto à cadeira de Irmã Dulce e diante do altar da capelinha. */
+  readonly cadeira: THREE.Vector3;
+  readonly altar: THREE.Vector3;
+  /** 1 galinheiro, 2 enfermaria, 3 hospital. */
+  estagio: 1 | 2 | 3 = 1;
   private galinheiro = new THREE.Group();
   private enfermaria = new THREE.Group();
+  private predio = new THREE.Group();
+  /** O que some com o peregrino dentro do hospital: o andar de cima, o letreiro, a marquise. */
+  private alto = new THREE.Group();
   private telhados: THREE.Object3D[] = [];
 
   constructor(readonly centro: THREE.Vector3) {
@@ -248,37 +278,109 @@ export class Hospital {
     luz.position.set(0, 2.2, -0.5);
     this.enfermaria.add(luz);
     this.grupo.add(this.enfermaria);
+    // quem está nos catres (os mesmos lugares na enfermaria e no hospital)
+    ENFERMOS.forEach((def, k) => {
+      const [x, z] = CATRE(k);
+      this.leitos.push({ pos: ponto(x, z + 1.05), nome: def.nome, no: `bahia_leito_${def.id}`, estagio: 2 });
+    });
+    this.leitos.push({ pos: ponto(mx, mz + 1.05), nome: 'o menino', no: 'bahia_leito_menino', estagio: 2 });
+
+    // 3. o Hospital Irmã Dulce
+    this.cadeira = ponto(7.2, -1.6);
+    this.altar = ponto(-7.2, 0.1);
+    const frente = (D3 / 2) * 0.25; // a face da fachada
+    const piso = hospitalPiso();
+    piso.position.y = -0.24;
+    this.predio.add(pos(hospitalTerreo(), 0, 0), piso);
+    // o que fica no alto (some com o peregrino dentro)
+    const letras = letreiro();
+    letras.position.set(0, H3 * 0.25 + 0.55, frente);
+    this.alto.add(pos(hospitalAndar(), 0, 0), letras);
+    // a marquise fica abaixo do topo das paredes: não atrapalha a câmera, então fica sempre à vista
+    this.predio.add(this.alto, pos(entradaFachada(), 0, frente));
+    const vidro = entradaVidro();
+    vidro.material = materialVidro;
+    vidro.position.set(0, 0, frente);
+    this.predio.add(vidro);
+    // a enfermaria grande: os seis e o menino no fundo, os cinco do Largo na frente
+    ENFERMOS.forEach((def, k) => {
+      const [x, z] = CATRE(k);
+      this.predio.add(pos(new THREE.Group().add(catre(), corpoDoEnfermo(def, 'deitado', COLCHAO)), x, z));
+    });
+    this.predio.add(pos(new THREE.Group().add(catre(), menino('deitado', COLCHAO)), mx, mz));
+    CATRE_FRENTE.forEach((x, i) => {
+      const fig = figurinoDoPovo(700 + i * 13, 'pobre');
+      this.predio.add(pos(new THREE.Group().add(catre(), deitado(montarHumano(fig), fig, COLCHAO)), x, 1.95, 0, Math.PI));
+      this.leitos.push({ pos: ponto(x, 1.95 - 1.05), nome: 'quem veio do Largo', no: 'bahia_leito_largo', estagio: 3 });
+    });
+    for (const z of [-1.7, 2.1]) {
+      this.predio.add(pos(lamparina(), -4.7, z, 1.7, Math.PI / 2));
+      this.predio.add(pos(lamparina(), 4.95, z, 1.7, -Math.PI / 2));
+    }
+    // a capelinha (a oeste): o altar na parede, o crucifixo, os dois bancos com o corredor no meio
+    this.predio.add(pos(altarzinho(), -8.25, 0.1));
+    const cruz = pos(crucifixo(), -8.2, 0.1, 1.45, Math.PI / 2);
+    this.predio.add(cruz);
+    for (const x of [-6.7, -5.75]) for (const z of [-1.75, 1.95]) this.predio.add(pos(bancoCapelinha(), x, z));
+    // o quarto de Irmã Dulce (a leste): a cadeira no canto, a mesinha e o crucifixo
+    this.predio.add(pos(cadeira(), 7.6, -2.6, 0, -0.6), pos(mesinhaDoQuarto(), 7.85, -1.1, 0, -Math.PI / 2));
+    this.predio.add(pos(crucifixo(), 8.2, -1.1, 1.5, -Math.PI / 2));
+    // o pátio com a mangueira, a leste do prédio
+    const pt = pos(patio(), 8.5, -D3 / 8);
+    pt.position.y = 0.01;
+    this.predio.add(pt, pos(mangueira(), 11, 0.2));
+    // luz: a enfermaria, a capelinha (vela) e o quarto (lamparina)
+    for (const [x, cor, forca] of [[0, 0xfff0d8, 7], [-7, 0xffc880, 3], [7, 0xffc880, 3]] as const) {
+      const l = new THREE.PointLight(cor, forca, 8, 1.6);
+      l.position.set(x, 2.3, 0);
+      this.predio.add(l);
+    }
+    vidro.castShadow = false;
+    this.grupo.add(this.predio);
+  }
+
+  /** O peregrino está na capelinha do hospital? */
+  naCapelinha(p: THREE.Vector3) {
+    if (this.estagio !== 3) return false;
+    const x = p.x - this.centro.x, z = p.z - this.centro.z;
+    return x > -8.4 && x < -5 && Math.abs(z) < 3.4;
   }
 
   /** O estágio, a sujeira, as esteiras e quem está deitado, a partir das flags. */
   aplicar(flags: Set<string>) {
     const enfermaria = flags.has('bahia_enfermaria');
-    this.galinheiro.visible = !enfermaria;
-    this.enfermaria.visible = enfermaria;
-    for (const s of this.sujeiras) s.obj.visible = !enfermaria && !flags.has(`bahia_galinheiro_${s.id}`);
+    const hospital = flags.has('bahia_coracao_vencido');
+    this.estagio = hospital ? 3 : enfermaria ? 2 : 1;
+    this.galinheiro.visible = !enfermaria && !hospital;
+    this.enfermaria.visible = this.estagio === 2;
+    this.predio.visible = hospital;
+    for (const s of this.sujeiras) s.obj.visible = this.estagio === 1 && !flags.has(`bahia_galinheiro_${s.id}`);
     const limpo = flags.has('bahia_galinheiro_limpo');
     for (const [id, v] of this.vagas) {
       const estendida = flags.has(`bahia_esteira_${id}`), deitado = flags.has(`bahia_leito_${id}`);
-      v.enrolada.visible = !enfermaria && limpo && !estendida;
-      v.estendida.visible = !enfermaria && estendida && !deitado;
-      v.ocupada.visible = !enfermaria && deitado;
+      v.enrolada.visible = this.estagio === 1 && limpo && !estendida;
+      v.estendida.visible = this.estagio === 1 && estendida && !deitado;
+      v.ocupada.visible = this.estagio === 1 && deitado;
     }
   }
 
   /** O peregrino está dentro (entre as paredes)? Então o telhado some e a câmera passa por cima das paredes. */
   dentro(p: THREE.Vector3) {
     const x = p.x - this.centro.x, z = p.z - this.centro.z;
-    return Math.abs(x) < 4.8 && z > -3.3 && z < 3.4;
+    const meia = this.estagio === 3 ? 8.3 : 4.8;
+    return Math.abs(x) < meia && z > -3.3 && z < 3.4;
   }
 
   mostrarTelhado(v: boolean) {
     for (const t of this.telhados) t.visible = v;
+    this.alto.visible = v;
   }
 
   /** Chão visto pela câmera com o peregrino dentro: as paredes (e o que fica fora delas) contam como chão alto. */
   alturaCamera(x: number, z: number, base: (x: number, z: number) => number) {
     const lx = x - this.centro.x, lz = z - this.centro.z;
-    if (Math.abs(lx) > 4.65 || lz < -3.15 || lz > 3.15) return this.centro.y + 3.4;
+    const meia = this.estagio === 3 ? 8.2 : 4.65;
+    if (Math.abs(lx) > meia || lz < -3.15 || lz > 3.15) return this.centro.y + 3.4;
     return base(x, z);
   }
 
