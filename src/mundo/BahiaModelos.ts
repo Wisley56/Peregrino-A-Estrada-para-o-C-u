@@ -232,7 +232,81 @@ export function palafita(semente: number, estacas: number, cor?: number) {
   // o cobertinho da varanda, de lona
   m.caixa(0, ALT - 1, D + 1, W, 1, VAR - 1, (x) => ((x >> 1) & 1 ? 0x5a7a8a : 0x6a8a9a));
   const malha = m.malha(0.25, [W / 2, 0, D / 2]);
-  return { malha, largura: W / 4, profundidade: (D + VAR) / 4, frenteZ: (D / 2 + VAR) / 4, fundoZ: -D / 8 };
+  return { malha, enfeites: enfeitesDaPalafita(rnd, W, D, VAR), largura: W / 4, profundidade: (D + VAR) / 4, frenteZ: (D / 2 + VAR) / 4, fundoZ: -D / 8 };
+}
+
+const CORES_ROUPA = [0xd83a3a, 0xe8c040, 0x3a7ad8, 0xf2f0ea, 0x3aa860, 0xe87aa0, 0xe8803a];
+
+/**
+ * O que a palafita ganha quando a cor volta (seção 5: "a dignidade restaurada, sem esconder a pobreza"): o varal de
+ * roupas coloridas do lado de fora da parede, sobre a maré, e um vaso de planta florida na varanda. Voxel de
+ * 0,125 m, no mesmo espaço da palafita (W, D e VAR em voxels de 0,25 m).
+ */
+function enfeitesDaPalafita(rnd: () => number, W: number, D: number, VAR: number) {
+  const m = new Modelo();
+  const madeira = v(0x3a2e24, 0.06);
+  if (rnd() < 0.75) {
+    // o varal: dois braços saindo da parede da direita e a corda ao longo dela
+    const X = 2 * W + 3, Y = 14, z0 = 2, z1 = 2 * D - 3;
+    for (const z of [z0, z1]) m.caixa(2 * W, Y, z, 4, 1, 1, madeira);
+    for (let z = z0; z <= z1; z++) m.ponto(X, Y, z, 0xd8d0c0);
+    // as roupas: camisas, calças e panos, de cores vivas
+    for (let z = z0 + 1; z < z1 - 2; ) {
+      const cor = CORES_ROUPA[Math.floor(rnd() * CORES_ROUPA.length)];
+      const tipo = rnd();
+      if (tipo < 0.4) {
+        // camisa: o corpo e as mangas
+        m.caixa(X, Y - 5, z, 1, 5, 4, v(cor, 0.05)).ponto(X, Y - 1, z - 1, cor).ponto(X, Y - 1, z + 4, cor);
+        z += 6;
+      } else if (tipo < 0.7) {
+        // calça: o cós e as duas pernas
+        m.caixa(X, Y - 2, z, 1, 1, 3, v(cor, 0.05)).caixa(X, Y - 6, z, 1, 4, 1, v(cor, 0.05)).caixa(X, Y - 6, z + 2, 1, 4, 1, v(cor, 0.05));
+        z += 5;
+      } else {
+        // pano de prato ou fralda
+        m.caixa(X, Y - 3, z, 1, 3, 3, v(cor, 0.04));
+        z += 4;
+      }
+    }
+  }
+  // o vaso na varanda, junto do guarda-corpo, com a planta e as flores
+  const vz = 2 * (D + VAR) - 5, vx = rnd() < 0.5 ? 2 : 2 * W - 5;
+  m.caixa(vx, 0, vz, 3, 3, 3, v(0xb0583a, 0.05)).caixa(vx, 3, vz, 3, 2, 3, v(0x3a8a3a, 0.1));
+  m.ponto(vx + 1, 5, vz + 1, 0x4a9a3a).ponto(vx, 5, vz, CORES_ROUPA[Math.floor(rnd() * 3)]).ponto(vx + 2, 4, vz + 2, 0xf0d040);
+  return m.malha(0.125, [W, 0, D]);
+}
+
+/**
+ * A mesinha de bar com o guarda-sol vermelho e dois banquinhos (voxel de 0,125 m, centrada no mastro), que aparece
+ * no Pelourinho quando a cor volta.
+ */
+export function mesaComGuardaSol(semente: number) {
+  const rnd = aleatorio(semente);
+  const m = new Modelo();
+  const vermelho = (x: number, y: number, z: number) => variar(0xc8282a, x, y, z, 0.04);
+  // a mesa redonda e o mastro
+  for (let x = -3; x <= 3; x++) for (let z = -3; z <= 3; z++) if (x * x + z * z <= 10) m.ponto(x, 6, z, variar(0xe8e2d6, x, 6, z, 0.02));
+  m.caixa(0, 0, 0, 1, 6, 1, 0x4a4a4e).caixa(-1, 0, -1, 3, 1, 3, 0x4a4a4e);
+  m.caixa(0, 7, 0, 1, 13, 1, 0xd8d4cc);
+  // a lona em degraus, com a barra branca
+  const camadas: [number, number][] = [[19, 9.5], [20, 7], [21, 4.5], [22, 2]];
+  for (const [y, r] of camadas)
+    for (let x = -10; x <= 10; x++)
+      for (let z = -10; z <= 10; z++) {
+        const d = Math.max(Math.abs(x), Math.abs(z), (Math.abs(x) + Math.abs(z)) * 0.72);
+        if (d <= r) m.ponto(x, y, z, y === 19 && d > r - 1 ? 0xf2f0ea : vermelho(x, y, z));
+      }
+  m.ponto(0, 23, 0, 0xd8d4cc);
+  // dois banquinhos, um de cada lado
+  for (const s of [-1, 1]) {
+    const x = s * 6;
+    m.caixa(x - 1, 3, -1, 3, 1, 3, v(0x8a5a3a, 0.06));
+    for (const [dx, dz] of [[-1, -1], [1, 1]]) m.caixa(x + dx, 0, dz, 1, 3, 1, 0x5a3a24);
+  }
+  // uma garrafa e dois copos na mesa
+  m.caixa(1, 7, 0, 1, 3, 1, 0x3a6a3a).ponto(-1, 7, 1, 0xe8d8a0).ponto(-1, 7, -1, 0xe8d8a0);
+  if (rnd() < 0.5) m.ponto(0, 7, -2, 0xf0d040);
+  return m.malha(0.125, [0.5, 0, 0.5]);
 }
 
 /** Pinguela: passarela de tábuas sobre estacas, de `comprimento` metros, ao longo de +z. */

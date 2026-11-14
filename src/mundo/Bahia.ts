@@ -21,7 +21,7 @@ import { escurecer } from './PocoMeioDia';
 import {
   CORES_CASARIO, CATEDRAL, IGREJA_BONFIM, IGREJA_ROSARIO, IGREJA_SAO_FRANCISCO, Juntador, ROT, armazem, canoa, casaAbandonada, mantimentos, casario, chafariz, coqueiro, esteira, muroDeFitas,
   conventoSantoAntonio, cruzeiroDePedra, elevadorLacerda, gradilDeFitas, igreja, mercadoModelo,
-  palafita, palmeiraImperial, pinguela, poste, saveiro, silhueta, type Frente,
+  mesaComGuardaSol, palafita, palmeiraImperial, pinguela, poste, saveiro, silhueta, type Frente,
 } from './BahiaModelos';
 
 /**
@@ -85,6 +85,9 @@ abstract class MapaDaBahia implements Area {
   readonly filas: FilaDePassantes[] = [];
   /** O peregrino leva um doente nas costas (o Jogo avisa a cada quadro): as filas param e abrem caminho. */
   alguemNasCostas = false;
+  /** O que só aparece quando a cor volta (a vitória sobre o Coração de Pedra), e as caixas que vêm com isso. */
+  protected depoisDaCor: THREE.Object3D[] = [];
+  protected caixasDaCor: [Caixa, number][] = [];
   /** Os enfermos caídos nesta área, onde estão (o ponto da interação) e o corpo deitado. */
   readonly enfermos = new Map<string, { def: DefEnfermo; pos: THREE.Vector3; corpo: THREE.Object3D }>();
 
@@ -383,7 +386,10 @@ abstract class MapaDaBahia implements Area {
    */
   reiniciar(_sombrasVencidas: Set<string>, flags: Set<string>) {
     for (const id of this.enfermos.keys()) this.mostrarEnfermo(id, !flags.has(`bahia_recolhido_${id}`));
-    for (const f of this.filas) f.visivel = !flags.has('bahia_coracao_vencido');
+    const cor = flags.has('bahia_coracao_vencido');
+    for (const f of this.filas) f.visivel = !cor;
+    for (const o of this.depoisDaCor) o.visible = cor;
+    for (const [c, topo] of this.caixasDaCor) c.topo = cor ? topo : -PAREDE;
   }
 }
 
@@ -705,6 +711,8 @@ export class BahiaBaixa extends MapaDaBahia {
       const x = frente === 'e' ? beira - p.frenteZ : frente === 'o' ? beira + p.frenteZ : ao;
       const z = frente === 's' ? beira - p.frenteZ : frente === 'n' ? beira + p.frenteZ : ao;
       this.por(p.malha, x, z, ROT[frente], ALTURA_PINGUELA);
+      // o varal e o vaso, que aparecem quando a cor volta
+      this.depoisDaCor.push(this.por(p.enfeites, x, z, ROT[frente], ALTURA_PINGUELA, false));
       // o cômodo é maciço; a varanda é chão
       const meiaX = p.largura / 2, frenteZ = p.frenteZ, fundoZ = -(p.profundidade - p.frenteZ);
       const [ax, az, bx2, bz2] = girar(frente, -meiaX, fundoZ, meiaX, frenteZ);
@@ -1133,6 +1141,13 @@ export class BahiaAlta extends MapaDaBahia {
     for (const [x, z] of [[-2, 16], [10, 16], [-2, 30], [10, 30], [20, 18], [40, 18], [20, 30], [40, 30], [-36, 20], [-36, 34], [2, -44], [22, -44]]) {
       this.por(poste(), x, z, 0, undefined, false);
       this.circulo(x, z, 0.2);
+    }
+
+    // quando a cor volta: as mesinhas com guarda-sol vermelho nos dois lados do Largo do Pelourinho
+    for (const [x, z] of [[-2.5, -49], [-2.5, -42], [26.5, -49], [26.5, -42]]) {
+      this.depoisDaCor.push(this.por(mesaComGuardaSol(x * 13 + z), x, z, 0, undefined, false));
+      this.caixaLocal(x - 0.45, z - 0.45, 0.9, 0.9, CHAO_PELOURINHO + 0.9);
+      this.caixasDaCor.push([this.caixas[this.caixas.length - 1], CHAO_PELOURINHO + 0.9]);
     }
 
     // os esquecidos do Pelourinho, e os que passam: em volta do Terreiro e parados na boca do beco

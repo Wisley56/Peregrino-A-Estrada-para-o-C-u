@@ -410,7 +410,11 @@ os mantém (o save guarda o número do nível, não o nome).
   Piedade 4 e 5, marca `bahia_restaurada` (uma graça), o sino do Bonfim toca três vezes (`Som.sino`) e vem
   `bahia_restaurada`. A **cor da Bahia** (`Jogo.corDaBahia`) volta aos poucos com a provação (até a metade: os
   recolhidos, o menino, a doação, a enfermaria) e toda com a vitória; a cor na tela segue o alvo devagar
-  (`Jogo.corVisivel`). As galinhas foram para o quintal, a oeste.
+  (`Jogo.corVisivel`). As galinhas foram para o quintal, a oeste. Com a vitória a cidade também se enfeita:
+  as mesinhas com guarda-sol vermelho nos dois lados do Largo do Pelourinho (`mesaComGuardaSol`) e, nas
+  palafitas dos Alagados, os varais de roupa e os vasos de flor (`enfeitesDaPalafita`). O que só aparece depois
+  da cor fica em `MapaDaBahia.depoisDaCor`, e as caixas que vêm com ele em `caixasDaCor` (desligadas antes, com
+  `topo = -PAREDE`); as duas listas são acertadas em `reiniciar`.
 
 ## Diálogos
 
