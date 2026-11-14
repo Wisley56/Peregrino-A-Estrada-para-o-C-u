@@ -35,5 +35,6 @@ INCLUDE deserto.ink
 INCLUDE meiodia.ink
 INCLUDE cidade.ink
 INCLUDE palacio.ink
+INCLUDE bahia.ink
 
 -> END

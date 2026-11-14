@@ -12,8 +12,8 @@ export interface Alvo {
   readonly ativa: boolean;
 }
 
-export type IdArea = 'vale' | 'cripta' | 'deserto' | 'meiodia' | 'cidade' | 'palacio';
-export const AREAS: IdArea[] = ['vale', 'cripta', 'deserto', 'meiodia', 'cidade', 'palacio'];
+export type IdArea = 'vale' | 'cripta' | 'deserto' | 'meiodia' | 'cidade' | 'palacio' | 'bahiabaixa' | 'bahiaalta';
+export const AREAS: IdArea[] = ['vale', 'cripta', 'deserto', 'meiodia', 'cidade', 'palacio', 'bahiabaixa', 'bahiaalta'];
 
 /** Um lugar jogável com chão, obstáculos e inimigos próprios. */
 export interface Area extends Fisica {

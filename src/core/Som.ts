@@ -84,6 +84,12 @@ export class Som {
       case 'gemido': t(220, 0.7, 'sawtooth', 0.04, 170); this.ruido(0.5, 0.05 * g, 400); break;
     }
   }
+  /** Uma badalada de sino grande: o som fundo e os parciais (a terça menor dá o timbre de bronze), longos. */
+  sino() {
+    const f = 196;
+    [[0.5, 0.1], [1, 0.16], [1.2, 0.08], [1.5, 0.06], [2, 0.07], [2.66, 0.03]].forEach(([k, vol]) => this.tom(f * k, 4.2, 'sine', vol, f * k * 0.995));
+    this.ruido(0.08, 0.2, 1800);
+  }
   dissolver() { this.tom(660, 0.9, 'sine', 0.15, 220); this.ruido(0.6, 0.2, 3000); }
   graca() {
     [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => this.tom(f, 1.6, 'sine', 0.12, undefined, i * 0.12));

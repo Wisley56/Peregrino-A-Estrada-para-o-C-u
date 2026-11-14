@@ -1,6 +1,6 @@
 import { Identidade, normalizar } from './Aparencia';
 import { AREAS, IdArea } from '../mundo/Area';
-import { CUSTO_NIVEL, DONS, IdDom } from './Dons';
+import { CUSTO_NIVEL, DONS, IdDom, domPorId } from './Dons';
 
 const areaValida = (a: unknown): IdArea => (AREAS.includes(a as IdArea) ? (a as IdArea) : 'vale');
 
@@ -53,7 +53,7 @@ function ler(chave: string): DadosSalvos | null {
 }
 
 /** Sombras-chefão: cada uma vencida dá um coração a mais. */
-export const CHEFOES = ['cripta_guardiao', 'meiodia_acedia', 'palacio_gula'];
+export const CHEFOES = ['cripta_guardiao', 'meiodia_acedia', 'palacio_gula', 'bahiaalta_coracao'];
 
 /** Estado do peregrino e do mundo. O que importa entre sessões vai para o espaço de jogo atual. */
 export class Estado {
@@ -242,10 +242,17 @@ export class Estado {
   /** Sobe um dom um nível, se houver graças. */
   fortalecer(id: IdDom) {
     const n = this.nivel(id);
-    if (n < 1 || n >= 5 || this.gracasLivres < CUSTO_NIVEL[n + 1]) return false;
+    if (n < 1 || n >= 5 || this.gracasLivres < CUSTO_NIVEL[n + 1] || this.travado(id)) return false;
     this.dons[id] = n + 1;
     this.salvar();
     return true;
+  }
+
+  /** O próximo nível do dom ainda está fechado pela história (devolve a trava, ou null). */
+  travado(id: IdDom) {
+    const n = this.nivel(id);
+    const t = n >= 1 && n < 5 ? domPorId(id).niveis[n]?.trava : undefined;
+    return t && !this.flags.has(t.flag) ? t : null;
   }
 
   /** A queda tira o estado de graça e o coração da Eucaristia. */

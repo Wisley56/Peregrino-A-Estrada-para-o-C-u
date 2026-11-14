@@ -321,6 +321,8 @@ export class Peregrino {
   forcaPulo = 1;
   private saco: THREE.Mesh | null = null;
   private carga: THREE.Object3D | null = null;
+  /** A carga vai nas costas (alguém carregado): os braços seguram as pernas atrás e o cajado fica guardado. */
+  private cargaNasCostas = false;
 
   /** O saco de ouro pendurado na cintura, maior quanto mais pesa (0 esconde). */
   mostrarPeso(n: number) {
@@ -340,12 +342,17 @@ export class Peregrino {
     this.saco.position.set(-4.6 * S, 7.2 * S - 1.7 * S * k, 0.8 * S);
   }
 
-  /** Leva um objeto no ombro (a pedra de São Damião); `null` larga. */
-  carregar(obj: THREE.Object3D | null) {
+  /**
+   * Leva um objeto no ombro (a pedra de São Damião) ou alguém nas costas (os enfermos da Bahia); `null` larga.
+   */
+  carregar(obj: THREE.Object3D | null, lugar: 'ombro' | 'costas' = 'ombro') {
     if (this.carga) this.corpo.remove(this.carga);
     this.carga = obj;
+    this.cargaNasCostas = !!obj && lugar === 'costas';
+    this.cajado.visible = !this.cargaNasCostas;
     if (obj) {
-      obj.position.set(5.2 * S, 18.6 * S, -0.6 * S);
+      if (lugar === 'ombro') obj.position.set(5.2 * S, 18.6 * S, -0.6 * S);
+      else obj.position.set(0, 0, 0); // quem vai nas costas já vem posto (Enfermos.nasCostas)
       this.corpo.add(obj);
     }
   }
@@ -539,6 +546,14 @@ export class Peregrino {
       corpoRx += k * 0.12;
     }
 
+    if (this.cargaNasCostas && this.acao === 'livre') {
+      // as mãos para trás, segurando as pernas de quem vai nas costas; o corpo um pouco curvado sob o peso
+      bE = 0.55 + bE * 0.3;
+      bD = 0.55 + bD * 0.3;
+      bEz = 0.12;
+      bDz = -0.12;
+      corpoRx += 0.1;
+    }
     const t = this.tempoAcao;
     switch (this.acao) {
       case 'golpe': {

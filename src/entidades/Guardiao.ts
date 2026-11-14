@@ -32,6 +32,8 @@ export interface Impacto {
   arrasto?: THREE.Vector3;
   /** O vício sussurra ao peregrino. */
   sussurro?: string;
+  /** Segundos de indiferença (o olhar do Coração de Pedra): não socorre e anda devagar. */
+  indiferenca?: number;
 }
 
 export interface InfoJogador {

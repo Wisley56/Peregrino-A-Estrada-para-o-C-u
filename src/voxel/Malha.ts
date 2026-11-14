@@ -8,6 +8,11 @@ export interface Volume {
   min: [number, number, number];
   max: [number, number, number]; // exclusivo
   cor(x: number, y: number, z: number): THREE.Color | null;
+  /**
+   * Opcional: percorre só as células cheias. Com ela, a malha não precisa consultar a caixa inteira, célula
+   * por célula (modelos grandes e ocos, como as igrejas, são quase todos vazio).
+   */
+  cada?(f: (x: number, y: number, z: number, c: THREE.Color) => void): void;
 }
 
 // Faces de um cubo unitário, em sentido anti-horário visto de fora.
@@ -112,19 +117,23 @@ export function malhaDoVolume(vol: Volume, escala: number, pivo: [number, number
   const gx = dim[0] + 2, gy = dim[1] + 2, gz = dim[2] + 2;
   const grade = new Int32Array(gx * gy * gz);
   const at = (x: number, y: number, z: number) => ((x + 1) * gy + (y + 1)) * gz + (z + 1);
-  for (let x = 0; x < dim[0]; x++)
-    for (let y = 0; y < dim[1]; y++)
-      for (let z = 0; z < dim[2]; z++) {
-        const c = vol.cor(x + min[0], y + min[1], z + min[2]);
-        if (!c) continue;
-        const k = c.getHex();
-        let id = ids.get(k);
-        if (id === undefined) {
-          id = cores.push(c);
-          ids.set(k, id);
+  const por = (x: number, y: number, z: number, c: THREE.Color) => {
+    const k = c.getHex();
+    let id = ids.get(k);
+    if (id === undefined) {
+      id = cores.push(c);
+      ids.set(k, id);
+    }
+    grade[at(x, y, z)] = id;
+  };
+  if (vol.cada) vol.cada((x, y, z, c) => por(x - min[0], y - min[1], z - min[2], c));
+  else
+    for (let x = 0; x < dim[0]; x++)
+      for (let y = 0; y < dim[1]; y++)
+        for (let z = 0; z < dim[2]; z++) {
+          const c = vol.cor(x + min[0], y + min[1], z + min[2]);
+          if (c) por(x, y, z, c);
         }
-        grade[at(x, y, z)] = id;
-      }
 
   // greedy meshing: junta faces vizinhas da mesma cor em retângulos
   const v: [number, number, number][] = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];

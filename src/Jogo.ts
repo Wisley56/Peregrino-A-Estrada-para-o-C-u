@@ -17,10 +17,15 @@ import { Criacao } from './ui/Criacao';
 import { Mundo } from './mundo/Mundo';
 import { Cripta } from './mundo/Cripta';
 import { Alvo, Area, IdArea } from './mundo/Area';
+import { SUJEIRAS } from './mundo/Hospital';
 import { Deserto, TOTAL_SOMBRAS_DESERTO } from './mundo/Deserto';
 import { PocoMeioDia } from './mundo/PocoMeioDia';
 import { Cidade, NOME_ISCA, PEDRAS_DAMIAO, TOTAL_ATOS_CIDADE, TOTAL_SOMBRAS_CIDADE, type Isca, type Pobre } from './mundo/Cidade';
 import { pedraDeCarregar } from './mundo/CidadeModelos';
+import { menino } from './entidades/Dulce';
+import { ENFERMOS, corpoDoEnfermo, enfermo, registrarRetratosDosEnfermos } from './entidades/Enfermos';
+import { BahiaAlta, BahiaBaixa } from './mundo/Bahia';
+import { ID_CORACAO } from './mundo/LargoDoCruzeiro';
 import { Banquete, type Ajudante, type IdAjudante } from './mundo/Banquete';
 import { Chefe } from './entidades/Guardiao';
 import { Minimapa, Marca } from './ui/Minimapa';
@@ -40,7 +45,7 @@ import type { AreaDev, ChefeDev, GanchosDev, OpcoesDev } from './dev/tipos';
 
 const TOTAL_SOMBRAS_VALE = 5;
 
-const NOMES_AREA: Record<IdArea, string> = { vale: 'O Vale', cripta: 'A Cripta', deserto: 'Deserto das Vozes', meiodia: 'Poço do Meio-Dia', cidade: 'Cidade Dourada', palacio: 'Palácio da Gula' };
+const NOMES_AREA: Record<IdArea, string> = { vale: 'O Vale', cripta: 'A Cripta', deserto: 'Deserto das Vozes', meiodia: 'Poço do Meio-Dia', cidade: 'Cidade Dourada', palacio: 'Palácio da Gula', bahiabaixa: 'Bahia: Cidade Baixa', bahiaalta: 'Bahia: Cidade Alta' };
 const NOME_AJUDANTE: Record<IdAjudante, string> = { tomas: 'Tomás', rita: 'Rita', beppo: 'Beppo', leproso: 'o homem curado' };
 /** O que cada pobre diz quando o peregrino reparte com ele o peso do banquete. */
 const FALA_REPARTIR: Record<IdAjudante, string> = {
@@ -133,8 +138,15 @@ export class Jogo {
   private lamparinaAcesa = false;
   /** A fauna de cada região (só a da área atual aparece e se mexe). */
   private faunas = new Map<IdArea, Fauna>();
-  private interacoes: Record<IdArea, Interacao[]> = { vale: [], cripta: [], deserto: [], meiodia: [], cidade: [], palacio: [] };
+  private interacoes: Record<IdArea, Interacao[]> = { vale: [], cripta: [], deserto: [], meiodia: [], cidade: [], palacio: [], bahiabaixa: [], bahiaalta: [] };
   readonly cidade = new Cidade();
+  /** As Ruas da Bahia: a Cidade Baixa (com Itapagipe) e a Cidade Alta, ligadas pelo Elevador Lacerda. */
+  readonly bahiaBaixa = new BahiaBaixa();
+  readonly bahiaAlta = new BahiaAlta({
+    lutaComecou: () => this.lutaDoLargoComecou(),
+    socorrido: (n) => this.enfermoDoLargoSocorrido(n),
+    petrificou: () => this.enfermoDoLargoPetrificou(),
+  });
   /** O Salão do Banquete, dentro do palácio: a arena da Gula. Os pobres da cidade vêm com o peregrino. */
   readonly banquete = new Banquete(
     {
@@ -191,6 +203,10 @@ export class Jogo {
   private vezDe: 'npc' | 'peregrino' = 'npc';
   /** Segundos de torpor (o vício da acídia): o peregrino fica pesado até rezar. */
   private torpor = 0;
+  /** O olhar do Coração de Pedra: por uns segundos o peregrino passa ao largo (não socorre, anda devagar). */
+  private indiferenca = 0;
+  private corSuave = -1;
+  private areaDaCor: unknown = null;
   /** Segundos que ainda restam do dom da Ciência ligado. */
   private tempoCiencia = 0;
   readonly deserto = new Deserto({
@@ -237,7 +253,7 @@ export class Jogo {
     this.sol.shadow.bias = -0.0006;
     this.sol.shadow.normalBias = 0.04;
     this.cena.add(this.sol, this.sol.target);
-    this.cena.add(this.mundo.grupo, this.deserto.grupo, this.meiodia.grupo, this.cidade.grupo, this.banquete.grupo, this.peregrino.raiz, this.pomba.raiz, this.coluna, this.flashLuz);
+    this.cena.add(this.mundo.grupo, this.deserto.grupo, this.meiodia.grupo, this.cidade.grupo, this.banquete.grupo, this.bahiaBaixa.grupo, this.bahiaAlta.grupo, this.peregrino.raiz, this.pomba.raiz, this.coluna, this.flashLuz);
     this.coluna.visible = false;
     this.aplicarGraficos();
 
@@ -281,6 +297,9 @@ export class Jogo {
     this.deserto.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
     this.cidade.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
     this.banquete.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+    this.bahiaBaixa.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+    this.bahiaAlta.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+    registrarRetratosDosEnfermos();
     this.meiodia.reiniciar(this.estado.sombrasVencidas);
     this.montarCripta();
     await this.povoarFauna();
@@ -314,6 +333,9 @@ export class Jogo {
     this.meiodia.reiniciar(e.sombrasVencidas);
     this.cidade.reiniciar(e.sombrasVencidas, e.flags);
     this.banquete.reiniciar(e.sombrasVencidas, e.flags);
+    this.bahiaBaixa.reiniciar(e.sombrasVencidas, e.flags);
+    this.bahiaAlta.reiniciar(e.sombrasVencidas, e.flags);
+    this.nasCostas = null;
     this.peregrino.carregar(null);
     this.pesoBanquete = 0;
     this.montarCripta();
@@ -321,7 +343,7 @@ export class Jogo {
 
   /** Cria a fauna de todas as regiões (a mesma distribuição em toda partida). */
   private async povoarFauna() {
-    const areas = [this.mundo, this.cripta, this.deserto, this.meiodia, this.cidade] as Area[];
+    const areas = [this.mundo, this.cripta, this.deserto, this.meiodia, this.cidade, this.bahiaBaixa, this.bahiaAlta] as Area[];
     await Promise.all(
       areas.map(async (a, i) => {
         const fauna = new Fauna(a);
@@ -464,12 +486,15 @@ export class Jogo {
     const noPoco = this.area === this.meiodia;
     const naCidade = this.area === this.cidade;
     const noBanquete = this.area === this.banquete;
+    const naBahia = this.area === this.bahiaBaixa || this.area === this.bahiaAlta;
     this.mundo.grupo.visible = this.area === this.mundo;
     this.cripta.grupo.visible = naCripta;
     this.deserto.grupo.visible = noDeserto;
     this.meiodia.grupo.visible = noPoco;
     this.cidade.grupo.visible = naCidade;
     this.banquete.grupo.visible = noBanquete;
+    this.bahiaBaixa.grupo.visible = this.area === this.bahiaBaixa;
+    this.bahiaAlta.grupo.visible = this.area === this.bahiaAlta;
     for (const [id, fauna] of this.faunas) fauna.grupo.visible = id === this.area.id;
     this.ceu.visible = !naCripta;
     this.sol.visible = !naCripta;
@@ -518,6 +543,18 @@ export class Jogo {
       this.sol.intensity = 2.6;
       ceu.topo.value.setHex(0x4f8ad8);
       ceu.horizonte.value.setHex(0xf6d29a);
+    } else if (naBahia) {
+      // o sol de Salvador: luz branca e quente, céu muito azul, e o ar limpo da brisa do mar
+      fog.color.setHex(0xdde8ee);
+      fog.near = 60;
+      fog.far = 210;
+      this.hemi.color.setHex(0xd6ecff);
+      this.hemi.groundColor.setHex(0x8a7a5a);
+      this.hemi.intensity = 1.5;
+      this.sol.color.setHex(0xfff2dc);
+      this.sol.intensity = 2.7;
+      ceu.topo.value.setHex(0x2f84e0);
+      ceu.horizonte.value.setHex(0xe4eef2);
     } else if (noDeserto) {
       // sol forte e ar quente: névoa clara, cor de areia
       fog.color.setHex(0xf0dcb4);
@@ -555,7 +592,7 @@ export class Jogo {
   }
 
   private areaPorId(id: IdArea): Area {
-    return id === 'cripta' ? this.cripta : id === 'deserto' ? this.deserto : id === 'meiodia' ? this.meiodia : id === 'cidade' ? this.cidade : id === 'palacio' ? this.banquete : this.mundo;
+    return id === 'cripta' ? this.cripta : id === 'deserto' ? this.deserto : id === 'meiodia' ? this.meiodia : id === 'cidade' ? this.cidade : id === 'palacio' ? this.banquete : id === 'bahiabaixa' ? this.bahiaBaixa : id === 'bahiaalta' ? this.bahiaAlta : this.mundo;
   }
 
   private sombrasDoDesertoVencidas() {
@@ -566,6 +603,7 @@ export class Jogo {
   private corAtual() {
     if (this.area === this.cidade) return this.corDaCidade();
     if (this.area === this.banquete) return 1; // o ouro falso da Gula brilha sempre
+    if (this.area === this.bahiaBaixa || this.area === this.bahiaAlta) return this.corDaBahia();
     return this.area === this.deserto || this.area === this.meiodia ? this.sombrasDoDesertoVencidas() / TOTAL_SOMBRAS_DESERTO : this.estado.cor;
   }
 
@@ -757,15 +795,16 @@ export class Jogo {
       return;
     }
     if (this.eventoDaCidade(nome)) return;
+    if (this.eventoDaBahia(nome)) return;
     if (import.meta.env.DEV) console.warn(`[ink] evento desconhecido: ${nome}`);
   }
 
   /** Escurece, troca de área, guarda o lugar de chegada como checkpoint e clareia. */
-  private trocarArea(destino: Area, pos: THREE.Vector3, rumo: number, depois?: () => void) {
+  private trocarArea(destino: Area, pos: THREE.Vector3, rumo: number, depois?: () => void, manterCarga = false) {
     if (this.transitando) return;
     this.transitando = true;
     this.travado = null;
-    this.peregrino.carregar(null);
+    if (!manterCarga) this.peregrino.carregar(null);
     this.pesoBanquete = 0;
     this.torpor = 0;
     this.hud.escurecer(true);
@@ -964,6 +1003,8 @@ export class Jogo {
     ];
     this.interacoes.cidade = this.interacoesDaCidade();
     this.interacoes.palacio = this.interacoesDoBanquete();
+    this.interacoes.bahiabaixa = this.interacoesDaBahiaBaixa();
+    this.interacoes.bahiaalta = this.interacoesDaBahiaAlta();
     for (const id of Object.keys(this.interacoes) as IdArea[]) this.interacoes[id].push(...this.interacoesDaFauna(id));
   }
 
@@ -1059,6 +1100,472 @@ export class Jogo {
     this.hud.anunciar(msg, 3);
   }
 
+  // ───────────────────────────── ruas da bahia ─────────────────────────────
+
+  /**
+   * A cor da Bahia: cada passo da provação devolve um pouco (no máximo a metade), e a vitória sobre o Coração de
+   * Pedra devolve toda.
+   */
+  private corDaBahia() {
+    const f = this.estado.flags;
+    if (f.has('bahia_coracao_vencido') || f.has('bahia_restaurada')) return 1;
+    let c = ENFERMOS.filter((e) => f.has(`bahia_recolhido_${e.id}`)).length * 0.04;
+    if (f.has('bahia_menino_abrigado')) c += 0.06;
+    if (f.has('bahia_comerciante_doou')) c += 0.08;
+    if (f.has('bahia_enfermaria')) c += 0.12;
+    return c;
+  }
+
+  /** A cor que se vê: segue a da região devagar (a cor volta aos poucos), e salta ao trocar de área. */
+  private corVisivel(dt: number) {
+    const alvo = this.corAtual();
+    if (this.areaDaCor !== this.area || this.corSuave < 0) {
+      this.areaDaCor = this.area;
+      this.corSuave = alvo;
+    } else this.corSuave += Math.sign(alvo - this.corSuave) * Math.min(Math.abs(alvo - this.corSuave), dt * 0.3);
+    return this.corSuave;
+  }
+
+  /** A cada quadro na Cidade Baixa: Irmã Dulce chama o peregrino quando ele passa perto dela pela primeira vez. */
+  private atualizarBahia() {
+    const b = this.bahiaBaixa, a = this.bahiaAlta, f = this.estado.flags;
+    // caiu das costas (troca de área, queda): o menino volta para os braços de Irmã Dulce, onde ela estava; um
+    // enfermo volta para o lugar onde estava caído
+    if (this.nasCostas && !this.peregrino.carregando) {
+      if (this.nasCostas === 'menino') {
+        b.colocarDulce(f.has('bahia_casa_expulsos') ? 'casaFora' : 'calcada', true);
+        if (this.area === b) this.hud.anunciar('O menino voltou para os braços de Irmã Dulce.', 2.4);
+      } else if (f.has(`bahia_recolhido_${this.nasCostas}`)) {
+        b.mostrarAbrigado(this.nasCostas, true);
+        if (this.area === b || this.area === a) this.hud.anunciar(`${enfermo(this.nasCostas)?.nome} voltou para a esteira do abrigo.`, 2.6);
+      } else {
+        b.mostrarEnfermo(this.nasCostas, true);
+        a.mostrarEnfermo(this.nasCostas, true);
+        if (this.area === b || this.area === a) this.hud.anunciar(`${enfermo(this.nasCostas)?.nome} ficou para trás, onde estava caído.`, 2.6);
+      }
+      this.nasCostas = null;
+    }
+    // os que passam abrem caminho para quem carrega um doente; na primeira vez que empurram, o jogo explica
+    b.alguemNasCostas = a.alguemNasCostas = this.nasCostas !== null;
+    // a arena do Coração de Pedra: a pedra para nos diálogos; com a Ciência, os enfermos brilham de leve
+    a.largo.pausado = this.hud.dialogoAberto || this.morrendo || this.transitando;
+    a.largo.ciencia = this.tempoCiencia > 0;
+    const empurrou = b.houveEmpurrao() || a.houveEmpurrao();
+    if (empurrou && (this.area === b || this.area === a) && this.primeiraVez('bahia_passantes_empurram'))
+      this.hud.anunciar('Os que passam não desviam: empurram quem está no caminho. Uma luz desfaz um deles por um tempo. Com um doente nas costas, a fila para e abre caminho.', 5);
+    // o comerciante, depois de entregar a doação, volta para a loja quando o peregrino já não o vê
+    if (f.has('bahia_comerciante_doou') && b.comercianteNoConvento && (this.area !== b || b.comerciante.pos.distanceTo(this.peregrino.pos) > 25))
+      b.colocarComerciante('loja');
+    if (this.area !== b || this.hud.dialogoAberto || this.dialogos.ocupado || this.transitando) return;
+    // depois da resposta mansa, ele espera à porta do convento com a doação e fala assim que o peregrino chega
+    if (f.has('bahia_comerciante_manso') && !f.has('bahia_comerciante_doou') && b.comercianteNoConvento && b.comerciante.pos.distanceTo(this.peregrino.pos) < 6.5) {
+      this.falarCom(b.comerciante).agir();
+      return;
+    }
+    const d = b.dulceEmCena;
+    if (b.hospital.estagio === 3 && !f.has('bahia_piedade_aperfeicoada') && b.hospital.dentro(this.peregrino.pos) && this.nasCostas === null) {
+      if (this.primeiraVez('bahia_hospital_entrou')) this.falarCom(d).agir();
+      return;
+    }
+    if (f.has('bahia_dulce_conheceu') || d.pos.distanceTo(this.peregrino.pos) > 6.5) return;
+    if (this.primeiraVez('bahia_dulce_chamou')) this.falarCom(d).agir();
+  }
+
+  /**
+   * Quem vai nas costas do peregrino: o menino ('menino'), um dos enfermos (o id) ou ninguém. Não vai para o save:
+   * ao recarregar, o menino volta para Dulce e o enfermo para onde estava caído.
+   */
+  private nasCostas: string | null = null;
+  private get meninoComPeregrino() {
+    return this.nasCostas === 'menino';
+  }
+  /** O enfermo que se está socorrendo (o diálogo dele pede `carregar_enfermo` no fim). */
+  private enfermoAtual: string | null = null;
+
+  /** Socorrer: o diálogo de cada um (antes de Dulce pedir, o Espírito Santo só aponta para ele). */
+  private interacoesDosEnfermos(area: BahiaBaixa | BahiaAlta): Interacao[] {
+    return [...area.enfermos.values()].map(({ def, pos, corpo }) => ({
+      pos: () => pos,
+      raio: def.sobre === 'canoa' ? 3.6 : 2.3,
+      ativa: () => corpo.visible && this.nasCostas === null && !this.dialogos.ocupado,
+      rotulo: `F: socorrer ${def.nome}`,
+      agir: () => {
+        if (!this.estado.flags.has('bahia_menino_abrigado')) {
+          this.dialogos.tocar('bahia_enfermo_cedo');
+          return;
+        }
+        this.enfermoAtual = def.id;
+        this.dialogos.tocar(`bahia_enfermo_${def.id}`);
+      },
+    }));
+  }
+
+  /** O peregrino põe o enfermo nas costas. */
+  private pegarEnfermo(id: string) {
+    const def = enfermo(id);
+    if (!def) return;
+    this.peregrino.carregar(corpoDoEnfermo(def, 'costas'), 'costas');
+    this.nasCostas = id;
+    this.bahiaBaixa.mostrarEnfermo(id, false);
+    this.bahiaAlta.mostrarEnfermo(id, false);
+    this.som.passo();
+    this.hud.anunciar(`Leve ${def.nome} à porta do Convento de Santo Antônio, no Largo de Roma, onde Irmã Dulce espera.`, 3.2);
+  }
+
+  /** À porta do convento: o enfermo ganha a esteira dele no abrigo. */
+  private entregarEnfermo() {
+    const id = this.nasCostas, def = id ? enfermo(id) : undefined;
+    if (!id || !def) return;
+    const b = this.bahiaBaixa;
+    this.peregrino.carregar(null);
+    this.nasCostas = null;
+    b.mostrarAbrigado(id, true);
+    this.atoDaBahia(`bahia_recolhido_${id}`, `${def.nome} tem uma esteira e um teto`);
+    const d = b.dulceEmCena;
+    d.falando = true;
+    this.interlocutor = d;
+    this.dialogos.tocar(`bahia_entrega_${id}`, () => {
+      d.falando = false;
+      const todos = ENFERMOS.every((e) => this.estado.flags.has(`bahia_recolhido_${e.id}`));
+      if (todos && this.primeiraVez('bahia_esquecidos_todos')) setTimeout(() => this.dialogos.tocar('bahia_esquecidos_todos'), 400);
+    });
+  }
+
+  /** O peregrino põe o menino nas costas; Dulce, de braços livres, vai a pé para a casa ou para o convento. */
+  private pegarMenino() {
+    const paraConvento = this.estado.flags.has('bahia_casa_expulsos');
+    this.peregrino.carregar(menino('costas'), 'costas');
+    this.nasCostas = 'menino';
+    this.bahiaBaixa.deitarMenino(null);
+    this.bahiaBaixa.dulceIr(paraConvento ? 'convento' : 'casa');
+    this.som.passo();
+    this.hud.anunciar(
+      paraConvento ? 'Leve o menino ao Convento de Santo Antônio, no Largo de Roma.' : 'Leve o menino à casa abandonada, junto ao cais. Devagar: sem pulo e sem o cajado.',
+      3,
+    );
+  }
+
+  /** Efeitos pedidos pelo roteiro da Bahia. Devolve true se o evento era daqui. */
+  private eventoDaBahia(nome: string) {
+    if (nome === 'carregar_enfermo') {
+      if (this.enfermoAtual) this.pegarEnfermo(this.enfermoAtual);
+      this.enfermoAtual = null;
+      return true;
+    }
+    if (nome === 'carregar_menino') {
+      this.pegarMenino();
+      return true;
+    }
+    if (nome === 'expulsos') {
+      this.marcar('bahia_casa_expulsos');
+      this.pegarMenino();
+      return true;
+    }
+    // a resposta mansa: o comerciante fecha a loja e, sem dizer nada, vai levar a doação ao convento
+    if (nome === 'comerciante_sai') {
+      this.bahiaBaixa.colocarComerciante('convento');
+      return true;
+    }
+    if (nome === 'dulce_galinheiro') {
+      this.bahiaBaixa.dulceIr('galinheiro');
+      return true;
+    }
+    if (nome === 'passagem') {
+      this.passagemDoGalinheiro();
+      return true;
+    }
+    if (nome === 'piedade_aperfeicoada') {
+      this.piedadeAperfeicoada();
+      return true;
+    }
+    if (nome === 'doacao') {
+      this.bahiaBaixa.mostrarDoacao(true);
+      this.atoDaBahia('bahia_comerciante_doou', 'Um coração de pedra se abriu');
+      return true;
+    }
+    return false;
+  }
+
+  /** Uma fala de Irmã Dulce que o jogo começa (não o jogador): ela olha para o peregrino enquanto fala. */
+  private falaDeDulce(no: string, depois?: () => void) {
+    const d = this.bahiaBaixa.dulceEmCena;
+    d.falando = true;
+    this.interlocutor = d;
+    this.dialogos.tocar(no, () => {
+      d.falando = false;
+      depois?.();
+    });
+  }
+
+  // ─── O galinheiro (passo 6 da provação): limpar, estender as esteiras, trazer os doentes, a passagem de tempo ───
+
+  private limparGalinheiro(id: string) {
+    const b = this.bahiaBaixa, f = this.estado.flags;
+    this.marcar(`bahia_galinheiro_${id}`);
+    this.som.passo();
+    b.hospital.aplicar(f);
+    const feitas = b.hospital.limpas(f);
+    if (feitas < SUJEIRAS.length) {
+      this.hud.anunciar(`Galinheiro: ${feitas} de ${SUJEIRAS.length}`, 1.6);
+      return;
+    }
+    this.marcar('bahia_galinheiro_limpo');
+    b.hospital.aplicar(f);
+    this.falaDeDulce('bahia_galinheiro_limpo');
+  }
+
+  private estenderEsteira(id: string) {
+    const b = this.bahiaBaixa, f = this.estado.flags;
+    this.marcar(`bahia_esteira_${id}`);
+    this.som.passo();
+    b.hospital.aplicar(f);
+    const feitas = ENFERMOS.filter((e) => f.has(`bahia_esteira_${e.id}`)).length;
+    if (feitas < ENFERMOS.length) {
+      this.hud.anunciar(`Esteiras: ${feitas} de ${ENFERMOS.length}`, 1.6);
+      return;
+    }
+    if (this.primeiraVez('bahia_galinheiro_esteiras')) this.falaDeDulce('bahia_galinheiro_esteiras');
+  }
+
+  /** Do abrigo, à porta do convento, para as costas do peregrino (e daí para a esteira dele no galinheiro). */
+  private pegarDoAbrigo(id: string) {
+    const def = enfermo(id);
+    if (!def) return;
+    this.peregrino.carregar(corpoDoEnfermo(def, 'costas'), 'costas');
+    this.nasCostas = id;
+    this.bahiaBaixa.mostrarAbrigado(id, false);
+    this.som.passo();
+    this.hud.anunciar(`Leve ${def.nome} até a esteira ${def.figurino.genero === 'f' ? 'dela' : 'dele'} no galinheiro.`, 2.8);
+  }
+
+  private deitarNoGalinheiro() {
+    const id = this.nasCostas, def = id ? enfermo(id) : undefined;
+    if (!id || !def) return;
+    const b = this.bahiaBaixa, f = this.estado.flags;
+    this.peregrino.carregar(null);
+    this.nasCostas = null;
+    this.marcar(`bahia_leito_${id}`);
+    this.som.passo();
+    b.hospital.aplicar(f);
+    const feitos = ENFERMOS.filter((e) => f.has(`bahia_leito_${e.id}`)).length;
+    if (feitos < ENFERMOS.length) {
+      this.hud.anunciar(`${def.nome} tem uma esteira debaixo de um telhado (${feitos} de ${ENFERMOS.length}).`, 2.4);
+      return;
+    }
+    if (this.primeiraVez('bahia_galinheiro_todos')) setTimeout(() => this.falaDeDulce('bahia_galinheiro_pronto'), 300);
+  }
+
+  /** Semanas depois: o galinheiro virou enfermaria. Escurece, troca o estágio e Dulce mostra o que mudou. */
+  private passagemDoGalinheiro() {
+    const b = this.bahiaBaixa, h = b.hospital;
+    this.transitando = true;
+    this.hud.escurecer(true);
+    setTimeout(() => {
+      this.atoDaBahia('bahia_enfermaria', 'Semanas depois, o galinheiro virou enfermaria');
+      b.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+      // o peregrino entra pela porta, olhando os catres; Dulce está lá dentro
+      this.peregrino.teleportar(h.entrada.x, this.area.altura(h.entrada.x, h.entrada.z), h.entrada.z);
+      this.peregrino.rumo = Math.PI;
+      this.camera.guinada = 0;
+      this.camera.reposicionar();
+    }, 900);
+    setTimeout(() => {
+      this.hud.escurecer(false);
+      this.transitando = false;
+      setTimeout(() => this.falaDeDulce('bahia_enfermaria'), 700);
+    }, 3400);
+  }
+
+  /**
+   * A cena no hospital (passo 9): Irmã Dulce aperfeiçoa a Piedade (os níveis 4 e 5 se abrem), o sino do Bonfim toca
+   * e a região está restaurada.
+   */
+  private piedadeAperfeicoada() {
+    if (this.estado.flags.has('bahia_piedade_aperfeicoada')) return;
+    this.estado.flags.add('bahia_piedade_aperfeicoada');
+    this.atoDaBahia('bahia_restaurada', 'A Piedade foi aperfeiçoada: os níveis IV e V se abriram (G)');
+    for (let i = 0; i < 3; i++) setTimeout(() => this.som.sino(), 900 + i * 1700);
+    this.dialogos.tocar('bahia_restaurada');
+  }
+
+  /** Um ato de piedade da Bahia: graça, luz e, com Misericórdia (Piedade 3), um coração. */
+  private atoDaBahia(flag: string, aviso: string) {
+    if (this.estado.flags.has(flag)) return;
+    this.estado.flags.add(flag);
+    this.estado.gracas += 1;
+    if (this.estado.nivel('piedade') >= 3) this.estado.coracoes = Math.min(this.estado.coracoesMax, this.estado.coracoes + 1);
+    this.estado.salvar();
+    this.efeitos.ouro = 0.9;
+    this.som.graca();
+    this.tempoColuna = 0;
+    this.hud.anunciar(`✦ ${aviso}`, 3);
+  }
+
+  private interacoesDaBahiaBaixa(): Interacao[] {
+    const b = this.bahiaBaixa, a = this.bahiaAlta, c = this.cidade;
+    const f = (x: string) => this.estado.flags.has(x);
+    return [
+      { ...this.conversaCom(() => b.dulceEmCena, 'dulce', 'F: falar com Irmã Dulce', 2.8), ativa: () => this.nasCostas === null },
+      { ...this.conversaCom(() => b.dono, 'bahia_dono_depois', 'F: falar com o dono da casa', 2.6), ativa: () => b.dono.raiz.visible && !this.dialogos.ocupado },
+      { ...this.conversaCom(() => b.comerciante, 'bahia_comerciante', 'F: falar com o dono do armazém', 2.6), ativa: () => this.nasCostas === null && !this.dialogos.ocupado },
+      // a casa abandonada: forçar a porta pregada
+      {
+        pos: () => b.casaPorta,
+        raio: 2.4,
+        ativa: () => f('bahia_dulce_conheceu') && !f('bahia_casa_aberta'),
+        rotulo: 'F: forçar a porta pregada',
+        agir: () => {
+          b.abrirCasa(true);
+          this.marcar('bahia_casa_aberta');
+          this.som.bloqueio();
+          this.dialogos.tocar('bahia_casa_aberta');
+        },
+      },
+      // deitar o menino na esteira; o dono chega
+      {
+        pos: () => b.casaDentro,
+        raio: 2.2,
+        ativa: () => this.meninoComPeregrino && !f('bahia_casa_expulsos'),
+        rotulo: 'F: deitar o menino na esteira',
+        agir: () => {
+          this.peregrino.carregar(null);
+          this.nasCostas = null;
+          b.deitarMenino('casa');
+          b.colocarDulce('casa', false);
+          b.dono.raiz.visible = true;
+          b.dono.falando = true;
+          this.interlocutor = b.dono;
+          this.dialogos.tocar('bahia_dono', () => (b.dono.falando = false));
+        },
+      },
+      ...this.interacoesDosEnfermos(b),
+      { ...this.conversaCom(() => b.superiora, 'bahia_superiora', 'F: falar com a madre superiora', 2.4), ativa: () => this.nasCostas === null && !this.dialogos.ocupado },
+      // o galinheiro: a sujeira, as esteiras, quem vem do abrigo
+      ...b.hospital.sujeiras.map((s) => ({
+        pos: () => s.pos,
+        raio: 1.9,
+        ativa: () => b.hospital.estagio === 1 && f('bahia_galinheiro_licenca') && !f(`bahia_galinheiro_${s.id}`) && this.nasCostas === null,
+        rotulo: s.rotulo,
+        agir: () => this.limparGalinheiro(s.id),
+      })),
+      ...[...b.hospital.vagas].map(([id, vaga]) => ({
+        pos: () => vaga.pos,
+        raio: 1.3,
+        ativa: () => b.hospital.estagio === 1 && f('bahia_galinheiro_limpo') && !f(`bahia_esteira_${id}`) && this.nasCostas === null,
+        rotulo: 'F: estender uma esteira',
+        agir: () => this.estenderEsteira(id),
+      })),
+      ...ENFERMOS.map((e) => ({
+        pos: () => b.posAbrigo(e.id),
+        raio: 1.5,
+        ativa: () => f('bahia_galinheiro_esteiras') && f(`bahia_recolhido_${e.id}`) && !f(`bahia_leito_${e.id}`) && this.nasCostas === null && !this.dialogos.ocupado,
+        rotulo: `F: levar ${e.nome} para o galinheiro`,
+        agir: () => this.pegarDoAbrigo(e.id),
+      })),
+      {
+        pos: () => b.hospital.vagas.get(this.nasCostas ?? '')?.pos ?? b.hospital.entrada,
+        raio: 2.6,
+        ativa: () => this.nasCostas !== null && this.nasCostas !== 'menino' && f(`bahia_recolhido_${this.nasCostas}`),
+        rotulo: () => `F: deitar ${enfermo(this.nasCostas ?? '')?.nome ?? ''} na esteira`,
+        agir: () => this.deitarNoGalinheiro(),
+      },
+      // à porta do convento: os esquecidos, um por um
+      {
+        pos: () => b.conventoPorta,
+        raio: 3.4,
+        ativa: () => this.nasCostas !== null && this.nasCostas !== 'menino' && !f(`bahia_recolhido_${this.nasCostas}`),
+        rotulo: () => `F: deitar ${enfermo(this.nasCostas ?? '')?.nome ?? ''} numa esteira`,
+        agir: () => this.entregarEnfermo(),
+      },
+      // à porta do convento: a primeira noite do menino sob um teto
+      {
+        pos: () => b.conventoPorta,
+        raio: 3,
+        ativa: () => this.meninoComPeregrino && f('bahia_casa_expulsos') && b.dulcePerto(b.conventoPorta, 4),
+        rotulo: 'F: deitar o menino na esteira do convento',
+        agir: () => {
+          this.peregrino.carregar(null);
+          this.nasCostas = null;
+          b.abrigarMenino();
+          b.colocarDulce('convento', false);
+          b.dono.raiz.visible = false;
+          this.atoDaBahia('bahia_menino_abrigado', 'O menino tem um teto esta noite');
+          const d = b.dulceEmCena;
+          d.falando = true;
+          this.interlocutor = d;
+          this.dialogos.tocar('bahia_convento', () => (d.falando = false));
+        },
+      },
+      {
+        pos: () => b.saveiro,
+        raio: 3.2,
+        rotulo: 'F: voltar de saveiro à Cidade Dourada',
+        agir: () => this.trocarArea(c, c.estradaDoMar.clone().add(new THREE.Vector3(0, 0, -3)), Math.PI),
+      },
+      {
+        pos: () => b.elevador,
+        raio: 2.6,
+        rotulo: 'F: subir pelo Elevador Lacerda',
+        agir: () => {
+          this.hud.anunciar('O elevador sobe a escarpa…', 1.6);
+          this.trocarArea(a, a.chegada, Math.PI / 2, () => {
+            if (this.primeiraVez('bahia_alta_entrou')) this.dialogos.tocar('bahia_alta_chegada');
+          }, this.nasCostas !== null && this.nasCostas !== 'menino');
+        },
+      },
+      // antes da licença, o galinheiro é só um galinheiro
+      { pos: () => b.galinheiro, raio: 3, ativa: () => !f('bahia_galinheiro_licenca'), rotulo: 'F: olhar o galinheiro', agir: () => this.dialogos.tocar('bahia_galinheiro') },
+      // o Bonfim: a capela da região, e as cartas dos que o peregrino levou ao hospital, na Sala dos Milagres
+      ...this.interacoesDaCapela(b.capela, 'bahia_altar'),
+      ...[...b.salaDosMilagres.lembrancas].map(([id, l]): Interacao => ({
+        pos: () => l.pos,
+        raio: 0.6,
+        ativa: () => l.carta.visible,
+        rotulo: 'F: ler a carta',
+        agir: () => this.dialogos.tocar(`bahia_milagre_${id}`),
+      })),
+      { pos: () => b.alagados, raio: 2.6, rotulo: 'F: olhar os Alagados', agir: () => this.dialogos.tocar('bahia_alagados') },
+      { ...this.conversaCom(() => b.medico, 'bahia_medico', 'F: falar com o médico', 2), ativa: () => b.medico.raiz.visible && this.nasCostas === null },
+      ...b.hospital.leitos.map((l): Interacao => ({
+        pos: () => l.pos,
+        raio: 0.9,
+        ativa: () => b.hospital.estagio >= l.estagio && this.nasCostas === null && !this.dialogos.ocupado,
+        rotulo: `F: falar com ${l.nome}`,
+        agir: () => this.dialogos.tocar(l.no),
+      })),
+      { pos: () => b.hospital.cadeira, raio: 1.3, ativa: () => b.hospital.estagio === 3, rotulo: 'F: olhar a cadeira', agir: () => this.dialogos.tocar('bahia_cadeira') },
+      { pos: () => b.hospital.altar, raio: 1.5, ativa: () => b.hospital.estagio === 3, rotulo: 'F: olhar a capelinha', agir: () => this.dialogos.tocar('bahia_capelinha') },
+    ];
+  }
+
+  private interacoesDaBahiaAlta(): Interacao[] {
+    const b = this.bahiaBaixa, a = this.bahiaAlta;
+    return [
+      {
+        pos: () => a.elevador,
+        raio: 2.6,
+        rotulo: 'F: descer pelo Elevador Lacerda',
+        agir: () => {
+          this.hud.anunciar('O elevador desce a escarpa…', 1.6);
+          this.trocarArea(b, b.elevador.clone().add(new THREE.Vector3(-2.5, 0, 0)), -Math.PI / 2, undefined, this.nasCostas !== null);
+        },
+      },
+      ...this.interacoesDosEnfermos(a),
+      { pos: () => a.cruzeiro, raio: 2.8, ativa: () => !a.largo.lutando, rotulo: 'F: contemplar o cruzeiro', agir: () => this.dialogos.tocar('bahia_cruzeiro') },
+      // os cinco do Largo do Cruzeiro, na luta contra o Coração de Pedra
+      ...a.largo.enfermos.map((e, i): Interacao => ({
+        pos: () => e.pos,
+        raio: 1.7,
+        ativa: () => a.largo.precisa(i),
+        rotulo: () => (this.indiferenca > 0 ? 'Não é comigo… (a indiferença passa logo)' : e.situacao === 'petrificado' ? 'F: socorrer (desfazer a pedra)' : 'F: socorrer'),
+        agir: () => {
+          if (this.indiferenca > 0) return this.hud.anunciar('A indiferença ainda pesa: você não consegue parar. Espere passar.', 1.8);
+          a.largo.socorrer(i);
+        },
+      })),
+    ];
+  }
+
   // ───────────────────────────── cidade dourada ─────────────────────────────
 
   /** Atos de piedade já feitos na cidade. */
@@ -1087,8 +1594,9 @@ export class Jogo {
 
   /** O que pesa no peregrino: o ouro da Gula (Piedade 4 o deixa pela metade) e a pedra no ombro. */
   private pesoEfetivo() {
-    const ouro = this.estado.peso * (this.estado.nivel('piedade') >= 4 ? 0.5 : 1);
-    return ouro + this.pesoBanquete + (this.peregrino.carregando ? 2 : 0);
+    const ouro = this.estado.peso * (this.estado.nivel('piedade') >= 2 ? 0.5 : 1);
+    const fardo = this.peregrino.carregando ? (this.nasCostas && this.estado.nivel('piedade') >= 4 ? 1 : 2) : 0;
+    return ouro + this.pesoBanquete + fardo;
   }
 
   /** Um ato de piedade feito: graça, luz e, com Misericórdia (Piedade 3), um coração. */
@@ -1195,6 +1703,20 @@ export class Jogo {
         raio: 2.6,
         rotulo: 'F: voltar ao Deserto das Vozes',
         agir: () => this.trocarArea(this.deserto, this.deserto.estradaSul.clone().add(new THREE.Vector3(0, 0, -3)), Math.PI),
+      },
+      {
+        pos: () => c.estradaDoMar,
+        raio: 2.6,
+        rotulo: () => (this.estado.sombrasVencidas.has('palacio_gula') ? 'F: seguir viagem para a Bahia' : 'F: examinar a estrada do mar'),
+        agir: () => {
+          if (!this.estado.sombrasVencidas.has('palacio_gula')) {
+            this.dialogos.tocar('cidade_estrada_mar');
+            return;
+          }
+          this.trocarArea(this.bahiaBaixa, this.bahiaBaixa.chegada, Math.PI / 2, () => {
+            if (this.primeiraVez('bahia_entrou')) this.dialogos.tocar('bahia_chegada');
+          });
+        },
       },
       { pos: () => c.cruzeiro, raio: 2.6, rotulo: 'F: contemplar o cruzeiro', agir: () => this.dialogos.tocar('cidade_cruzeiro') },
       {
@@ -1310,7 +1832,7 @@ export class Jogo {
     const peso = this.estado.peso + this.pesoBanquete;
     this.peregrino.mostrarPeso(peso);
     this.hud.mostrarPeso(
-      this.pesoBanquete > 0 ? `⚖ Banquete da Gula · peso ${peso}` : peso > 0 ? `⚖ Ouro da Gula · peso ${peso}` : this.peregrino.carregando ? '⚖ Pedra para São Damião' : null,
+      this.pesoBanquete > 0 ? `⚖ Banquete da Gula · peso ${peso}` : peso > 0 ? `⚖ Ouro da Gula · peso ${peso}` : this.nasCostas ? `⚖ ${this.nasCostas === 'menino' ? 'O menino' : enfermo(this.nasCostas)?.nome} nas costas` : this.peregrino.carregando ? '⚖ Pedra para São Damião' : null,
     );
     if (this.area !== this.cidade || this.hud.dialogoAberto) return;
     const f = this.estado.flags;
@@ -1396,6 +1918,45 @@ export class Jogo {
     this.som.bloqueio();
     this.hud.acertou();
     if (restantes > 0) this.hud.anunciar(`Travessa derrubada · ${restantes === 1 ? 'falta 1' : `faltam ${restantes}`}`, 1.3);
+  }
+
+  // ───────────────────────────── o Coração de Pedra ─────────────────────────────
+
+  private lutaDoLargoComecou() {
+    this.som.tensao();
+    this.indiferenca = 0;
+    this.hud.anunciar('O Coração de Pedra', 3);
+    if (this.primeiraVez('bahia_coracao_dica')) this.dialogos.tocar('bahia_coracao');
+  }
+
+  private enfermoDoLargoSocorrido(oracoes: number) {
+    this.som.item();
+    this.hud.acertou();
+    if (oracoes > 0) this.hud.anunciar(oracoes < 3 ? `Ele se levanta e reza: a couraça racha (${oracoes} de 3)` : 'Três orações: a grade do peito cede!', 1.6);
+    else this.hud.anunciar('Ele se levanta e reza com você.', 1.4);
+  }
+
+  private enfermoDoLargoPetrificou() {
+    this.som.dissolver();
+    this.hud.anunciar('Alguém virou pedra: a couraça do colosso endureceu.', 2.2);
+  }
+
+  /** O colosso desmoronou: o coração de carne, e as portas do largo se abrem. */
+  private coracaoVencido() {
+    this.efeitos.ouro = 1.4;
+    this.som.graca();
+    setTimeout(() => this.som.item(), 600);
+    this.tempoColuna = 0;
+    this.hud.anunciar('✦ A pedra rachou: por dentro havia um coração de carne', 3.4);
+    this.dialogos.tocar('bahia_coracao_vencido', () => {
+      this.hud.escurecer(true);
+      setTimeout(() => {
+        this.bahiaAlta.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+        this.bahiaBaixa.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+        this.hud.escurecer(false);
+        this.hud.anunciar('As portas do largo se abriram: os moradores levaram os enfermos ao hospital.', 3.4);
+      }, 900);
+    });
   }
 
   private gulaVencida() {
@@ -1491,7 +2052,8 @@ export class Jogo {
       const borda = e.giroDeBorda();
       if (borda && !this.travado && !this.conversa.emUso) this.camera.girar(borda * 520 * dt * this.prefs.sensibilidade, 0);
       // Temor de Deus 3 (Pequenez): as sombras comuns custam mais a notar o peregrino
-      Sombra.percepcao = this.estado.nivel('temor') >= 3 ? 0.7 : 1;
+      // Piedade 4 (Carregar o fardo): diante de quem carrega um sofredor, as sombras comuns hesitam
+      Sombra.percepcao = (this.estado.nivel('temor') >= 3 ? 0.7 : 1) * (this.nasCostas && this.estado.nivel('piedade') >= 4 ? 0.5 : 1);
       this.atualizar(dt);
       this.atualizarTorpor(dt);
       this.atualizarMinimapa();
@@ -1504,9 +2066,19 @@ export class Jogo {
     // a primeira vez na capela do deserto, o Espírito conta de quem ela é
     if (naCapela && this.area === this.deserto && this.comecou && !this.hud.dialogoAberto && this.primeiraVez('deserto_capela'))
       this.dialogos.tocar('deserto_capela');
+    // no Bonfim: a primeira vez na nave e a primeira vez na Sala dos Milagres
+    if (naCapela && this.area === this.bahiaBaixa && this.comecou && !this.hud.dialogoAberto) {
+      if (this.primeiraVez('bahia_bonfim_entrou')) this.dialogos.tocar('bahia_bonfim_entrada');
+      else if (this.bahiaBaixa.capela.naSala(this.peregrino.pos) && this.primeiraVez('bahia_sala_milagres')) this.dialogos.tocar('bahia_sala_milagres');
+    }
+    // no galinheiro da Bahia (e na enfermaria), o mesmo: o telhado some e a câmera passa por cima das paredes
+    const hosp = this.area === this.bahiaBaixa ? this.bahiaBaixa.hospital : null;
+    const noHospital = !!hosp && hosp.dentro(this.peregrino.pos);
+    hosp?.mostrarTelhado(!noHospital);
+    const dentro = naCapela || noHospital;
     if (this.area !== this.cripta) {
-      this.camera.subirAoBater = naCapela && !this.emConfissao;
-      this.camera.arfagemMin = naCapela && !this.emConfissao ? 0.35 : ARFAGEM_LIVRE;
+      this.camera.subirAoBater = dentro && !this.emConfissao;
+      this.camera.arfagemMin = dentro && !this.emConfissao ? 0.35 : ARFAGEM_LIVRE;
     }
     if (this.emConfissao) {
       // de fora da abertura do confessionário, de lado, à altura de quem está ajoelhado
@@ -1515,19 +2087,20 @@ export class Jogo {
       this.camera.distancia = 2.9;
     } else {
       // braço mais curto dentro da capela, para não ter de subir tanto por cima das paredes
-      const alvo = naCapela ? 4.3 : 6.2;
-      this.camera.elevacaoMira = this.comecou ? (naCapela ? 0.5 : 1.05) : 0;
+      const alvo = dentro ? 4.3 : 6.2;
+      this.camera.elevacaoMira = this.comecou ? (dentro ? 0.5 : 1.05) : 0;
       this.camera.distancia += (alvo - this.camera.distancia) * Math.min(1, dt * 3);
     }
     const area = this.area;
     const chao = area.alturaCamera ? (x: number, z: number) => area.alturaCamera!(x, z) : (x: number, z: number) => area.altura(x, z);
-    const alturaCam = naCapela ? (x: number, z: number) => cap!.alturaCamera(x, z, chao) : chao;
+    const alturaCam = naCapela ? (x: number, z: number) => cap!.alturaCamera(x, z, chao) : noHospital ? (x: number, z: number) => hosp!.alturaCamera(x, z, chao) : chao;
     this.camera.atualizar(dt, this.peregrino.pos, alvoCam, alturaCam);
     if (this.comecou) this.atualizarConversa(dt, alturaCam);
     if (this.modoCriacao) this.quadroCriacao(dt);
     this.hud.posicionarMira(this.travado ? this.travado.centro().add(new THREE.Vector3(0, 0.9, 0)) : null, this.camera.cam);
     this.atualizarMiraLivre(dt);
-    this.hud.atualizar(dt, this.estado, this.corAtual(), this.area === this.cidade || this.area === this.banquete ? 'Cor da Cidade' : this.area === this.deserto || this.area === this.meiodia ? 'Cor do Deserto' : 'Cor do Vale');
+    const cor = this.corVisivel(dt);
+    this.hud.atualizar(dt, this.estado, cor, this.area === this.cidade || this.area === this.banquete ? 'Cor da Cidade' : this.area === this.bahiaBaixa || this.area === this.bahiaAlta ? 'Cor da Bahia' : this.area === this.deserto || this.area === this.meiodia ? 'Cor do Deserto' : 'Cor do Vale');
 
     // sol acompanha o peregrino para a sombra ficar nítida por perto
     const p = this.peregrino.pos;
@@ -1539,7 +2112,7 @@ export class Jogo {
     this.ceu.position.copy(this.camera.cam.position); // o céu acompanha a câmera (o deserto fica longe da origem)
     // o torpor tira a cor do mundo
     const peso = Math.min(1, this.torpor / 2);
-    this.efeitos.renderizar(dt, this.modoCriacao ? 1 : this.corAtual() * (1 - peso * 0.8));
+    this.efeitos.renderizar(dt, this.modoCriacao ? 1 : cor * (1 - peso * 0.8));
     this.entrada.fimDoQuadro();
   }
 
@@ -1611,11 +2184,14 @@ export class Jogo {
     const correndo = e.segurando('ShiftLeft', 'ShiftRight') && !this.travado;
     // o ouro da Gula e a pedra no ombro pesam: mais devagar e com menos pulo
     const carga = this.pesoEfetivo();
-    const velocidade = (this.travado ? 3.8 : correndo ? 7.2 : 4.4) * per.fatorVelocidade * (this.torpor > 0 ? 0.5 : 1) * Math.max(0.45, 1 - carga * 0.1) * (this.dev?.velocidade ?? 1);
+    const velocidade = (this.travado ? 3.8 : correndo ? 7.2 : 4.4) * per.fatorVelocidade * (this.torpor > 0 ? 0.5 : 1) * (this.indiferenca > 0 ? 0.55 : 1) * Math.max(0.45, 1 - carga * 0.1) * (this.dev?.velocidade ?? 1);
     per.forcaPulo = per.carregando ? 0 : Math.max(0.55, 1 - carga * 0.12);
 
     const livre = !parado && per.acao === 'livre';
-    if (livre && e.apertou('Mouse0', 'KeyJ')) {
+    if (livre && this.nasCostas && e.apertou('Mouse0', 'KeyJ', 'Mouse2', 'KeyK')) {
+      const quem = this.nasCostas === 'menino' ? 'o menino' : enfermo(this.nasCostas)?.nome;
+      this.hud.anunciar(`Com ${quem} nas costas, as mãos não largam: sem o cajado. Ainda se pode rezar (R).`, 2);
+    } else if (livre && e.apertou('Mouse0', 'KeyJ')) {
       // como no Veloren: sem alvo travado, o peregrino golpeia para onde a câmera olha
       if (!this.travado) this.virarParaMira();
       per.iniciar('golpe');
@@ -1682,6 +2258,7 @@ export class Jogo {
       this.verificarVeu();
     }
     this.atualizarCidade();
+    this.atualizarBahia();
     this.faunas.get(this.area.id)?.atualizar(dt, per.pos, (v, d) => this.som.voz(v, 1 - d / 16));
     this.pomba.atualizar(dt, per.pos, per.rumo);
     this.atualizarColuna(dt);
@@ -1751,6 +2328,8 @@ export class Jogo {
 
   /** Torpor: pesa, gasta energia e se desfaz sozinho bem devagar (rezando, depressa). */
   private atualizarTorpor(dt: number) {
+    this.indiferenca = Math.max(0, this.indiferenca - dt);
+    if (this.indiferenca > 0 && !this.hud.dialogoAberto) this.hud.mostrarDica('Indiferente: não é comigo… (passa logo)');
     if (this.torpor <= 0) {
       this.hud.mostrarTorpor(0);
       return;
@@ -1803,6 +2382,7 @@ export class Jogo {
     if (this.area === this.cripta) return this.cripta.guardiao;
     if (this.area === this.meiodia) return this.meiodia.acedia;
     if (this.area === this.banquete) return this.banquete.gula;
+    if (this.area === this.bahiaAlta) return this.bahiaAlta.largo.chefe;
     return null;
   }
 
@@ -1815,6 +2395,9 @@ export class Jogo {
       return this.hud.mostrarChefe('ACÍDIA · O DEMÔNIO DO MEIO-DIA', a.vida / a.vidaMax, !a.revelado, a.alerta);
     const gu = this.area === this.banquete ? this.banquete.gula : null;
     if (gu && this.banquete.lutando && gu.ativa) return this.hud.mostrarChefe('GULA · O BANQUETE SEM FIM', gu.vida / gu.vidaMax, !gu.faminta, gu.alerta);
+    const lg = this.area === this.bahiaAlta ? this.bahiaAlta.largo : null;
+    if (lg?.chefe && lg.lutando && lg.chefe.ativa)
+      return this.hud.mostrarChefe('O CORAÇÃO DE PEDRA · A DUREZA DE CORAÇÃO', lg.chefe.vida / lg.chefe.vidaMax, !lg.chefe.exposto, lg.chefe.alerta);
     this.hud.mostrarChefe(null);
   }
 
@@ -1842,6 +2425,15 @@ export class Jogo {
         this.peregrino.iniciar('ferido');
       }
       if (imp.sussurro) this.hud.sussurrar(imp.sussurro, 2.8);
+      if (imp.indiferenca && this.estado.nivel('piedade') >= 5) {
+        // Piedade 5 (Coração de carne): o olhar da indiferença não prende mais
+        if (this.indiferenca <= 0) this.hud.anunciar('O olhar cinzento passa: um coração de carne não se deixa prender.', 1.6);
+      } else if (imp.indiferenca) {
+        this.indiferenca = imp.indiferenca;
+        this.som.torpor();
+        this.peregrino.iniciar('ferido');
+        this.hud.anunciar('O olhar cinzento pegou você: por uns segundos, você passa ao largo.', 2.2);
+      }
       if (imp.peso) {
         this.pesoBanquete = Math.min(8, this.pesoBanquete + imp.peso);
         this.som.moedas();
@@ -2074,7 +2666,7 @@ export class Jogo {
     this.estado.salvar();
     const guardiao = s.id === 'cripta_guardiao';
     if (guardiao) this.cripta.guardiaoVencido();
-    if (guardiao || s.id === 'meiodia_acedia' || s.id === 'palacio_gula') {
+    if (guardiao || s.id === 'meiodia_acedia' || s.id === 'palacio_gula' || s.id === ID_CORACAO) {
       // cada chefão vencido dá um coração a mais, e o peregrino sai da luta curado
       this.estado.coracoes = this.estado.coracoesMax;
       setTimeout(() => this.hud.anunciar('❤️ Mais um coração!', 2.6), 3400);
@@ -2084,6 +2676,13 @@ export class Jogo {
       this.pesoBanquete = 0;
       this.marcar('gula_vencida');
       setTimeout(() => this.gulaVencida(), 900);
+      return;
+    }
+    if (s.id === ID_CORACAO) {
+      this.bahiaAlta.largo.chefeVencido();
+      this.indiferenca = 0;
+      this.marcar('bahia_coracao_vencido');
+      setTimeout(() => this.coracaoVencido(), 1800);
       return;
     }
     if (s.id === 'meiodia_acedia') {
@@ -2140,6 +2739,12 @@ export class Jogo {
         return c.pobres.some((q) => this.estado.flags.has(`cidade_ajudou_${q.id}`) && p.distanceTo(q.npc.pos) < 5) ||
           (this.estado.flags.has('cidade_leproso') && p.distanceTo(c.homemDaEstrada.pos) < 5);
       return false;
+    }
+    if (this.area === this.bahiaBaixa) {
+      const b = this.bahiaBaixa, h = b.hospital;
+      if (b.capela.dentro(p) || h.naCapelinha(p)) return true;
+      // Piedade 5: na enfermaria e no hospital, quem você carregou reza com você
+      return this.estado.nivel('piedade') >= 5 && h.estagio >= 2 && h.dentro(p);
     }
     if (this.area !== this.mundo) return false;
     return p.distanceTo(this.mundo.cruzeiro) < 4 || Math.hypot(p.x - CAPELA.x, p.z - CAPELA.y) < 5;
@@ -2225,6 +2830,8 @@ export class Jogo {
       this.cripta.reiniciarLuta();
       this.meiodia.reiniciarLuta();
       this.banquete.reiniciarLuta();
+      this.bahiaAlta.largo.reiniciarLuta();
+      this.indiferenca = 0;
       this.pesoBanquete = 0;
       this.peregrino.carregar(null);
       this.torpor = 0;
@@ -2298,6 +2905,20 @@ export class Jogo {
         ponto('São Damião', c.damiao.clone().add(v(0, 6))), ponto('Pedreira', c.pedreira.clone().add(v(0, 3))), ponto('Toca do lobo', c.toca.clone().add(v(0, 4))),
       ] },
       { id: 'palacio', nome: NOMES_AREA.palacio, pontos: [ponto('Chegada', b.chegada), ponto('Salão (luta)', b.centro.clone().add(v(0, 6)))] },
+      { id: 'bahiabaixa', nome: NOMES_AREA.bahiabaixa, pontos: [
+        ponto('Chegada (rampa do mercado)', this.bahiaBaixa.chegada, Math.PI / 2), ponto('Irmã Dulce e o menino', this.bahiaBaixa.dulceEmCena.pos.clone().add(v(-7, 0)), Math.PI / 2), ponto('Elevador Lacerda', this.bahiaBaixa.elevador, -Math.PI / 2),
+        ponto('Hospital (dentro)', this.bahiaBaixa.hospital.entrada, Math.PI),
+        ponto('Mercado Modelo', this.bahiaBaixa.mercado.clone().add(v(4, 0)), -Math.PI / 2), ponto('Largo de Roma e o galinheiro', this.bahiaBaixa.galinheiro.clone().add(v(0, 6))),
+        ponto('Bonfim', this.bahiaBaixa.bonfim.clone().add(v(0, 10))), ponto('Alagados', this.bahiaBaixa.alagados.clone().add(v(3, 0)), -Math.PI / 2),
+        ponto('Armazém do comerciante', this.bahiaBaixa.armazemPorta, Math.PI / 2),
+        ponto('Galinheiro (porta)', this.bahiaBaixa.galinheiro, Math.PI),
+        ponto('Bonfim (dentro)', this.bahiaBaixa.capela.porta.clone().add(v(0, -4)), Math.PI),
+        ponto('Abrigo (porta do convento)', this.bahiaBaixa.conventoPorta.clone().add(v(-3, 0)), Math.PI / 2),
+      ] },
+      { id: 'bahiaalta', nome: NOMES_AREA.bahiaalta, pontos: [
+        ponto('Chegada (Praça Tomé de Sousa)', this.bahiaAlta.chegada, Math.PI / 2), ponto('Terreiro de Jesus', this.bahiaAlta.chafariz.clone().add(v(-8, 0)), Math.PI / 2),
+        ponto('Largo do Cruzeiro (arena)', this.bahiaAlta.cruzeiro.clone().add(v(-8, 0)), Math.PI / 2), ponto('Pelourinho', this.bahiaAlta.pelourinho.clone().add(v(0, 6))),
+      ] },
     ];
     /** Desfaz uma vitória: tira a sombra das vencidas e as flags que ela deixou. */
     const desvencer = (id: string, ...flags: string[]) => {
@@ -2369,6 +2990,15 @@ export class Jogo {
             for (const f of ['intro', 'cidade_damiao', 'cidade_lobo', 'palacio_entrou', 'palacio_dica']) e.flags.add(f);
           },
           entrada: () => b.centro.clone().add(v(0, 7)), rumo: norte,
+        }),
+        chefe({
+          id: ID_CORACAO, nome: 'O Coração de Pedra', area: 'bahiaalta',
+          entidade: () => this.bahiaAlta.largo.chefe, lutando: () => this.bahiaAlta.largo.lutando, reiniciarLuta: () => this.bahiaAlta.largo.reiniciarLuta(),
+          preparar: () => {
+            desvencer(ID_CORACAO, 'bahia_coracao_vencido');
+            for (const f of ['intro', 'bahia_enfermaria', 'bahia_alta_entrou', 'bahia_coracao_dica']) e.flags.add(f);
+          },
+          entrada: () => this.bahiaAlta.cruzeiro.clone().add(v(-11, 0)), rumo: -oeste,
         }),
       ],
       info: () => {
