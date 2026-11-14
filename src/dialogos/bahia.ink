@@ -37,10 +37,74 @@ espirito: Um galinheiro velho, ao lado do convento. Chão de terra, telha de zin
 espirito: Parece pouco. Mas o que é pequeno, nas mãos de Deus, pode virar abrigo para muitos.
 -> END
 
-=== bahia_bonfim ===
+// ─── O Senhor do Bonfim (a capela da região) ───
+
+=== bahia_bonfim_entrada ===
 placa: Basílica do Senhor do Bonfim.
-espirito: As fitinhas no gradil são pedidos e agradecimentos. Cada uma é alguém que esperou e foi ouvido.
-espirito: As portas estão fechadas, por enquanto.
+espirito: As fitinhas lá fora são pedidos e agradecimentos. Aqui dentro está Aquele a quem se pede. #plano:geral
+espirito: O confessionário fica à esquerda, o sacrário junto do altar. Confesse, comungue, descanse: o caminho fica guardado aqui.
+espirito: Na parede da direita, a porta da Sala dos Milagres.
+{
+- tem("bahia_coracao_vencido"):
+    espirito: O sino tocou. A cidade voltou a olhar para os lados.
+- tem("bahia_enfermaria"):
+    espirito: Quando estiver pronto, suba à Cidade Alta, ao Largo do Cruzeiro de São Francisco. É lá que a dureza desta cidade tem o seu coração.
+- else:
+    espirito: Volte quando precisar. Irmã Dulce ainda conta com você lá embaixo, no Largo de Roma.
+}
+-> END
+
+=== bahia_altar ===
+{
+- not tem("bahia_enfermaria"):
+    espirito: Irmã Dulce está no Largo de Roma, junto dos doentes. Volte para ela.
+- not tem("bahia_coracao_vencido"):
+    espirito: "Tirarei do vosso peito o coração de pedra e vos darei um coração de carne" (Ez 36,26).
+    espirito: O Coração de Pedra espera no Largo do Cruzeiro de São Francisco, na Cidade Alta. Quem vai até lá com piedade não vai sozinho.
+- else:
+    espirito: A cidade tem a cor de volta. Os que você levou nas costas deixaram o seu obrigado na Sala dos Milagres.
+}
+-> END
+
+=== bahia_sala_milagres ===
+espirito: A Sala dos Milagres. Aqui ninguém vem pedir: vem agradecer. #plano:geral
+espirito: Casamentos, formaturas, crianças que cresceram. Cartas, fitinhas, corações de prata.
+{
+- tem("bahia_coracao_vencido"):
+    espirito: E ali, na cortiça, cartas com nomes que você conhece.
+- else:
+    espirito: Um dia, quem você levou nas costas também vai deixar aqui o seu obrigado.
+}
+-> END
+
+=== bahia_milagre_zefa ===
+carta: "O meu Zé voltou da pescaria e me achou de pé, no catre de ferro, tomando mingau."
+carta: "Ele chorou mais do que eu. Obrigada a quem me levou. Deus lhe pague. Josefa."
+-> END
+
+=== bahia_milagre_lucia ===
+carta: "A tosse passou. Voltei a lavar roupa, agora para o hospital, e ninguém mais tem medo de mim."
+carta: "Quem me carregou não teve medo primeiro. Lúcia."
+-> END
+
+=== bahia_milagre_bento ===
+carta: "A perna sarou e a canoa voltou para a corda. Todo dia, quando saio para o mar, olho para o cais."
+carta: "Agora eu sei que alguém entra na água. Bento, pescador."
+-> END
+
+=== bahia_milagre_raimundo ===
+carta: "Voltei a andar. Carrego fardo de novo, mas agora carrego de graça o que os doentes precisam."
+carta: "Aprendi nas suas costas. Raimundo."
+-> END
+
+=== bahia_milagre_ana ===
+carta: "Quem escreve é a irmã da noite; eu dito. Continuo sem enxergar, mas não durmo mais nos degraus."
+carta: "Reconheço o seu passo até hoje. Ana."
+-> END
+
+=== bahia_milagre_joao ===
+carta: "O mestre de obras soube da febre, e me deu o serviço de volta assim mesmo. Mandei dinheiro para a mãe no interior."
+carta: "Ninguém soube por você. Soube por mim, e não doeu. João."
 -> END
 
 === bahia_alagados ===

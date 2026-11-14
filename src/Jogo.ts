@@ -1464,7 +1464,15 @@ export class Jogo {
       },
       // antes da licença, o galinheiro é só um galinheiro
       { pos: () => b.galinheiro, raio: 3, ativa: () => !f('bahia_galinheiro_licenca'), rotulo: 'F: olhar o galinheiro', agir: () => this.dialogos.tocar('bahia_galinheiro') },
-      { pos: () => b.bonfim, raio: 3.5, rotulo: 'F: bater à porta do Bonfim', agir: () => this.dialogos.tocar('bahia_bonfim') },
+      // o Bonfim: a capela da região, e as cartas dos que o peregrino levou ao hospital, na Sala dos Milagres
+      ...this.interacoesDaCapela(b.capela, 'bahia_altar'),
+      ...[...b.salaDosMilagres.lembrancas].map(([id, l]): Interacao => ({
+        pos: () => l.pos,
+        raio: 0.6,
+        ativa: () => l.carta.visible,
+        rotulo: 'F: ler a carta',
+        agir: () => this.dialogos.tocar(`bahia_milagre_${id}`),
+      })),
       { pos: () => b.alagados, raio: 2.6, rotulo: 'F: olhar os Alagados', agir: () => this.dialogos.tocar('bahia_alagados') },
     ];
   }
@@ -1945,6 +1953,11 @@ export class Jogo {
     // a primeira vez na capela do deserto, o Espírito conta de quem ela é
     if (naCapela && this.area === this.deserto && this.comecou && !this.hud.dialogoAberto && this.primeiraVez('deserto_capela'))
       this.dialogos.tocar('deserto_capela');
+    // no Bonfim: a primeira vez na nave e a primeira vez na Sala dos Milagres
+    if (naCapela && this.area === this.bahiaBaixa && this.comecou && !this.hud.dialogoAberto) {
+      if (this.primeiraVez('bahia_bonfim_entrou')) this.dialogos.tocar('bahia_bonfim_entrada');
+      else if (this.bahiaBaixa.capela.naSala(this.peregrino.pos) && this.primeiraVez('bahia_sala_milagres')) this.dialogos.tocar('bahia_sala_milagres');
+    }
     // no galinheiro da Bahia (e na enfermaria), o mesmo: o telhado some e a câmera passa por cima das paredes
     const hosp = this.area === this.bahiaBaixa ? this.bahiaBaixa.hospital : null;
     const noHospital = !!hosp && hosp.dentro(this.peregrino.pos);
@@ -2591,6 +2604,7 @@ export class Jogo {
           (this.estado.flags.has('cidade_leproso') && p.distanceTo(c.homemDaEstrada.pos) < 5);
       return false;
     }
+    if (this.area === this.bahiaBaixa) return this.bahiaBaixa.capela.dentro(p);
     if (this.area !== this.mundo) return false;
     return p.distanceTo(this.mundo.cruzeiro) < 4 || Math.hypot(p.x - CAPELA.x, p.z - CAPELA.y) < 5;
   }
@@ -2754,6 +2768,7 @@ export class Jogo {
         ponto('Bonfim', this.bahiaBaixa.bonfim.clone().add(v(0, 10))), ponto('Alagados', this.bahiaBaixa.alagados.clone().add(v(3, 0)), -Math.PI / 2),
         ponto('Armazém do comerciante', this.bahiaBaixa.armazemPorta, Math.PI / 2),
         ponto('Galinheiro (porta)', this.bahiaBaixa.galinheiro, Math.PI),
+        ponto('Bonfim (dentro)', this.bahiaBaixa.capela.porta.clone().add(v(0, -4)), Math.PI),
         ponto('Abrigo (porta do convento)', this.bahiaBaixa.conventoPorta.clone().add(v(-3, 0)), Math.PI / 2),
       ] },
       { id: 'bahiaalta', nome: NOMES_AREA.bahiaalta, pontos: [

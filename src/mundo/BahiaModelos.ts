@@ -436,7 +436,8 @@ export const CATEDRAL: EstiloIgreja = {
  * pilastras e cornijas de cantaria, três portas, três janelas em arco, frontão recortado de volutas com óculo
  * e cruz, nave de telhado de duas águas. A origem é o centro da frente, no chão; a nave vai para -z.
  */
-export function igreja(e: EstiloIgreja) {
+/** `aberta`: a porta central é um vão de 2 m (o Bonfim, onde se entra: a nave fica numa CapelaRegional embutida). */
+export function igreja(e: EstiloIgreja, aberta = false) {
   const Wv = Math.round(e.largura * 4), Lv = Math.round(e.comprimento * 4);
   const Hf = Math.round(e.alturaFachada * 4), Ht = Math.round(e.alturaTorre * 4);
   const T = 12; // lado da torre
@@ -480,7 +481,10 @@ export function igreja(e: EstiloIgreja) {
     m.caixa(x0, h, fz + 1, w, 1, 1, pedra).caixa(x0 + 1, h + 1, fz + 1, w - 2, 1, 1, pedra);
     m.ponto(x0, h - 1, fz, e.parede).ponto(x0 + w - 1, h - 1, fz, e.parede);
   };
-  portaArco(cx - 3, 6, 16);
+  if (aberta) {
+    portaArco(cx - 4, 8, 16);
+    m.caixa(cx - 4, 0, fz, 8, 15, 1, null).caixa(cx - 4, 0, fz + 1, 8, 2, 1, null);
+  } else portaArco(cx - 3, 6, 16);
   const vaoLado = Math.floor((Wv - 2 * T - 10) / 4);
   portaArco(T + 2 + vaoLado - 2, 4, 12);
   portaArco(Wv - T - 2 - vaoLado - 2, 4, 12);

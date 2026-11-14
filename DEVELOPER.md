@@ -373,7 +373,16 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
   ferro (os seis e o menino), lamparinas com luz e a bacia. Com o peregrino dentro, o telhado some e a câmera
   passa por cima das paredes, como na capela (`dentro`, `alturaCamera`). O Hospital Irmã Dulce (o terceiro
   estágio) vem com a vitória sobre o Coração de Pedra.
-- O interior do Bonfim e o Coração de Pedra vêm depois.
+- **O Bonfim por dentro** (`mundo/Capela.ts`, `mundo/SalaDosMilagres.ts`): a fachada (`igreja(IGREJA_BONFIM, true)`,
+  com a porta central aberta) é um objeto à parte que some com o peregrino dentro; a nave é uma `CapelaRegional`
+  com `ESTILO_BONFIM` (`embutida`: sem adro, campanário nem telhado; `interiorBonfim`: barra de azulejo, retábulo e
+  altares laterais de talha dourada com colunas torsas, tribunas, lustres e o teto pintado, visto só de baixo). O
+  `CAPELAO` confessa (o roteiro `capela_confissao` de sempre: confissão, comunhão, descanso e *checkpoint*). Na parede
+  direita, a porta da Sala dos Milagres (`Capela.anexos`, `CapelaRegional.naSala`): a parede de fotos, a cortiça com
+  bilhetes, a cascata de fitinhas, o nicho das velas e a grade dos corações de prata. Com `bahia_coracao_vencido`,
+  cada `bahia_leito_<id>` deixa ali uma foto e uma carta que se lê (`bahia_milagre_<id>`). Primeira entrada:
+  `bahia_bonfim_entrada`; primeira vez na sala: `bahia_sala_milagres`; no altar: `bahia_altar`.
+- O Coração de Pedra vem depois.
 
 ## Diálogos
 
@@ -634,7 +643,7 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 O roteiro segue o Documento base e o GDD complementar (na pasta acima do projeto). Já estão prontos o Vale, o
 Deserto e a Cidade Dourada, com Mamom, a Acídia e a Gula. Das Ruas da Bahia, já estão prontos o mapa (Cidade
 Baixa e Cidade Alta), Irmã Dulce, a casa abandonada, a mecânica de carregar, os esquecidos, o comerciante e o galinheiro que vira
-enfermaria. A seguir: o interior do Bonfim com a Sala dos Milagres, o Coração de Pedra e os níveis 4 e 5 da Piedade.
+enfermaria e o interior do Bonfim com a Sala dos Milagres. A seguir: o Coração de Pedra e os níveis 4 e 5 da Piedade.
 
 ### A base do jogo
 

@@ -41,6 +41,17 @@ export interface EstiloCapela {
   cobertura?: 'telhado' | 'cupulas';
   /** Cor das cúpulas e do terraço (com `cobertura: 'cupulas'`). */
   cal?: number;
+  /**
+   * Embutida numa igreja maior, que a cobre por fora (o Bonfim): sem adro, sem campanário, sem telhado e sem o
+   * que fica do lado de fora das paredes.
+   */
+  embutida?: boolean;
+  /**
+   * O interior do Senhor do Bonfim: barra de azulejo azul e branco, retábulo e altares laterais de talha dourada
+   * com colunas torsas, tribunas no alto das paredes, lustres de cristal, o teto pintado (visto só de baixo) e,
+   * na parede direita, a porta da Sala dos Milagres (a sala ao lado, em `anexos`).
+   */
+  interiorBonfim?: boolean;
 }
 
 export const ESTILO_VALE: EstiloCapela = {
@@ -71,6 +82,8 @@ export interface Capela {
   pisos: PisoLocal[];
   /** Retângulo do interior (para saber se o peregrino está dentro). */
   interior: { x0: number; x1: number; z0: number; z1: number };
+  /** Salas ao lado da nave, ligadas por uma porta (a Sala dos Milagres do Bonfim): contam como "dentro". */
+  anexos: { x0: number; x1: number; z0: number; z1: number }[];
   /** Luzes de dentro (o Jogo apaga quando o peregrino está longe). */
   luzes: THREE.PointLight[];
   pontos: {
@@ -118,6 +131,13 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
     return e.vitral[iy < 12 ? (dj < 1.2 ? 3 : 0) : dj < 1.2 ? 0 : 3];
   };
   const JANELAS_LADO = [8, 21, 33, 45];
+  const bonfim = !!e.interiorBonfim, emb = !!e.embutida;
+  /** A porta da Sala dos Milagres, na parede direita, entre o terceiro e o quarto vitral. */
+  const SALA_Z0 = 38, SALA_Z1 = 42, SALA_H = 9;
+  const portaSala = (ix: number, iy: number, iz: number) => bonfim && ix >= W - 2 && iz >= SALA_Z0 && iz < SALA_Z1 && iy < SALA_H;
+  /** Azulejo azul e branco, em losangos, com a cercadura azul por cima (`along` corre ao longo da parede). */
+  const azulejo = (along: number, iy: number) =>
+    iy === 6 ? 0x1e4a98 : iy === 1 ? 0x2a5aa8 : (Math.abs((along % 4) - 1.5) + Math.abs(((iy - 2) % 4) - 1.5) < 1.6 ? 0x2a5aa8 : 0xf0f2f4);
 
   // piso: nave em xadrez, tapete no corredor, presbitério de mármore um degrau acima
   for (let ix = 2; ix < W - 2; ix++)
@@ -140,6 +160,7 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
         const lado = ix < 2 || ix >= W - 2;
         const fundoFrente = iz < 2 || iz >= D - 2;
         if (!lado && !fundoFrente) continue;
+        if (portaSala(ix, iy, iz)) continue;
         const dentro = (ix === 1 || ix === W - 2 || iz === 1 || iz === D - 2) && !(ix < 1 || ix > W - 2 || iz < 1 || iz > D - 2);
         // porta em arco na frente
         if (iz >= D - 2) {
@@ -162,22 +183,23 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
           }
         }
         let cor: number;
-        if (dentro && iy >= 1 && iy <= 4) cor = iy === 4 ? e.madeiraEscura : variar(e.madeira, ix, iy, iz, 0.04);
+        if (bonfim && dentro && iy >= 1 && iy <= 6) cor = azulejo(lado ? iz : ix, iy);
+        else if (dentro && iy >= 1 && iy <= 4) cor = iy === 4 ? e.madeiraEscura : variar(e.madeira, ix, iy, iz, 0.04);
         else if (!dentro && iy < 2) cor = pedra(ix, iy, iz);
         else cor = reboco(ix, iy, iz);
         m.ponto(ix, iy, iz, cor);
       }
   // pilastras de pedra por fora e cornija
-  for (const iz of [0, 14, 27, 40, D - 1]) for (let iy = 0; iy < H; iy++) m.ponto(-1, iy, iz, pedra(-1, iy, iz)).ponto(W, iy, iz, pedra(W, iy, iz));
-  for (let iz = -1; iz <= D; iz++) m.ponto(-1, H - 1, iz, pedra(-1, H, iz)).ponto(W, H - 1, iz, pedra(W, H, iz));
+  if (!emb) for (const iz of [0, 14, 27, 40, D - 1]) for (let iy = 0; iy < H; iy++) m.ponto(-1, iy, iz, pedra(-1, iy, iz)).ponto(W, iy, iz, pedra(W, iy, iz));
+  if (!emb) for (let iz = -1; iz <= D; iz++) m.ponto(-1, H - 1, iz, pedra(-1, H, iz)).ponto(W, H - 1, iz, pedra(W, H, iz));
   // rodapé saliente de pedra
-  for (let iz = -1; iz <= D; iz++) for (let iy = 0; iy < 2; iy++) m.ponto(-1, iy, iz, pedra(-1, iy, iz)).ponto(W, iy, iz, pedra(W, iy, iz));
-  for (let ix = -1; ix <= W; ix++) for (let iy = 0; iy < 2; iy++) {
+  if (!emb) for (let iz = -1; iz <= D; iz++) for (let iy = 0; iy < 2; iy++) m.ponto(-1, iy, iz, pedra(-1, iy, iz)).ponto(W, iy, iz, pedra(W, iy, iz));
+  if (!emb) for (let ix = -1; ix <= W; ix++) for (let iy = 0; iy < 2; iy++) {
     m.ponto(ix, iy, -1, pedra(ix, iy, -1));
     if (Math.abs(ix - 17.5) >= 4) m.ponto(ix, iy, D, pedra(ix, iy, D));
   }
   // arco da porta em pedra (aduelas)
-  for (let ix = 12; ix < 24; ix++)
+  if (!emb) for (let ix = 12; ix < 24; ix++)
     for (let iy = 0; iy < 15; iy++) {
       const dx = ix - 17.5;
       const r2 = dx * dx + (iy - 9) ** 2;
@@ -226,7 +248,7 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
     cupula(W / 2, 37, 6, H + 1, 2);
   }
   // empenas (frente e fundo), em degraus como nas capelas de pedra
-  for (let k = 0; k < (cupulas ? 0 : PICO); k++) {
+  for (let k = 0; k < (cupulas || emb ? 0 : PICO); k++) {
     const iy = H + k;
     for (let ix = 2 * k; ix < W - 2 * k; ix++)
       for (const iz of [0, 1, D - 2, D - 1]) {
@@ -237,7 +259,7 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
   // campanário sobre a fachada: base, sineira em arco, sino, cobertura e cruz
   const T0 = 13, T1 = 23, TZ0 = D - 6, TZ1 = D;
   const topoT = H + PICO + 1;
-  for (let iy = cupulas ? H + 1 : H + 4; iy < topoT + (cupulas ? 6 : 7); iy++)
+  if (!emb) for (let iy = cupulas ? H + 1 : H + 4; iy < topoT + (cupulas ? 6 : 7); iy++)
     for (let ix = T0; ix < T1; ix++)
       for (let iz = TZ0; iz < TZ1; iz++) {
         const borda = ix === T0 || ix === T1 - 1 || iz === TZ0 || iz === TZ1 - 1;
@@ -248,19 +270,23 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
         if (sineira && (meioX || meioZ) && iy < topoT + 4) continue; // vãos da sineira
         t.ponto(ix, iy, iz, canto ? pedra(ix, iy, iz) : reboco(ix, iy, iz));
       }
-  t.caixa(T0 - 1, topoT - 1, TZ0 - 1, T1 - T0 + 2, 1, TZ1 - TZ0 + 2, pedra); // cornija da torre
-  t.caixa(T0 - 1, topoT + 5, TZ0 - 1, T1 - T0 + 2, 1, TZ1 - TZ0 + 2, pedra);
-  t.caixa(16, topoT, TZ0 + 2, 4, 3, 2, (_x, y) => (y === topoT ? 0xb88a2a : 0xd8b04a)); // sino
-  t.caixa(17, topoT + 3, TZ0 + 2, 2, 2, 2, 0x5a4a3a); // trave do sino
-  if (cupulas) cupula((T0 + T1) / 2, (TZ0 + TZ1) / 2, 4, topoT + 6, 1); // cupulazinha da sineira, com a cruz
+  if (!emb) {
+    t.caixa(T0 - 1, topoT - 1, TZ0 - 1, T1 - T0 + 2, 1, TZ1 - TZ0 + 2, pedra); // cornija da torre
+    t.caixa(T0 - 1, topoT + 5, TZ0 - 1, T1 - T0 + 2, 1, TZ1 - TZ0 + 2, pedra);
+    t.caixa(16, topoT, TZ0 + 2, 4, 3, 2, (_x, y) => (y === topoT ? 0xb88a2a : 0xd8b04a)); // sino
+    t.caixa(17, topoT + 3, TZ0 + 2, 2, 2, 2, 0x5a4a3a); // trave do sino
+  }
+  if (emb) {
+    // embutida: sem campanário
+  } else if (cupulas) cupula((T0 + T1) / 2, (TZ0 + TZ1) / 2, 4, topoT + 6, 1); // cupulazinha da sineira, com a cruz
   else {
     for (let k = 0; k < 6; k++) t.caixa(T0 + k, topoT + 6 + k, TZ0 + k - 1, T1 - T0 - 2 * k, 1, TZ1 - TZ0 - 2 * k + 2, (x, y, z) => ((x + z + y) % 3 ? e.telha : e.cumeeira));
     t.caixa(16, topoT + 9, TZ0 + 1, 4, 1, 4, e.cumeeira); // remate da cobertura
     t.caixa(17, topoT + 10, TZ0 + 2, 2, 8, 2, 0xe8c45a).caixa(15, topoT + 15, TZ0 + 2, 6, 2, 2, 0xe8c45a); // cruz
   }
   // adro: degrau de pedra, canteiros de flores e lanternas
-  m.caixa(11, 0, D + 1, 14, 1, 3, pedra);
-  for (const x0 of [3, 26]) {
+  if (!emb) m.caixa(11, 0, D + 1, 14, 1, 3, pedra);
+  if (!emb) for (const x0 of [3, 26]) {
     m.caixa(x0, 0, D + 1, 7, 1, 2, v(0x5a3e26, 0.08));
     for (let ix = x0; ix < x0 + 7; ix++)
       for (let iz = D + 1; iz < D + 3; iz++) {
@@ -269,13 +295,13 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
         if (h < 3) m.ponto(ix, 2, iz, h === 0 ? e.flores[0] : h === 1 ? 0x4a9a3e : e.flores[(ix + iz) % e.flores.length]);
       }
   }
-  for (const ix of [10, 25]) m.caixa(ix, 8, D, 1, 1, 1, 0x2a2a2a).caixa(ix, 9, D, 1, 2, 1, 0xffd27a).caixa(ix, 11, D, 1, 1, 1, 0x2a2a2a);
+  if (!emb) for (const ix of [10, 25]) m.caixa(ix, 8, D, 1, 1, 1, 0x2a2a2a).caixa(ix, 9, D, 1, 2, 1, 0xffd27a).caixa(ix, 11, D, 1, 1, 1, 0x2a2a2a);
   const casca = m.malha(C, [W / 2, 0, D / 2]);
   grupo.add(casca);
 
   // ════════════════════════ telhado (some com o peregrino dentro) ════════════════════════
   // (as águas do telhado; as empenas e o campanário, montados acima, vão junto)
-  for (let k = 0; k < (cupulas ? 0 : PICO); k++) {
+  for (let k = 0; k < (cupulas || emb ? 0 : PICO); k++) {
     const iy = H + k;
     for (let iz = -2; iz < D + 2; iz++) {
       const telha = (x: number) => ((iz + k) % 4 === 0 ? e.cumeeira : variar(e.telha, x, iy, iz, 0.05));
@@ -283,8 +309,8 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
       for (const ix of [W - 2 * k, W - 2 * k + 1]) t.ponto(ix, iy, iz, telha(ix));
     }
   }
-  if (!cupulas) for (let iz = -2; iz < D + 2; iz++) t.caixa(2 * PICO - 2, H + PICO, iz, W - 4 * PICO + 4, 1, 1, e.cumeeira); // cumeeira
-  const telhado = t.malha(C, [W / 2, 0, D / 2]);
+  if (!cupulas && !emb) for (let iz = -2; iz < D + 2; iz++) t.caixa(2 * PICO - 2, H + PICO, iz, W - 4 * PICO + 4, 1, 1, e.cumeeira); // cumeeira
+  const telhado = emb ? new THREE.Group() : t.malha(C, [W / 2, 0, D / 2]);
   grupo.add(telhado);
 
   // ════════════════════════ mobília ════════════════════════
@@ -434,14 +460,14 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
     const z = -2.4 + i * 1.3;
     for (const [x, r] of [[-4.0, Math.PI / 2], [4.0, -Math.PI / 2]] as const) {
       const est = new THREE.Mesh(geoEst, casca.material);
-      por(est, x, 1.2, z, r);
+      por(est, x, bonfim ? 2.4 : 1.2, z, r);
     }
   }
   const arandela = new Modelo();
   arandela.caixa(0, 0, 0, 2, 1, 2, 0x2a2a2a).caixa(0, 1, 0, 2, 2, 2, 0xffd27a).caixa(0, 3, 0, 2, 1, 2, 0x2a2a2a).caixa(0, 0, -1, 2, 1, 1, 0x2a2a2a);
   const geoAr = arandela.geometria(M, [1, 0, -1]);
   for (const z of [-3.4, -0.25, 2.75, 5.6])
-    for (const [x, r] of [[-4.0, Math.PI / 2], [4.0, -Math.PI / 2]] as const) por(new THREE.Mesh(geoAr, casca.material), x, 3.0, z, r);
+    for (const [x, r] of [[-4.0, Math.PI / 2], [4.0, -Math.PI / 2]] as const) por(new THREE.Mesh(geoAr, casca.material), x, bonfim ? 3.3 : 3.0, z, r);
   const luzNave = new THREE.PointLight(0xffd8a0, 9, 14, 1.4);
   luzNave.position.set(0, 3.6, 0.5);
   grupo.add(luzNave);
@@ -466,7 +492,9 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
   const ALTO = 9;
   caixas.push(
     { x0: lx(0), x1: xi, z0: lz(0), z1: lz(D), topo: ALTO },
-    { x0: xf, x1: lx(W), z0: lz(0), z1: lz(D), topo: ALTO },
+    ...(bonfim
+      ? [{ x0: xf, x1: lx(W), z0: lz(0), z1: lz(SALA_Z0), topo: ALTO }, { x0: xf, x1: lx(W), z0: lz(SALA_Z1), z1: lz(D), topo: ALTO }]
+      : [{ x0: xf, x1: lx(W), z0: lz(0), z1: lz(D), topo: ALTO }]),
     { x0: lx(0), x1: lx(W), z0: lz(0), z1: zi, topo: ALTO },
     { x0: lx(0), x1: lx(14), z0: zf, z1: lz(D), topo: ALTO },
     { x0: lx(22), x1: lx(W), z0: zf, z1: lz(D), topo: ALTO },
@@ -477,8 +505,17 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
     { x0: lx(14), x1: lx(22), z0: lz(16), z1: lz(17), altura: 0.5 }, // degrau
     { x0: xi, x1: xf, z0: lz(16), z1: zf, altura: 0.25 }, // nave
     { x0: lx(13.9), x1: lx(22.1), z0: zf, z1: lz(D), altura: 0.25 }, // soleira
-    { x0: lx(11), x1: lx(25), z0: lz(D), z1: lz(D + 4), altura: 0.25 }, // adro
+    ...(emb ? [] : [{ x0: lx(11), x1: lx(25), z0: lz(D), z1: lz(D + 4), altura: 0.25 }]), // adro
   ];
+  const anexos: Capela['anexos'] = [];
+  if (bonfim) {
+    const sala = salaDosMilagres(e, SALA_Z0, SALA_Z1, SALA_H);
+    grupo.add(sala.malha);
+    caixas.push(...sala.caixas);
+    pisos.push(...sala.pisos);
+    anexos.push(sala.interior);
+    decorarBonfim(e, por, caixas, casca.material as THREE.Material, SALA_Z0, SALA_Z1);
+  }
 
   return {
     grupo,
@@ -486,6 +523,7 @@ export function construirCapela(e: EstiloCapela = ESTILO_VALE): Capela {
     caixas,
     pisos,
     interior: { x0: xi, x1: xf, z0: zi, z1: zf },
+    anexos,
     luzes: [luzNave, luzSac],
     pontos: {
       porta: new THREE.Vector3(0, 0, lz(D) + 1.2),
@@ -604,14 +642,21 @@ export class CapelaRegional {
   dentro(p: THREE.Vector3) {
     const r = this.capela.interior;
     const x = p.x - this.x, z = p.z - this.z;
-    return x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1 + 0.3;
+    return (x > r.x0 && x < r.x1 + 0.6 && z > r.z0 && z < r.z1 + 0.3) || this.naSala(p);
+  }
+
+  /** Numa das salas ao lado da nave (a Sala dos Milagres do Bonfim). */
+  naSala(p: THREE.Vector3) {
+    const x = p.x - this.x, z = p.z - this.z;
+    return this.capela.anexos.some((a) => x > a.x0 - 0.3 && x < a.x1 && z > a.z0 && z < a.z1);
   }
 
   /** Chão visto pela câmera com o peregrino dentro: as paredes contam como chão alto. */
   alturaCamera(x: number, z: number, base: (x: number, z: number) => number) {
     const r = this.capela.interior;
     const lx = x - this.x, lz = z - this.z;
-    if (lx < r.x0 + 0.1 || lx > r.x1 - 0.1 || lz < r.z0 + 0.1 || lz > r.z1 - 0.1) return this.chao + 5.2;
+    const na = (a: { x0: number; x1: number; z0: number; z1: number }) => lx > a.x0 + 0.1 && lx < a.x1 - 0.1 && lz > a.z0 + 0.1 && lz < a.z1 - 0.1;
+    if (!na(r) && !this.capela.anexos.some(na)) return this.chao + 5.2;
     return base(x, z);
   }
 
@@ -619,4 +664,182 @@ export class CapelaRegional {
   noMapa(x: number, z: number) {
     return Math.abs(x - this.x) < 4.6 && z > this.z - 7.1 && z < this.z + 7.1;
   }
+}
+
+// ════════════════════════ o Bonfim: a decoração da nave e a Sala dos Milagres ════════════════════════
+
+type Por = (obj: THREE.Object3D, x: number, y: number, z: number, rotY?: number) => THREE.Object3D;
+const OURO = 0xe0b84e, OURO_ESC = 0xb88a2a, OURO_CLARO = 0xf2d478;
+const ouro = (x: number, y: number, z: number) => variar((x + y * 2 + z) % 3 === 0 ? OURO_ESC : (x + y) % 5 === 0 ? OURO_CLARO : OURO, x, y, z, 0.03);
+
+/** Coluna torsa de talha dourada (voxel de 0,125 m): o fuste gira em espiral, com a parra subindo. */
+function colunaTorsa(m: Modelo, x: number, z: number, y0: number, h: number) {
+  m.caixa(x - 1, y0, z - 1, 3, 1, 3, ouro);
+  for (let y = 1; y < h - 1; y++) {
+    const a = (y / 3) * Math.PI * 0.5;
+    const dx = Math.round(Math.cos(a)), dz = Math.round(Math.sin(a));
+    m.ponto(x, y0 + y, z, OURO).ponto(x + dx, y0 + y, z + dz, OURO_ESC);
+    if (y % 4 === 0) m.ponto(x - dx, y0 + y, z - dz, 0x3a8a4a); // a folha da parra
+  }
+  m.caixa(x - 1, y0 + h - 1, z - 1, 3, 1, 3, ouro);
+}
+
+/**
+ * Altar lateral de talha dourada, encostado na parede (frente para +z): a mesa, duas colunas torsas, o quadro no
+ * meio e o coroamento em arco. Raso, para caber entre os bancos e a parede.
+ */
+function altarLateral(cores: number[]) {
+  const m = new Modelo();
+  const L = 10;
+  m.caixa(0, 0, 0, L, 7, 2, (x, y, z) => (y === 6 ? 0xf4f1ea : ouro(x, y, z))); // a mesa, com a toalha
+  m.caixa(0, 7, 0, L, 14, 1, ouro); // o fundo de talha
+  colunaTorsa(m, 1, 1, 7, 13);
+  colunaTorsa(m, L - 2, 1, 7, 13);
+  // o quadro: um santo em cores, sem rosto detalhado (é pintura)
+  m.caixa(3, 9, 1, 4, 8, 1, (_x, y) => (y > 14 ? cores[0] : y > 11 ? cores[1] : cores[2]));
+  m.caixa(4, 15, 1, 2, 2, 1, 0xe8c8a8).ponto(4, 17, 1, OURO_CLARO).ponto(5, 17, 1, OURO_CLARO);
+  for (let k = 0; k < 5; k++) m.caixa(k, 21 + k, 0, L - 2 * k, 1, 2, ouro); // coroamento
+  m.caixa(4, 26, 0, 2, 3, 1, OURO).caixa(3, 27, 0, 4, 1, 1, OURO); // a cruz
+  for (const x of [2, 7]) m.caixa(x, 7, 1, 1, 1, 1, OURO).caixa(x, 8, 1, 1, 2, 1, 0xfaf6e8).ponto(x, 10, 1, 0xffc04a); // velas
+  return m.malha(0.125, [L / 2, 0, 0]);
+}
+
+/** Tribuna: balcão de talha dourada com grade, no alto da parede (frente para +z). */
+function tribuna() {
+  const m = new Modelo();
+  m.caixa(0, 0, 0, 8, 1, 3, ouro).caixa(1, -2, 0, 6, 2, 2, ouro).caixa(3, -4, 0, 2, 2, 1, ouro);
+  for (let x = 0; x < 8; x += 1) m.ponto(x, 1, 2, x % 2 ? OURO_ESC : OURO).ponto(x, 2, 2, x % 2 ? null : OURO_ESC);
+  m.caixa(0, 3, 2, 8, 1, 1, ouro);
+  m.caixa(0, 1, 0, 8, 6, 1, 0x3a2418); // o vão escuro atrás
+  m.caixa(-1, 7, 0, 10, 1, 2, ouro).caixa(2, 8, 0, 4, 1, 1, ouro);
+  return m.malha(0.125, [4, 0, 0]);
+}
+
+/** Lustre de cristal: a corrente, o aro dourado e os pingentes em degraus. */
+function lustre() {
+  const m = new Modelo();
+  m.caixa(0, 8, 0, 1, 10, 1, OURO_ESC);
+  for (const [r, y] of [[4, 7], [3, 5], [2, 3]] as const)
+    for (let x = -r; x <= r; x++) for (let z = -r; z <= r; z++) {
+      const d = Math.hypot(x, z);
+      if (d > r + 0.4 || d < r - 0.7) continue;
+      m.ponto(x, y, z, OURO).ponto(x, y - 1, z, (x + z) % 2 ? 0xdfeff8 : 0xbad8ea);
+    }
+  m.caixa(0, 0, 0, 1, 3, 1, 0xdfeff8);
+  for (const [x, z] of [[-4, 0], [4, 0], [0, -4], [0, 4]]) m.ponto(x, 8, z, 0xfaf6e8).ponto(x, 9, z, 0xffd27a);
+  return m.malha(0.125, [0.5, 0, 0.5]);
+}
+
+/**
+ * O teto pintado da nave: um painel de tinta (feito em código) com a moldura verde e dourada e, no meio, o céu
+ * aberto com a luz dourada descendo, em mosaico. A face olha para baixo: de cima (a câmera, com o peregrino
+ * dentro) ele não aparece; de baixo (nas conversas), sim.
+ */
+function tetoPintado(larg: number, comp: number) {
+  const tela = document.createElement('canvas');
+  const PX = 16; // pixels por metro
+  tela.width = Math.round(larg * PX);
+  tela.height = Math.round(comp * PX);
+  const g = tela.getContext('2d')!;
+  const W2 = tela.width, H2 = tela.height;
+  g.fillStyle = '#f4eee2';
+  g.fillRect(0, 0, W2, H2);
+  // a moldura: verde, com o friso dourado por dentro
+  g.fillStyle = '#2e6a4a';
+  g.fillRect(4, 4, W2 - 8, H2 - 8);
+  g.fillStyle = '#e0b84e';
+  g.fillRect(10, 10, W2 - 20, H2 - 20);
+  g.fillStyle = '#3a7a5a';
+  g.fillRect(13, 13, W2 - 26, H2 - 26);
+  // o painel do meio: o céu em ladrilhos de cor, mais claro no centro, com raios dourados
+  const cx = W2 / 2, cy = H2 / 2;
+  const x0 = 20, y0 = 20, x1 = W2 - 20, y1 = H2 - 20;
+  for (let y = y0; y < y1; y += 4)
+    for (let x = x0; x < x1; x += 4) {
+      const d = Math.hypot((x - cx) / (x1 - x0), (y - cy) / (y1 - y0));
+      const ang = Math.atan2(y - cy, x - cx);
+      const raio = Math.abs(Math.sin(ang * 6)) > 0.93 && d < 0.42;
+      const nuvem = Math.sin(x * 0.11) + Math.cos(y * 0.07) > 1.2 && d > 0.22;
+      g.fillStyle = raio ? '#f2d478' : nuvem ? '#f4f2ee' : d < 0.12 ? '#fff4c8' : d < 0.22 ? '#cfe4f4' : d < 0.34 ? '#8ab8e0' : '#5a8ac8';
+      g.fillRect(x, y, 4, 4);
+    }
+  // a pomba no meio, como no alto das igrejas baianas
+  g.fillStyle = '#ffffff';
+  g.fillRect(cx - 2, cy - 8, 4, 16);
+  g.fillRect(cx - 12, cy - 3, 24, 4);
+  const tex = new THREE.CanvasTexture(tela);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  const malha = new THREE.Mesh(new THREE.PlaneGeometry(larg, comp), new THREE.MeshLambertMaterial({ map: tex }));
+  malha.rotation.x = Math.PI / 2; // a face para baixo
+  return malha;
+}
+
+function decorarBonfim(e: EstiloCapela, por: Por, caixas: CaixaLocal[], material: THREE.Material, salaZ0: number, salaZ1: number) {
+  void e;
+  // o retábulo do altar-mor: o fundo dourado atrás do crucifixo (o Senhor do Bonfim), com as colunas torsas
+  const ret = new Modelo();
+  const RW = 26;
+  ret.caixa(0, 0, 0, RW, 38, 1, (x, y, z) => (x > 7 && x < RW - 8 && y > 4 && y < 34 ? variar(0x6a1a22, x, y, z, 0.03) : ouro(x, y, z)));
+  for (const x of [3, RW - 4]) colunaTorsa(ret, x, 2, 0, 34);
+  for (let k = 0; k < 6; k++) ret.caixa(k * 2, 38 + k, 0, RW - 4 * k, 1, 2, ouro);
+  ret.caixa(12, 44, 0, 2, 5, 1, OURO).caixa(10, 46, 0, 6, 1, 1, OURO);
+  por(ret.malha(0.125, [RW / 2, 0, 0]), 0, 0.5, -6.5);
+  // os altares laterais: dois de cada lado, entre os bancos e a parede (o direito para antes da porta da sala)
+  const portaZ0 = lz(salaZ0), portaZ1 = lz(salaZ1);
+  const lugares: [number, number, number[]][] = [
+    [-1, -0.6, [0x2f5fc8, 0xf4f1ea, 0x3a6aa8]], [-1, 1.95, [0x8a2a2a, 0xd8a050, 0x6a3a22]],
+    [1, -0.6, [0x6a3a8a, 0xf2d478, 0x4a2a6a]], [1, 1.4, [0x2a7a5a, 0xf4f1ea, 0x8a5a2a]],
+  ];
+  for (const [lado, z, cores] of lugares) {
+    if (lado > 0 && z + 0.7 > portaZ0 && z - 0.7 < portaZ1) continue;
+    por(altarLateral(cores), lado * 3.98, 0.25, z, -lado * Math.PI / 2);
+    caixas.push({ x0: lado < 0 ? -4.0 : 3.75, x1: lado < 0 ? -3.75 : 4.0, z0: z - 0.65, z1: z + 0.65, topo: 1.2 });
+  }
+  // as tribunas, no alto das paredes
+  const geoTrib = (tribuna() as THREE.Mesh).geometry;
+  for (const z of [-4.2, -1.6, 1.0, 3.6])
+    for (const lado of [-1, 1]) {
+      const t = new THREE.Mesh(geoTrib, material);
+      por(t, lado * 4.0, 3.95, z, -lado * Math.PI / 2);
+    }
+  // os lustres de cristal, pendendo do teto
+  for (const z of [-2.2, 2.0]) por(lustre(), 0, 2.75, z);
+  // o teto pintado
+  por(tetoPintado(8, 13), 0, 4.99, 0);
+}
+
+/**
+ * A Sala dos Milagres, ao lado da nave, à direita (voxel de 0,25 m, na mesma grade da casca): paredes caiadas com
+ * a barra de azulejo, o piso de pedra e a porta para a nave. O que há dentro (as fotos, as cartas, as fitas, as
+ * velas, os corações de prata) é posto pela região, que sabe de quem é cada foto.
+ */
+function salaDosMilagres(e: EstiloCapela, z0: number, z1: number, hPorta: number) {
+  const m = new Modelo();
+  const X0 = W, X1 = W + 10, Z0 = 16, Z1 = 48, HS = 15;
+  for (let iy = 0; iy < HS; iy++)
+    for (let ix = X0; ix < X1; ix++)
+      for (let iz = Z0; iz < Z1; iz++) {
+        const fora = ix === X1 - 1 || iz === Z0 || iz === Z1 - 1;
+        if (!fora) {
+          if (iy === 0) m.ponto(ix, 0, iz, variar((ix + iz) % 2 ? 0xd8d0c0 : 0xc8bea8, ix, 0, iz, 0.02));
+          continue;
+        }
+        // por dentro, a barra de azulejo; o lado de fora fica escondido pela igreja que cobre tudo
+        m.ponto(ix, iy, iz, iy >= 1 && iy <= 5 ? (iy === 5 ? 0x1e4a98 : (ix + iz + iy) % 3 === 0 ? 0x2a5aa8 : 0xf0f2f4) : variar(e.reboco, ix, iy, iz, 0.02));
+      }
+  // a soleira da porta, no vão da parede da nave
+  for (let ix = W - 2; ix < W; ix++) for (let iz = z0; iz < z1; iz++) m.ponto(ix, 0, iz, variar(e.pedra, ix, 0, iz, 0.04));
+  // o batente dourado da porta, do lado da nave
+  m.caixa(W - 3, 0, z0 - 1, 1, hPorta + 1, 1, OURO).caixa(W - 3, 0, z1, 1, hPorta + 1, 1, OURO).caixa(W - 3, hPorta, z0 - 1, 1, 1, z1 - z0 + 2, OURO);
+  const caixas: CaixaLocal[] = [
+    { x0: lx(X1 - 1), x1: lx(X1), z0: lz(Z0), z1: lz(Z1), topo: 9 },
+    { x0: lx(X0), x1: lx(X1), z0: lz(Z0), z1: lz(Z0 + 1), topo: 9 },
+    { x0: lx(X0), x1: lx(X1), z0: lz(Z1 - 1), z1: lz(Z1), topo: 9 },
+  ];
+  const pisos: PisoLocal[] = [
+    { x0: lx(X0), x1: lx(X1 - 1), z0: lz(Z0 + 1), z1: lz(Z1 - 1), altura: 0.25 },
+    { x0: lx(W - 2), x1: lx(W), z0: lz(z0), z1: lz(z1), altura: 0.25 },
+  ];
+  return { malha: m.malha(C, [W / 2, 0, D / 2]), caixas, pisos, interior: { x0: lx(X0), x1: lx(X1 - 1), z0: lz(Z0 + 1), z1: lz(Z1 - 1) } };
 }

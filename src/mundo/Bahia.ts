@@ -7,6 +7,9 @@ import { Sombra } from '../entidades/Sombra';
 import { Npc } from '../entidades/Npc';
 import { DULCE, DULCE_COM_MENINO, SUPERIORA, menino } from '../entidades/Dulce';
 import { Hospital } from './Hospital';
+import { CapelaRegional, type EstiloCapela } from './Capela';
+import { SalaDosMilagres } from './SalaDosMilagres';
+import type { DefNpc } from '../entidades/Npc';
 import { ENFERMOS, corpoDoEnfermo, type DefEnfermo } from '../entidades/Enfermos';
 import { FilaDePassantes } from '../entidades/Passantes';
 import { figurinoDoPovo } from '../voxel/Humano';
@@ -475,6 +478,36 @@ const PINGUELAS: Ret[] = [
 ];
 const ALTURA_PINGUELA = AGUA_BAHIA + 1.1;
 
+/**
+ * A nave do Senhor do Bonfim por dentro: cal branca, cantaria dourada, mármore claro em xadrez e os vitrais em
+ * azul-claro e branco (o interior é do `interiorBonfim`: azulejo, talha dourada, tribunas, lustres, o teto pintado e
+ * a Sala dos Milagres).
+ */
+const ESTILO_BONFIM: EstiloCapela = {
+  reboco: 0xf6f4ee,
+  pedra: 0xd2b880,
+  telha: 0xa85a3a,
+  cumeeira: 0x7a3022,
+  madeira: 0x6a4428,
+  madeiraEscura: 0x4a2c18,
+  pisoA: 0xeee8dc,
+  pisoB: 0xc8bea8,
+  marmore: 0xf2eee6,
+  tapete: 0x9a1f2a,
+  vitral: [0x9ac8ec, 0xf2f6fa, 0xe8c45a, 0x6aa8d8, 0xd8e8f4],
+  flores: [0xffffff, 0xf2d24a, 0xf2a0c8],
+  embutida: true,
+  interiorBonfim: true,
+};
+
+/** O capelão do Bonfim, que confessa na basílica: um padre idoso de batina preta, com o livro. */
+const CAPELAO: DefNpc = {
+  id: 'capelao_bonfim',
+  falante: 'capelao',
+  no: 'capela_confissao',
+  visual: { genero: 'm', idade: 'idoso', pele: 0x9a6a48, penteado: 'calvo', corCabelo: 0xd8d4cc, traje: 'habito', cor: 0x1a1a1e, cor2: 0x2a2a30, acessorio: 'livro' },
+};
+
 export class BahiaBaixa extends MapaDaBahia {
   readonly id = 'bahiabaixa' as const;
   readonly chegada: THREE.Vector3;
@@ -499,6 +532,10 @@ export class BahiaBaixa extends MapaDaBahia {
    * doação, e então volta para a loja.
    */
   readonly comerciante: Npc;
+  /** A nave do Bonfim (confissão, comunhão, descanso) e a Sala dos Milagres; a fachada some com o peregrino dentro. */
+  readonly capela: CapelaRegional;
+  readonly salaDosMilagres: SalaDosMilagres;
+  private bonfimFora!: THREE.Object3D;
   private circuloComerciante!: { x: number; z: number; r: number };
   private doacao!: THREE.Object3D;
   /** A porta da casa (por fora), o meio do cômodo (junto à esteira) e a porta do convento. */
@@ -568,10 +605,21 @@ export class BahiaBaixa extends MapaDaBahia {
     this.predios.push({ ret: [GALINHEIRO.x - 5, GALINHEIRO.y - 3.5, 10, 7], cor: 0x8a7458 });
 
     // o Bonfim, no alto da Colina Sagrada, de frente para o sul, com o gradil das fitas no adro
-    const bon = igreja(IGREJA_BONFIM);
+    // (a porta central é aberta: dentro está a nave, uma CapelaRegional embutida com a Sala dos Milagres ao lado)
+    const bon = igreja(IGREJA_BONFIM, true);
     const bx = ADRO_BONFIM[0] + ADRO_BONFIM[2] / 2, bz = ADRO_BONFIM[1];
-    this.por(bon.malha, bx, bz, 0, ALTURA_COLINA);
-    this.caixaLocal(bx - bon.largura / 2, bz - bon.comprimento, bon.largura, bon.comprimento);
+    this.bonfimFora = this.por(bon.malha, bx, bz, 0, ALTURA_COLINA, false);
+    const lb = bon.largura / 2;
+    this.caixaLocal(bx - lb, bz - 0.3, lb - 1, 0.55); // a fachada, dos dois lados da porta
+    this.caixaLocal(bx + 1, bz - 0.3, lb - 1, 0.55);
+    this.caixaLocal(bx - lb, bz - bon.comprimento, 0.3, bon.comprimento); // as paredes de fora
+    this.caixaLocal(bx + lb - 0.3, bz - bon.comprimento, 0.3, bon.comprimento);
+    this.caixaLocal(bx - lb, bz - bon.comprimento, bon.largura, bon.comprimento - 14.4); // o fundo (sacristia, coro)
+    this.capela = new CapelaRegional(ESTILO_BONFIM, bx + this.origem.x, bz - 7.25 + this.origem.z, ALTURA_COLINA, CAPELAO);
+    this.grupo.add(this.capela.grupo);
+    this.caixas.push(...this.capela.caixas);
+    for (const p of this.capela.pisos) this.pisos.push({ x0: p.x0, x1: p.x1, z0: p.z0, z1: p.z1, y: () => p.altura });
+    this.salaDosMilagres = new SalaDosMilagres(this.capela);
     this.predios.push({ ret: [bx - bon.largura / 2, bz - bon.comprimento, bon.largura, bon.comprimento], cor: 0xf6f4ee });
     for (const [x0, comp] of [[ADRO_BONFIM[0], ex - ADRO_BONFIM[0]], [ex + ew, ADRO_BONFIM[0] + ADRO_BONFIM[2] - ex - ew]] as const) {
       this.por(gradilDeFitas(500 + x0, comp), x0, ADRO_BONFIM[1] + ADRO_BONFIM[3] - 0.3, 0, ALTURA_COLINA);
@@ -788,6 +836,9 @@ export class BahiaBaixa extends MapaDaBahia {
     if (this.dono.raiz.visible) this.dono.atualizar(dt, jogador);
     this.comerciante.atualizar(dt, jogador);
     this.superiora.atualizar(dt, jogador);
+    this.capela.atualizar(dt, jogador);
+    this.salaDosMilagres.atualizar(jogador);
+    this.bonfimFora.visible = !this.capela.dentro(jogador);
   }
 
   /** O comerciante à porta da loja ou à porta do convento (com a doação). */
@@ -829,6 +880,7 @@ export class BahiaBaixa extends MapaDaBahia {
     super.reiniciar(sombrasVencidas, flags);
     for (const id of this.abrigados.keys()) this.mostrarAbrigado(id, flags.has(`bahia_recolhido_${id}`));
     this.hospital.aplicar(flags);
+    this.salaDosMilagres.aplicar(flags);
     for (const id of this.abrigados.keys()) if (flags.has(`bahia_leito_${id}`)) this.mostrarAbrigado(id, false);
     // o comerciante: depois da resposta mansa ele está no convento com a doação, até entregá-la
     const doou = flags.has('bahia_comerciante_doou');

@@ -28,6 +28,8 @@ export const FALANTES = {
   gula: { nome: 'Gula', estilo: 'vicio' },
   dulce: { nome: 'Irmã Dulce' },
   superiora: { nome: 'A madre superiora' },
+  capelao: { nome: 'O capelão do Bonfim' },
+  carta: { nome: 'Carta', estilo: 'inscricao' },
   dono_casa: { nome: 'O dono da casa' },
   comerciante: { nome: 'O dono do armazém' },
   // os esquecidos das Ruas da Bahia (entidades/Enfermos.ts)
