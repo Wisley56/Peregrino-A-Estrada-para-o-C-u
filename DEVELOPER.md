@@ -37,7 +37,7 @@ Parâmetros de URL para testes:
 
 - `?idade=jovem|adulto|idoso` força a idade do peregrino (teste do envelhecimento).
 - `?teste` abre uma sessão de teste sem save, pulando o menu; `?teste=palacio` (ou `cripta`, `deserto`, `meiodia`,
-  `cidade`) já começa na área. Só no modo dev.
+  `cidade`, `bahiabaixa`, `bahiaalta`) já começa na área. Só no modo dev.
 
 O protótipo 2D anterior (Phaser) continua em `../jogo`, como referência de sistemas e de narrativa.
 
@@ -139,7 +139,9 @@ tools/verificar-build.mjs confere que o modo dev não foi para o build
 ## Voxels e malhas
 
 - **`Vox.ts`** lê arquivos `.vox` (MagicaVoxel e Veloren), inclusive a paleta.
-- **`Modelo.ts`** monta modelos voxel por código: o peregrino, a pomba, as sombras, os santos e os chefões.
+- **`Modelo.ts`** monta modelos voxel por código: o peregrino, a pomba, as sombras, os santos, os chefões e os
+  prédios. As células ficam num `Map` de chave numérica, e o `Volume` que ele entrega tem `cada()`, que percorre só
+  as células cheias: a malha não varre a caixa inteira (as igrejas são quase todas vazio por dentro).
 - **`Malha.ts`** gera a geometria com **greedy meshing**: faces vizinhas da mesma cor viram um só quadrilátero.
 - **Oclusão de ambiente embutida**, no estilo Minecraft:
   - `ocluir()` calcula, para cada vértice, um nível de 0 a 3 a partir dos três vizinhos do canto.
@@ -245,6 +247,8 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
 | Poço do Meio-Dia | `mundo/PocoMeioDia.ts` | A Acídia (`entidades/Acedia.ts`), reflexos que só a Ciência desfaz, torpor |
 | Cidade Dourada | `mundo/Cidade.ts` | Cidade murada na Úmbria, peso, atos de piedade, São Damião reconstruída pedra a pedra, o lobo de Gubbio |
 | Palácio da Gula | `mundo/Banquete.ts` | Salão do Banquete; a Gula (`entidades/Gula.ts`), travessas como alvos, peso repartido com os pobres |
+| Bahia: Cidade Baixa | `mundo/Bahia.ts` (`BahiaBaixa`) | Comércio, Mercado Modelo, Elevador Lacerda, Largo de Roma (convento e galinheiro), o Bonfim, os Alagados |
+| Bahia: Cidade Alta | `mundo/Bahia.ts` (`BahiaAlta`) | Praça Tomé de Sousa, Terreiro de Jesus, Largo do Cruzeiro (arena), ladeira e Largo do Pelourinho |
 
 **A Cidade Dourada** (fase 2)
 
@@ -298,6 +302,68 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
   coração uma vez por luta) ou rezando (jejum: −1 a cada 2,2 s).
 - Vencida: as travessas viram pão, os pobres sentam à mesa (descanso) e conta como mais um passo na cor da cidade.
 - Os nós Ink ficam em `dialogos/palacio.ink`.
+
+**As Ruas da Bahia** (região 1; design completo em `docs/regioes/01-ruas-da-bahia.md`)
+
+- Duas áreas ligadas pelo Elevador Lacerda: a Cidade Baixa em (0, 0, 700), `'bahiabaixa'`, e a Cidade Alta em
+  (0, 0, 1000), `'bahiaalta'`. Chega-se pela estrada do mar da Cidade Dourada (`Cidade.estradaDoMar`), que só abre
+  com a Gula vencida; volta-se de saveiro.
+- O mapa é uma grade de colunas de 1 m por tipo de chão (`MapaDaBahia`, enum `T`). Nada de parede invisível:
+  na água (e no mar aberto, fora do mapa da Cidade Baixa) o peregrino vadeia, com o fundo em `FUNDO_VAU` (a água
+  pela cintura) até haver natação. Só a faixa da Cidade Baixa vista do alto devolve `PAREDE`; pinguelas, varandas das palafitas, a ladeira e a
+  escadaria do Bonfim são `pisos` com altura própria.
+- Os prédios ficam em `mundo/BahiaModelos.ts`: casario colonial em fileiras (`fileira`, com casa de esquina),
+  palafitas, as igrejas parametrizadas por `EstiloIgreja` (Bonfim, São Francisco, Rosário, Catedral), o elevador,
+  o Mercado Modelo, o convento e o galinheiro. A colina do Bonfim tem o gradil de fitas em toda a volta e o paredão
+  coberto de fitas (`muroDeFitas`). Tudo é juntado em blocos de 40 m (`Juntador`). Paredes de cor lisa,
+  para o greedy juntar as faces (cerca de 470 mil triângulos na Baixa).
+- **Irmã Dulce** (`entidades/Dulce.ts`): `montarDulce(comMenino)` monta um `Humano` com a cabeça própria (touca branca,
+  véu azul-marinho, rosto com as rugas finas e o sorriso) e o corpo menor (pescoço em 14 voxels, contra 17). Sem o
+  menino, os braços são articulados e a mão direita segura o crucifixo; com ele, a pose do colo vai no corpo e só a
+  cabeça gesticula. São dois `Npc` no mesmo lugar (`DULCE` e `DULCE_COM_MENINO`); `BahiaBaixa.dulceEmCena` diz
+  qual está visível (o menino sai do colo com `bahia_menino_abrigado`).
+- A primeira cena: na calçada da avenida, diante de uma porta fechada. Ela chama o peregrino quando ele chega a
+  6,5 m (`Jogo.atualizarBahia`, flag `bahia_dulce_chamou`); o nó `dulce` marca `bahia_dulce_conheceu`.
+- Os diálogos ficam em `dialogos/bahia.ink`. A cor volta com a flag `bahia_restaurada`.
+- **A procura do abrigo** (o primeiro ato de piedade). As flags, na ordem: `bahia_casa_aberta` (o peregrino força a
+  porta pregada da casa abandonada junto ao cais, `casaAbandonada(aberta)` em `BahiaModelos.ts`; a porta é a caixa
+  `portaCasa`, aberta com `topo = -PAREDE`), `bahia_casa_expulsos` (ele deita o menino na esteira, o dono chega,
+  nó `bahia_dono`, e os põe para fora) e `bahia_menino_abrigado` (o menino dorme na esteira à porta do Convento de
+  Santo Antônio, nó `bahia_convento`; dá uma graça via `Jogo.atoDaBahia`). `BahiaBaixa.reiniciar(flags)` põe
+  Dulce, o menino, o dono e a porta no lugar de cada etapa ao carregar o jogo.
+- **Carregar alguém**: `Peregrino.carregar(obj, 'costas')` (a pedra de São Damião usa `'ombro'`). Com carga o
+  peregrino fica mais lento e não pula; com o menino (`Jogo.meninoComPeregrino`) também não usa o cajado, mas reza.
+  O menino não vai para o save: se a carga cai (troca de área, recarga), ele volta para os braços de Dulce.
+  `menino('costas' | 'deitado')` em `Dulce.ts` monta o menino em cada pose. Os eventos Ink são
+  `carregar_menino` e `expulsos` (`Jogo.eventoDaBahia`).
+- **NPCs que andam**: `Npc.andarPara(destino, dt, chao, vel)` anda em linha reta (quem chama escolhe um caminho livre)
+  e `Npc.colocar(p, rumo)` teletransporta. Dulce segue `CAMINHOS_DULCE` (`BahiaBaixa.dulceIr`), mais depressa
+  quando está longe do peregrino, para nunca deixar o jogador esperando.
+- **Os esquecidos** (`entidades/Enfermos.ts`): seis enfermos com nome e história (`ENFERMOS`): Dona Zefa e Lúcia nas
+  varandas das palafitas, Seu Bento numa canoa que a maré levou (vai-se vadeando), Raimundo junto ao Mercado, Dona
+  Ana nos degraus do Rosário dos Pretos e João no beco ao lado (Cidade Alta). Cada área põe os seus com
+  `porEnfermos()`. F socorre (nó `bahia_enfermo_<id>`, que termina em `~ evento("carregar_enfermo")`) e põe a
+  pessoa nas costas; à porta do convento, F a deita numa esteira (`bahia_entrega_<id>`, flag
+  `bahia_recolhido_<id>`, uma graça). As esteiras do abrigo ficam ao longo da parede do convento (`ABRIGO`). Com os
+  seis, `bahia_esquecidos_todos` (Dulce fala do galinheiro). Antes de `bahia_menino_abrigado`, o Espírito Santo só
+  aponta para eles. O elevador leva junto quem vai nas costas (`trocarArea(..., manterCarga)`); qualquer outra troca de
+  área devolve o enfermo ao lugar dele. `nasCostas(h, f)` e `deitado(h, f)` são as poses de qualquer humano (o menino
+  também usa); adultos vão nas costas a 0,8 da escala.
+- **Os que passam** (`entidades/Passantes.ts`): vultos de pedra de chapéu e guarda-chuva, em `FilaDePassantes`. Com
+  velocidade, andam em fila por um caminho (aberto: vão e voltam como uma corrente, a volta 0,6 m ao lado; fechado: em
+  laço); sem velocidade, ficam parados fechando uma passagem (a boca do beco de João). São sólidos e empurram
+  (`colidir`); a luz desfaz um por 30 s (`atingirLuz`, e a mira trava neles por `alvos()`); com alguém nas costas do
+  peregrino (`alguemNasCostas`, que o Jogo avisa a cada quadro), a fila a menos de 7 m para, dá um passo para o lado e
+  levanta a cabeça. Somem com `bahia_coracao_vencido` (a flag virá com o chefão). Filas: em volta do Mercado e na
+  avenida (Baixa), em volta do Terreiro e no beco (Alta).
+- **O comerciante** (pedir pelos pobres): com os seis no abrigo, Dulce manda o peregrino ao armazém da avenida
+  (`ARMAZEM`, modelo `armazem()`; flag `bahia_comerciante_pedido`). No nó `bahia_comerciante` ele cospe na mão
+  estendida, e há três respostas: a mansa (`bahia_comerciante_manso`, evento `comerciante_sai`: ele vai para a porta do
+  convento), a raiva (`bahia_comerciante_raiva`: a porta bate; pode-se voltar, e no `de_novo` ele não cospe mais) e ir
+  embora. No convento, ele fala sozinho quando o peregrino chega a 6,5 m (`bahia_comerciante_doacao`, evento `doacao`:
+  flag `bahia_comerciante_doou`, uma graça, os `mantimentos()` à porta) e, longe dos olhos, volta para a loja. As falas
+  do episódio são do roteiro, não citações de Dulce.
+- O hospital, o interior do Bonfim e o Coração de Pedra vêm depois.
 
 ## Diálogos
 
@@ -556,7 +622,9 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 ## Próximos passos
 
 O roteiro segue o Documento base e o GDD complementar (na pasta acima do projeto). Já estão prontos o Vale, o
-Deserto e a Cidade Dourada, com Mamom, a Acídia e a Gula.
+Deserto e a Cidade Dourada, com Mamom, a Acídia e a Gula. Das Ruas da Bahia, já estão prontos o mapa (Cidade
+Baixa e Cidade Alta), Irmã Dulce, a casa abandonada, a mecânica de carregar, os esquecidos e o comerciante. A seguir: o hospital em
+etapas, o interior do Bonfim com a Sala dos Milagres, o Coração de Pedra e os níveis 4 e 5 da Piedade.
 
 ### A base do jogo
 
