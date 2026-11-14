@@ -5,8 +5,12 @@ import { Volume, malhaDoVolume, materialVoxel } from './Malha';
  * Modelador de voxels por código (arte original do projeto).
  * Coordenadas já em Y para cima. Cores em hexadecimal sRGB.
  */
+/** Chave numérica de uma célula (coordenadas de -1024 a 1023 em cada eixo). */
+const B = 2048, OFS = 1024;
+const chave = (x: number, y: number, z: number) => ((x + OFS) * B + (y + OFS)) * B + (z + OFS);
+
 export class Modelo {
-  private celulas = new Map<string, THREE.Color>();
+  private celulas = new Map<number, THREE.Color>();
   private min: [number, number, number] = [Infinity, Infinity, Infinity];
   private max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
   private static cores = new Map<number, THREE.Color>();
@@ -21,14 +25,19 @@ export class Modelo {
   }
 
   ponto(x: number, y: number, z: number, hex: number | null) {
-    const k = `${x},${y},${z}`;
+    const k = chave(x, y, z);
     if (hex === null) {
       this.celulas.delete(k);
       return this;
     }
     this.celulas.set(k, Modelo.cor(hex));
-    this.min = [Math.min(this.min[0], x), Math.min(this.min[1], y), Math.min(this.min[2], z)];
-    this.max = [Math.max(this.max[0], x + 1), Math.max(this.max[1], y + 1), Math.max(this.max[2], z + 1)];
+    const mn = this.min, mx = this.max;
+    if (x < mn[0]) mn[0] = x;
+    if (y < mn[1]) mn[1] = y;
+    if (z < mn[2]) mn[2] = z;
+    if (x + 1 > mx[0]) mx[0] = x + 1;
+    if (y + 1 > mx[1]) mx[1] = y + 1;
+    if (z + 1 > mx[2]) mx[2] = z + 1;
     return this;
   }
 
@@ -44,7 +53,13 @@ export class Modelo {
     const vol: Volume = {
       min: this.min,
       max: this.max,
-      cor: (x, y, z) => this.celulas.get(`${x},${y},${z}`) ?? null,
+      cor: (x, y, z) => this.celulas.get(chave(x, y, z)) ?? null,
+      cada: (f) => {
+        for (const [k, c] of this.celulas) {
+          const z = (k % B) - OFS, r = Math.floor(k / B);
+          f(Math.floor(r / B) - OFS, (r % B) - OFS, z, c);
+        }
+      },
     };
     return malhaDoVolume(vol, escala, pivo);
   }
