@@ -50,6 +50,8 @@ export class Npc {
   readonly humano: Humano;
   /** Verdadeiro enquanto a conversa com ele está aberta. */
   falando = false;
+  /** Andando para algum lugar: o corpo segue o caminho, não o peregrino. */
+  andando = false;
   private t = Math.random() * 10;
   private rumoBase: number;
   private alturaPescoco: number;
@@ -72,6 +74,38 @@ export class Npc {
     this.gestos = new Gesticulador(this.humano);
     this.inclinacaoCabeca = this.humano.cabeca.rotation.x;
     Npc.todos.push(this);
+  }
+
+  /** Põe o NPC noutro lugar, virado para `rumo`. */
+  colocar(p: THREE.Vector3, rumo = this.rumoBase) {
+    this.pos.copy(p);
+    this.raiz.position.copy(p);
+    this.rumoBase = rumo;
+    this.raiz.rotation.y = rumo;
+    this.andando = false;
+  }
+
+  /**
+   * Anda em linha reta até `destino` (sem física: quem chama escolhe um caminho livre), com o passo balançando um
+   * pouco. `chao` dá a altura do chão em cada ponto. Devolve true quando chega.
+   */
+  andarPara(destino: THREE.Vector3, dt: number, chao: (x: number, z: number) => number, vel = 1.8) {
+    const dx = destino.x - this.pos.x, dz = destino.z - this.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.05) {
+      this.andando = false;
+      this.raiz.position.copy(this.pos);
+      return true;
+    }
+    const passo = Math.min(d, vel * dt);
+    this.pos.x += (dx / d) * passo;
+    this.pos.z += (dz / d) * passo;
+    this.pos.y = chao(this.pos.x, this.pos.z);
+    this.rumoBase = Math.atan2(dx, dz);
+    this.andando = true;
+    this.raiz.position.copy(this.pos);
+    this.raiz.position.y += Math.abs(Math.sin(this.t * 8)) * 0.035;
+    return false;
   }
 
   private inclinacaoCabeca: number;
@@ -110,7 +144,7 @@ export class Npc {
     const perto = dx * dx + dz * dz < ALCANCE_OLHAR * ALCANCE_OLHAR;
     const paraJogador = Math.atan2(dx, dz);
     // o corpo vira devagar; a cabeça vai na frente, até um limite
-    const alvoCorpo = this.falando ? paraJogador : perto ? this.rumoBase + angulo(paraJogador - this.rumoBase) * 0.5 : this.rumoBase;
+    const alvoCorpo = this.andando ? this.rumoBase : this.falando ? paraJogador : perto ? this.rumoBase + angulo(paraJogador - this.rumoBase) * 0.5 : this.rumoBase;
     this.raiz.rotation.y += angulo(alvoCorpo - this.raiz.rotation.y) * Math.min(1, dt * (this.falando ? 4 : 2));
     const cabeca = this.humano.cabeca;
     const alvoCabeca = perto ? THREE.MathUtils.clamp(angulo(paraJogador - this.raiz.rotation.y), -LIMITE_CABECA, LIMITE_CABECA) : Math.sin(this.t * 0.4) * 0.25;
