@@ -56,6 +56,10 @@ export class Som {
   luz() { this.tom(880, 0.4, 'sine', 0.2, 1320); this.tom(1320, 0.5, 'sine', 0.1, 1760, 0.05); }
   dano() { this.tom(140, 0.3, 'sawtooth', 0.18, 60); }
   passo() { this.ruido(0.05, 0.08, 400); }
+  /** Cair na água funda. */
+  respingo() { this.ruido(0.45, 0.32, 1500); this.tom(260, 0.25, 'sine', 0.05, 120); }
+  /** Uma braçada. */
+  bracada() { this.ruido(0.28, 0.07, 700); }
   pulo() { this.tom(300, 0.12, 'triangle', 0.08, 480); }
   balido() { this.tom(420, 0.45, 'sawtooth', 0.05, 380); this.tom(426, 0.45, 'square', 0.03, 384); }
 

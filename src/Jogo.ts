@@ -25,6 +25,7 @@ import { pedraDeCarregar } from './mundo/CidadeModelos';
 import { menino } from './entidades/Dulce';
 import { ENFERMOS, corpoDoEnfermo, enfermo, registrarRetratosDosEnfermos } from './entidades/Enfermos';
 import { BahiaAlta, BahiaBaixa } from './mundo/Bahia';
+import { Creta } from './mundo/Creta';
 import { ID_CORACAO } from './mundo/LargoDoCruzeiro';
 import { Banquete, type Ajudante, type IdAjudante } from './mundo/Banquete';
 import { Chefe } from './entidades/Guardiao';
@@ -45,7 +46,7 @@ import type { AreaDev, ChefeDev, GanchosDev, OpcoesDev } from './dev/tipos';
 
 const TOTAL_SOMBRAS_VALE = 5;
 
-const NOMES_AREA: Record<IdArea, string> = { vale: 'O Vale', cripta: 'A Cripta', deserto: 'Deserto das Vozes', meiodia: 'Poço do Meio-Dia', cidade: 'Cidade Dourada', palacio: 'Palácio da Gula', bahiabaixa: 'Bahia: Cidade Baixa', bahiaalta: 'Bahia: Cidade Alta' };
+const NOMES_AREA: Record<IdArea, string> = { vale: 'O Vale', cripta: 'A Cripta', deserto: 'Deserto das Vozes', meiodia: 'Poço do Meio-Dia', cidade: 'Cidade Dourada', palacio: 'Palácio da Gula', bahiabaixa: 'Bahia: Cidade Baixa', bahiaalta: 'Bahia: Cidade Alta', creta: 'Creta: Bons Portos' };
 const NOME_AJUDANTE: Record<IdAjudante, string> = { tomas: 'Tomás', rita: 'Rita', beppo: 'Beppo', leproso: 'o homem curado' };
 /** O que cada pobre diz quando o peregrino reparte com ele o peso do banquete. */
 const FALA_REPARTIR: Record<IdAjudante, string> = {
@@ -138,7 +139,9 @@ export class Jogo {
   private lamparinaAcesa = false;
   /** A fauna de cada região (só a da área atual aparece e se mexe). */
   private faunas = new Map<IdArea, Fauna>();
-  private interacoes: Record<IdArea, Interacao[]> = { vale: [], cripta: [], deserto: [], meiodia: [], cidade: [], palacio: [], bahiabaixa: [], bahiaalta: [] };
+  private interacoes: Record<IdArea, Interacao[]> = { vale: [], cripta: [], deserto: [], meiodia: [], cidade: [], palacio: [], bahiabaixa: [], bahiaalta: [], creta: [] };
+  /** O Mar da Tempestade, primeira parte: a costa sul de Creta, em Bons Portos (At 27,8). */
+  readonly creta = new Creta();
   readonly cidade = new Cidade();
   /** As Ruas da Bahia: a Cidade Baixa (com Itapagipe) e a Cidade Alta, ligadas pelo Elevador Lacerda. */
   readonly bahiaBaixa = new BahiaBaixa();
@@ -253,7 +256,7 @@ export class Jogo {
     this.sol.shadow.bias = -0.0006;
     this.sol.shadow.normalBias = 0.04;
     this.cena.add(this.sol, this.sol.target);
-    this.cena.add(this.mundo.grupo, this.deserto.grupo, this.meiodia.grupo, this.cidade.grupo, this.banquete.grupo, this.bahiaBaixa.grupo, this.bahiaAlta.grupo, this.peregrino.raiz, this.pomba.raiz, this.coluna, this.flashLuz);
+    this.cena.add(this.mundo.grupo, this.deserto.grupo, this.meiodia.grupo, this.cidade.grupo, this.banquete.grupo, this.bahiaBaixa.grupo, this.bahiaAlta.grupo, this.creta.grupo, this.peregrino.raiz, this.pomba.raiz, this.coluna, this.flashLuz);
     this.coluna.visible = false;
     this.aplicarGraficos();
 
@@ -343,7 +346,7 @@ export class Jogo {
 
   /** Cria a fauna de todas as regiões (a mesma distribuição em toda partida). */
   private async povoarFauna() {
-    const areas = [this.mundo, this.cripta, this.deserto, this.meiodia, this.cidade, this.bahiaBaixa, this.bahiaAlta] as Area[];
+    const areas = [this.mundo, this.cripta, this.deserto, this.meiodia, this.cidade, this.bahiaBaixa, this.bahiaAlta, this.creta] as Area[];
     await Promise.all(
       areas.map(async (a, i) => {
         const fauna = new Fauna(a);
@@ -509,6 +512,8 @@ export class Jogo {
     this.banquete.grupo.visible = noBanquete;
     this.bahiaBaixa.grupo.visible = this.area === this.bahiaBaixa;
     this.bahiaAlta.grupo.visible = this.area === this.bahiaAlta;
+    const emCreta = this.area === this.creta;
+    this.creta.grupo.visible = emCreta;
     for (const [id, fauna] of this.faunas) fauna.grupo.visible = id === this.area.id;
     this.ceu.visible = !naCripta;
     this.sol.visible = !naCripta;
@@ -557,6 +562,18 @@ export class Jogo {
       this.sol.intensity = 2.6;
       ceu.topo.value.setHex(0x4f8ad8);
       ceu.horizonte.value.setHex(0xf6d29a);
+    } else if (emCreta) {
+      // o fim do verão no Mediterrâneo: luz clara e seca, mar de um azul fundo, e o horizonte longe
+      fog.color.setHex(0xd9e6ec);
+      fog.near = 90;
+      fog.far = 300;
+      this.hemi.color.setHex(0xd8ecff);
+      this.hemi.groundColor.setHex(0x8a7c5a);
+      this.hemi.intensity = 1.5;
+      this.sol.color.setHex(0xfff0d8);
+      this.sol.intensity = 2.7;
+      ceu.topo.value.setHex(0x2a78d0);
+      ceu.horizonte.value.setHex(0xe0ecf0);
     } else if (naBahia) {
       // o sol de Salvador: luz branca e quente, céu muito azul, e o ar limpo da brisa do mar
       fog.color.setHex(0xdde8ee);
@@ -606,7 +623,7 @@ export class Jogo {
   }
 
   private areaPorId(id: IdArea): Area {
-    return id === 'cripta' ? this.cripta : id === 'deserto' ? this.deserto : id === 'meiodia' ? this.meiodia : id === 'cidade' ? this.cidade : id === 'palacio' ? this.banquete : id === 'bahiabaixa' ? this.bahiaBaixa : id === 'bahiaalta' ? this.bahiaAlta : this.mundo;
+    return id === 'cripta' ? this.cripta : id === 'deserto' ? this.deserto : id === 'meiodia' ? this.meiodia : id === 'cidade' ? this.cidade : id === 'palacio' ? this.banquete : id === 'bahiabaixa' ? this.bahiaBaixa : id === 'bahiaalta' ? this.bahiaAlta : id === 'creta' ? this.creta : this.mundo;
   }
 
   private sombrasDoDesertoVencidas() {
@@ -618,6 +635,8 @@ export class Jogo {
     if (this.area === this.cidade) return this.corDaCidade();
     if (this.area === this.banquete) return 1; // o ouro falso da Gula brilha sempre
     if (this.area === this.bahiaBaixa || this.area === this.bahiaAlta) return this.corDaBahia();
+    // o Mar da Tempestade só recupera a cor em Malta, depois do naufrágio
+    if (this.area === this.creta) return this.estado.flags.has('mar_restaurado') ? 1 : 0;
     return this.area === this.deserto || this.area === this.meiodia ? this.sombrasDoDesertoVencidas() / TOTAL_SOMBRAS_DESERTO : this.estado.cor;
   }
 
@@ -2125,7 +2144,7 @@ export class Jogo {
     this.hud.posicionarMira(this.travado ? this.travado.centro().add(new THREE.Vector3(0, 0.9, 0)) : null, this.camera.cam);
     this.atualizarMiraLivre(dt);
     const cor = this.corVisivel(dt);
-    this.hud.atualizar(dt, this.estado, cor, this.area === this.cidade || this.area === this.banquete ? 'Cor da Cidade' : this.area === this.bahiaBaixa || this.area === this.bahiaAlta ? 'Cor da Bahia' : this.area === this.deserto || this.area === this.meiodia ? 'Cor do Deserto' : 'Cor do Vale');
+    this.hud.atualizar(dt, this.estado, cor, this.area === this.cidade || this.area === this.banquete ? 'Cor da Cidade' : this.area === this.bahiaBaixa || this.area === this.bahiaAlta ? 'Cor da Bahia' : this.area === this.creta ? 'Cor do Mar' : this.area === this.deserto || this.area === this.meiodia ? 'Cor do Deserto' : 'Cor do Vale');
 
     // sol acompanha o peregrino para a sombra ficar nítida por perto
     const p = this.peregrino.pos;
@@ -2219,6 +2238,8 @@ export class Jogo {
     const livre = !parado && per.acao === 'livre';
     if (livre && per.ajoelhado && e.apertou('Mouse0', 'KeyJ', 'Mouse2', 'KeyK', 'KeyC')) {
       this.hud.anunciar('De joelhos, as mãos estão postas. Solte Z para se levantar.', 1.8);
+    } else if (livre && per.nadando && e.apertou('Mouse0', 'KeyJ', 'Mouse2', 'KeyK', 'KeyC')) {
+      this.hud.anunciar('Nadando, o cajado vai preso ao corpo. Chegue à terra para lutar.', 1.8);
     } else if (livre && this.nasCostas && e.apertou('Mouse0', 'KeyJ', 'Mouse2', 'KeyK')) {
       const quem = this.nasCostas === 'menino' ? 'o menino' : enfermo(this.nasCostas)?.nome;
       this.hud.anunciar(`Com ${quem} nas costas, as mãos não largam: sem o cajado. Ainda se pode rezar (R).`, 2);
@@ -2256,12 +2277,17 @@ export class Jogo {
     per.atualizar(dt, this.area, desejo, velocidade, pular, olharPara);
     if (!parado) this.atualizarPuxao(dt);
 
-    if (per.velocidadeHoriz > 0.5 && per.noChao) {
+    if (per.velocidadeHoriz > 0.5 && (per.noChao || per.nadando)) {
       this.somPasso -= dt * per.velocidadeHoriz;
       if (this.somPasso <= 0) {
-        this.somPasso = 1.7;
-        this.som.passo();
+        this.somPasso = per.nadando ? 2.4 : 1.7;
+        if (per.nadando) this.som.bracada();
+        else this.som.passo();
       }
+    }
+    if (per.mergulhou) {
+      per.mergulhou = false;
+      this.som.respingo();
     }
 
     // golpe acerta um pouco depois de começar
@@ -2979,6 +3005,9 @@ export class Jogo {
       { id: 'bahiaalta', nome: NOMES_AREA.bahiaalta, pontos: [
         ponto('Chegada (Praça Tomé de Sousa)', this.bahiaAlta.chegada, Math.PI / 2), ponto('Terreiro de Jesus', this.bahiaAlta.chafariz.clone().add(v(-8, 0)), Math.PI / 2),
         ponto('Largo do Cruzeiro (arena)', this.bahiaAlta.cruzeiro.clone().add(v(-8, 0)), Math.PI / 2), ponto('Pelourinho', this.bahiaAlta.pelourinho.clone().add(v(0, 6))),
+      ] },
+      { id: 'creta', nome: NOMES_AREA.creta, pontos: [
+        ponto('Chegada (praia da enseada)', this.creta.chegada, sul), ponto('Ilhota (a nado)', this.creta.ilhota.clone().add(v(0, -10)), sul),
       ] },
     ];
     /** Desfaz uma vitória: tira a sombra das vencidas e as flags que ela deixou. */

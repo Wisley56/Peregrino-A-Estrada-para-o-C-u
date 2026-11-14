@@ -37,7 +37,7 @@ Parâmetros de URL para testes:
 
 - `?idade=jovem|adulto|idoso` força a idade do peregrino (teste do envelhecimento).
 - `?teste` abre uma sessão de teste sem save, pulando o menu; `?teste=palacio` (ou `cripta`, `deserto`, `meiodia`,
-  `cidade`, `bahiabaixa`, `bahiaalta`) já começa na área. Só no modo dev.
+  `cidade`, `bahiabaixa`, `bahiaalta`, `creta`) já começa na área. Só no modo dev.
 
 O protótipo 2D anterior (Phaser) continua em `../jogo`, como referência de sistemas e de narrativa.
 
@@ -99,7 +99,7 @@ src/
              Humano (gente do povo montada a partir de um figurino)
   dialogos/  roteiros Ink (.ink): peregrino.ink inclui um arquivo por região
   dialogo/   Dialogos (executa o Ink), Falantes (quem fala e com que estilo), Retratos (rostos da caixa de diálogo)
-  mundo/     Area (interface comum), Terreno, Mundo (o Vale), Cripta, Deserto, PocoMeioDia, Cidade (a Cidade Dourada),
+  mundo/     Area (interface comum), Terreno, Oceano, Mundo (o Vale), Creta, Cripta, Deserto, PocoMeioDia, Cidade (a Cidade Dourada),
              CidadeModelos (casas, palácio, São Damião, iscas), Capela (capela de região com interior, confessionário
              e CapelaRegional), Cenario (cruzeiro, céu, entrada da cripta, véu, lamparina)
   fauna/     Especies (fichas), Corpo (esqueletos do Veloren), Animal (comportamento), Fauna (povoamento por área)
@@ -152,6 +152,14 @@ tools/verificar-build.mjs confere que o modo dev não foi para o build
   - Não custa nada no shader e fica sempre ligado.
 - **Terreno** (`Terreno.ts`): colunas de altura geradas por ruído. O AO usa `cheio(i, y, j)`
   (`y < altura(i, j)`; fora do mapa, só abaixo de 0).
+  - `malhaDeColunas` faz uma malha única (as áreas pequenas). `blocosDeColunas` faz o mesmo terreno partido em
+    blocos de 48 × 48 colunas, com material compartilhado e esfera envolvente própria: o renderizador descarta os
+    blocos fora da câmera. É o padrão das regiões grandes (cerca de 3× a Bahia). Em Creta (320 × 320 m), cerca de
+    60% dos triângulos do terreno ficam visíveis por quadro.
+- **Oceano** (`Oceano.ts`): uma grade de 640 m que segue o jogador (presa a passos de 4 m), com as ondas no vertex
+  shader (quatro senoides) e sombreamento facetado (`flatShading`). As cristas clareiam em espuma conforme a
+  amplitude. `Oceano.altura(x, z)` repete a conta em TypeScript, para quem nada boiar na onda certa. `intensidade`
+  vai de 0 (calmaria) a 1 (tempestade).
 - **Física das árvores**: troncos e raízes dos pinheiros grandes têm pegada sólida em células de 0,5 m.
 
 ## Render e gráficos
@@ -253,6 +261,20 @@ os mantém (o save guarda o número do nível, não o nome).
 | Palácio da Gula | `mundo/Banquete.ts` | Salão do Banquete; a Gula (`entidades/Gula.ts`), travessas como alvos, peso repartido com os pobres |
 | Bahia: Cidade Baixa | `mundo/Bahia.ts` (`BahiaBaixa`) | Comércio, Mercado Modelo, Elevador Lacerda, Largo de Roma (convento e galinheiro), o Bonfim, os Alagados |
 | Bahia: Cidade Alta | `mundo/Bahia.ts` (`BahiaAlta`) | Praça Tomé de Sousa, Terreiro de Jesus, Largo do Cruzeiro (arena), ladeira e Largo do Pelourinho |
+| Creta: Bons Portos | `mundo/Creta.ts` | Mar da Tempestade, 1ª parte (em construção): costa sul de Creta em blocos, enseada com ilhotas, mar aberto com o `Oceano` |
+
+**A natação** (`entidades/Peregrino.ts`)
+
+- A física da área diz onde há água: `Fisica.nivelAgua(x, z)` devolve a superfície com as ondas (ou `null`); sem
+  ela, vale `nivelMinimo`. A Bahia devolve o nível da baía (lá o fundo do vau deixa a água pela cintura).
+- Vadeando (o corpo abaixo da superfície), a velocidade cai para 55%. Onde a água passa de `PROFUNDIDADE_NADO`
+  (1,3 m), o peregrino nada (`nadando`): boia com a onda (uma mola amortecida puxa os pés para 1,3 m abaixo da
+  superfície parado e 0,95 m nadando), anda a 50%, não pula e não usa o cajado, que fica preso ao corpo.
+- Nadando, ele sobe na margem que fique até 0,6 m acima da água. Parado, fica de pé na água, pedalando e remando;
+  andando, deita em nado de peito. As duas poses se misturam por `nadoK`. Os sons são `respingo` ao cair na água
+  funda e `bracada` no ritmo do nado.
+- Não há afogamento nem parede invisível no mar: fora do mapa de Creta é mar aberto e se nada para onde quiser.
+  O lago do Vale também deixa nadar no meio.
 
 **O jardim de Santo Agostinho e a porta estreita** (Vale; o dom do Temor de Deus)
 

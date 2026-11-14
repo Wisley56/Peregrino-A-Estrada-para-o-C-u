@@ -313,6 +313,11 @@ abstract class MapaDaBahia implements Area {
     return this.alturas[i * this.tam + j];
   }
 
+  /** A baía: a água fica no mesmo nível em toda parte (o fundo do vau a deixa pela cintura: vadeia-se, não se nada). */
+  nivelAgua() {
+    return AGUA_BAHIA;
+  }
+
   /**
    * Fora do mapa. Na Cidade Baixa é o mar aberto, onde se vadeia como na baía; na Cidade Alta é o limite da área
    * (até o mundo aberto juntar as duas).

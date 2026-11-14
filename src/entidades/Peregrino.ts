@@ -11,7 +11,18 @@ export interface Fisica {
   colidir(pos: THREE.Vector3, raio: number): void;
   /** Altura mínima para quem flutua (ex.: a superfície da água). */
   nivelMinimo?: number;
+  /**
+   * A superfície da água em (x, z), com as ondas, ou `null` onde não há água. Sem esta função, vale `nivelMinimo`.
+   * Onde a água passa de `PROFUNDIDADE_NADO`, o peregrino nada.
+   */
+  nivelAgua?(x: number, z: number): number | null;
 }
+
+/** A partir desta profundidade (m) o peregrino deixa de vadear e nada (a água bate no peito). */
+export const PROFUNDIDADE_NADO = 1.3;
+/** Nadando, a altura dos pés abaixo da superfície: boiando parado (de pé na água) e nadando (deitado). */
+const AFUNDA_PARADO = 1.3;
+const AFUNDA_NADANDO = 0.95;
 
 const FIXAS = {
   calca: 0x5b4a3a,
@@ -369,6 +380,21 @@ export class Peregrino {
   /** 0 em pé … 1 de joelhos: a pose desce e sobe aos poucos. */
   private joelhosK = 0;
 
+  /**
+   * Nadando: a água passa de `PROFUNDIDADE_NADO`. O peregrino boia com a onda, sem pulo nem cajado na mão (o cajado
+   * vai junto ao corpo); parado, fica de pé na água batendo as pernas; andando, nada de peito.
+   */
+  nadando = false;
+  /** A superfície da água debaixo do peregrino (ou `null` em terra seca). */
+  superficie: number | null = null;
+  /** 0 boiando parado … 1 nadando: a pose deita aos poucos. */
+  private nadoK = 0;
+  /** Entrou na água fundo agora (para o respingo): vira false depois de lido. */
+  mergulhou = false;
+  /** 0 fora … 1 dentro da água funda (a pose de nado entra aos poucos) e o ritmo da braçada. */
+  private aguaK = 0;
+  private bracada = 0;
+
   /** O idoso anda mais devagar. */
   get fatorVelocidade() {
     return this.visual.idade === 'idoso' ? 0.82 : 1;
@@ -423,23 +449,28 @@ export class Peregrino {
     if (this.acao === 'ferido' && this.tempoAcao > 0.3) this.acao = 'livre';
     if (this.acao === 'carinho' && this.tempoAcao > DURACAO_CARINHO) this.acao = 'livre';
 
-    // na água, mais devagar
-    if (this.pos.y < 2.45 - 0.3) {
+    // na água: vadeando, mais devagar; nadando, bem mais devagar (correr vira nadar com força)
+    const agua = fis.nivelAgua ? fis.nivelAgua(this.pos.x, this.pos.z) : fis.nivelMinimo ?? null;
+    if (this.nadando) {
+      vx *= 0.5;
+      vz *= 0.5;
+    } else if (agua !== null && this.pos.y < agua - 0.3) {
       vx *= 0.55;
       vz *= 0.55;
     }
 
     this.velocidadeHoriz = Math.hypot(vx, vz);
 
-    // movimento por eixo, com degrau de até 1 bloco
+    // movimento por eixo, com degrau de até 1 bloco. Nadando, sobe-se à margem que fique até 0,6 m acima da água.
     const raio = 0.32;
+    const base = this.nadando && this.superficie !== null ? Math.max(this.pos.y, this.superficie - 0.45) : this.pos.y;
     const tentar = (dx: number, dz: number) => {
       const nx = this.pos.x + dx, nz = this.pos.z + dz;
       const h = Math.max(
         fis.altura(nx + Math.sign(dx) * raio, nz + Math.sign(dz) * raio),
         fis.altura(nx, nz),
       );
-      if (h > this.pos.y + 1.05) return; // parede
+      if (h > base + 1.05) return; // parede
       this.pos.x = nx;
       this.pos.z = nz;
     };
@@ -447,8 +478,33 @@ export class Peregrino {
     tentar(0, vz * dt);
     fis.colidir(this.pos, raio);
 
-    // gravidade e pulo
+    // água funda: nada, boiando com a onda (a margem baixa é chão: lá ele sai andando)
     const chao = fis.altura(this.pos.x, this.pos.z);
+    this.superficie = fis.nivelAgua ? fis.nivelAgua(this.pos.x, this.pos.z) : fis.nivelMinimo ?? null;
+    const fundo = this.superficie !== null && this.superficie - chao > PROFUNDIDADE_NADO;
+    // entra no nado quando o corpo chega à água funda (caindo de um pulo, só quando bate na água)
+    const entrar = fundo && this.pos.y <= this.superficie! - AFUNDA_NADANDO + 0.2;
+    if (fundo && (this.nadando || entrar)) {
+      if (!this.nadando) {
+        this.nadando = true;
+        this.mergulhou = this.vy < -3 || this.velocidadeHoriz > 1;
+        this.ajoelhado = false;
+      }
+      this.nadoK += ((this.velocidadeHoriz > 0.3 ? 1 : 0) - this.nadoK) * Math.min(1, dt * 3);
+      const alvo = this.superficie! - (AFUNDA_PARADO + (AFUNDA_NADANDO - AFUNDA_PARADO) * this.nadoK);
+      // a queda é freada pela água e o corpo volta à tona aos poucos
+      this.vy = this.vy * Math.max(0, 1 - dt * 6) + (alvo - this.pos.y) * dt * 30;
+      this.pos.y += this.vy * dt;
+      this.pos.y = Math.max(this.pos.y, chao);
+      this.noChao = false;
+      this.rumoPorDesejo(olharPara, vx, vz, dt);
+      this.animar(dt);
+      return;
+    }
+    this.nadando = false;
+    this.nadoK = 0;
+
+    // gravidade e pulo
     if (pular && this.noChao && !travadoNaAcao && !this.ajoelhado && this.acao !== 'esquiva' && this.forcaPulo > 0) {
       this.vy = 8.6 * this.forcaPulo;
       this.noChao = false;
@@ -468,15 +524,18 @@ export class Peregrino {
       this.noChao = this.pos.y - chao < 0.02;
     }
 
-    // rumo
+    this.rumoPorDesejo(olharPara, vx, vz, dt);
+    this.animar(dt);
+  }
+
+  /** Vira o rosto para o alvo travado ou para onde anda. */
+  private rumoPorDesejo(olharPara: THREE.Vector3 | null, vx: number, vz: number, dt: number) {
     if (olharPara && this.acao !== 'esquiva') {
       const alvo = Math.atan2(olharPara.x - this.pos.x, olharPara.z - this.pos.z);
       this.rumo = girarPara(this.rumo, alvo, dt * 14);
     } else if (this.velocidadeHoriz > 0.1 && this.acao !== 'esquiva') {
-      this.rumo = girarPara(this.rumo, Math.atan2(vx, vz), dt * 12);
+      this.rumo = girarPara(this.rumo, Math.atan2(vx, vz), dt * (this.nadando ? 5 : 12));
     }
-
-    this.animar(dt);
   }
 
   private animar(dt: number) {
@@ -553,6 +612,31 @@ export class Peregrino {
       bE -= k * 0.35;
       corpoRx += k * 0.12;
     }
+
+    // nadando: parado, de pé na água pedalando e remando com as mãos; andando, deitado em nado de peito (os braços
+    // vão à frente juntos e abrem para os lados, as pernas encolhem e chutam). O cajado vai preso junto ao corpo.
+    this.aguaK += ((this.nadando ? 1 : 0) - this.aguaK) * Math.min(1, dt * 5);
+    if (this.nadando) this.bracada += dt * (1.6 + this.velocidadeHoriz * 0.8);
+    if (this.aguaK > 0.01) {
+      const a = this.aguaK, n = this.nadoK, c = this.bracada * 2.2;
+      const mistura = (de: number, para: number) => de + (para - de) * a;
+      const entre = (boiando: number, nado: number) => boiando + (nado - boiando) * n;
+      const abre = Math.max(0, Math.sin(c)); // os braços abrem para os lados
+      const chute = Math.max(0, Math.sin(c + Math.PI * 0.6)); // as pernas chutam logo depois
+      pE = mistura(pE, entre(Math.sin(c * 0.7) * 0.4, 0.15 + chute * 0.35));
+      pD = mistura(pD, entre(-Math.sin(c * 0.7) * 0.4, 0.15 + chute * 0.35));
+      jE = mistura(jE, entre(0.5 + Math.max(0, Math.sin(c * 0.7)) * 0.5, 0.25 + (1 - chute) * 0.9));
+      jD = mistura(jD, entre(0.5 + Math.max(0, -Math.sin(c * 0.7)) * 0.5, 0.25 + (1 - chute) * 0.9));
+      bE = mistura(bE, entre(-0.55 + Math.sin(c) * 0.12, -2.75 + abre * 0.85));
+      bD = mistura(bD, entre(-0.55 - Math.sin(c) * 0.12, -2.75 + abre * 0.85));
+      bEz = mistura(bEz, entre(-0.35 + Math.sin(c) * 0.25, -abre * 0.7));
+      bDz = mistura(bDz, entre(0.35 - Math.sin(c) * 0.25, abre * 0.7));
+      corpoRx = mistura(corpoRx, entre(0.12, 1.3));
+      corpoRy *= 1 - a;
+      corpoY = mistura(corpoY, Math.sin(c * 0.7) * 0.03);
+      cabecaRx = mistura(cabecaRx, entre(0, -1.0)); // deitado, ergue a cabeça para ver aonde vai
+    }
+    this.cajado.visible = !this.cargaNasCostas && this.aguaK < 0.5;
 
     // de joelhos: as coxas quase retas, as canelas deitadas para trás, o corpo curvado e as mãos postas; a cada
     // passo um joelho vai à frente e o quadril balança
