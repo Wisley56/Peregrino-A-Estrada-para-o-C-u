@@ -191,6 +191,8 @@ export class Cidade implements Area {
   readonly capela: CapelaRegional;
   readonly chegada: THREE.Vector3;
   readonly saida: THREE.Vector3;
+  /** A estrada do mar, que desce para o porto (e para a Bahia). */
+  readonly estradaDoMar: THREE.Vector3;
   readonly cruzeiro: THREE.Vector3;
   readonly fonte: THREE.Vector3;
   readonly portaPalacio: THREE.Vector3;
@@ -231,6 +233,7 @@ export class Cidade implements Area {
 
     this.chegada = w(0, 57);
     this.saida = w(0, 68);
+    this.estradaDoMar = w(0, 75);
     this.cruzeiro = w(4.5, 58);
     this.fonte = w(FONTE.x, FONTE.y);
     this.portaPalacio = w(PALACIO.x, PALACIO.z + PALACIO.prof / 2 + 2.6);

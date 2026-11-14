@@ -26,6 +26,16 @@ export const FALANTES = {
   beppo: { nome: 'Beppo' },
   mercador: { nome: 'Mercador' },
   gula: { nome: 'Gula', estilo: 'vicio' },
+  dulce: { nome: 'Irmã Dulce' },
+  dono_casa: { nome: 'O dono da casa' },
+  comerciante: { nome: 'O dono do armazém' },
+  // os esquecidos das Ruas da Bahia (entidades/Enfermos.ts)
+  zefa: { nome: 'Dona Zefa' },
+  lucia: { nome: 'Lúcia' },
+  bento: { nome: 'Seu Bento' },
+  raimundo: { nome: 'Raimundo' },
+  ana: { nome: 'Dona Ana' },
+  joao: { nome: 'João' },
 } satisfies Record<string, Falante>;
 
 export type IdFalante = keyof typeof FALANTES;
