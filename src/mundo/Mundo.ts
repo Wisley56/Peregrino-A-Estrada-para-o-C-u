@@ -6,7 +6,8 @@ import { Fisica } from '../entidades/Peregrino';
 import type { Povoamento } from '../fauna/Fauna';
 import { Sombra } from '../entidades/Sombra';
 import type { DefNpc } from '../entidades/Npc';
-import { CAPELA, LAGO, NIVEL_AGUA, PASSAGEM, Terreno, estradaX } from './Terreno';
+import { CAPELA, JARDIM, LAGO, NIVEL_AGUA, PASSAGEM, Terreno, estradaX } from './Terreno';
+import { JardimDeAgostinho } from './Jardim';
 import { construirCruzeiro, construirEntradaCripta, construirPlaca, construirVeu } from './Cenario';
 import { Area } from './Area';
 import { CapelaRegional, ESTILO_VALE } from './Capela';
@@ -14,7 +15,8 @@ import type { FonteMapa } from '../ui/Minimapa';
 import { escurecer } from './PocoMeioDia';
 
 interface Circulo { x: number; z: number; r: number }
-interface Caixa { x0: number; x1: number; z0: number; z1: number; topo: number }
+/** `baixa`: só os pequenos passam (a porta estreita do jardim de Agostinho, para quem vai de joelhos). */
+interface Caixa { x0: number; x1: number; z0: number; z1: number; topo: number; baixa?: boolean }
 
 const V = 'assets/veloren/';
 const SPRITE = 1 / 11; // escala dos sprites do Veloren (voxel de 1/11 de bloco)
@@ -88,6 +90,10 @@ export class Mundo implements Fisica, Area {
   readonly cruzeiro: THREE.Vector3;
   /** A capela do Vale, com o padre que confessa. */
   readonly capela: CapelaRegional;
+  /** O jardim murado de Santo Agostinho, com a porta estreita. */
+  readonly jardim: JardimDeAgostinho;
+  /** O peregrino está de joelhos (o jogo avisa a cada quadro): a porta estreita deixa passar. */
+  pequeno = false;
   readonly luzFogueira = new THREE.PointLight(0xff9a40, 8, 10, 1.5);
   readonly entradaCripta: THREE.Vector3;
   readonly veu: THREE.Vector3;
@@ -114,6 +120,12 @@ export class Mundo implements Fisica, Area {
     this.capela = new CapelaRegional(ESTILO_VALE, CAPELA.x, CAPELA.y, hc, PADRE);
     this.grupo.add(this.capela.grupo);
     this.caixas.push(...this.capela.caixas);
+
+    // o jardim de Agostinho, à direita da estrada
+    this.jardim = new JardimDeAgostinho(h(JARDIM.x, JARDIM.z));
+    this.grupo.add(this.jardim.grupo, this.jardim.agostinho.raiz);
+    this.caixas.push(...this.jardim.caixas);
+    this.circulos.push(...this.jardim.circulos);
 
     // cruzeiro
     const cruz = construirCruzeiro();
@@ -182,6 +194,7 @@ export class Mundo implements Fisica, Area {
     this.t += dt;
     if (jogador) {
       this.capela.atualizar(dt, jogador);
+      this.jardim.atualizar(dt, jogador);
     }
     const v = this.malhaVeu;
     if (this.desfazendoVeu < 0) {
@@ -246,6 +259,7 @@ export class Mundo implements Fisica, Area {
       for (let dx = -margem; dx <= margem; dx += margem || 1)
         for (let dz = -margem; dz <= margem; dz += margem || 1) if (this.terreno.pesoEstrada(x + dx, z + dz) > 0.05) return false;
       if (Math.hypot(x - CAPELA.x, z - CAPELA.y) < 15) return false;
+      if (Math.max(Math.abs(x - JARDIM.x), Math.abs(z - JARDIM.z)) < JARDIM.meio + 2.5) return false;
       if (Math.hypot(x - this.inicio.x, z - this.inicio.z) < 6) return false;
       if (Math.hypot(x - this.cruzeiro.x, z - this.cruzeiro.z) < 3) return false;
       if (x < PASSAGEM.entrada + 3 && Math.abs(z - PASSAGEM.z) < 3.5) return false;
@@ -347,6 +361,7 @@ export class Mundo implements Fisica, Area {
         if (h >= 99) return 0x3a3428;
         if (h <= NIVEL_AGUA + 0.05 && Math.hypot(x - LAGO.x, (z - LAGO.y) * 1.3) < 16) return 0x3a7ac0;
         if (this.capela.noMapa(x, z)) return 0xe8dcc4; // a capela
+        if (this.jardim.noMapa(x, z)) return 0xb9ae98; // o muro do jardim de Agostinho
         if (t.pesoEstrada(x, z) > 0.35) return 0xc8a46a;
         const borda = Math.max(Math.abs(x), Math.abs(z));
         if (borda > 58 && h > 12) return escurecer(0x8a8274, 0.7 + Math.min(1, (h - 12) / 30) * 0.4);
@@ -419,7 +434,7 @@ export class Mundo implements Fisica, Area {
       }
     }
     for (const b of this.caixas) {
-      if (pos.y >= b.topo) continue;
+      if (pos.y >= b.topo || (b.baixa && this.pequeno)) continue;
       const x0 = b.x0 - raio, x1 = b.x1 + raio, z0 = b.z0 - raio, z1 = b.z1 + raio;
       if (pos.x <= x0 || pos.x >= x1 || pos.z <= z0 || pos.z >= z1) continue;
       const empurros = [pos.x - x0, x1 - pos.x, pos.z - z0, z1 - pos.z];

@@ -13,6 +13,8 @@ export const FALANTES = {
   espirito: { nome: 'Espírito Santo', estilo: 'espirito' },
   inscricao: { nome: 'Inscrição', estilo: 'inscricao' },
   placa: { nome: 'Placa', estilo: 'inscricao' },
+  agostinho: { nome: 'Santo Agostinho' },
+  crianca: { nome: 'Uma voz de criança', estilo: 'inscricao' },
   antao: { nome: 'Santo Antão' },
   mamom: { nome: 'Mamom', estilo: 'vicio' },
   acedia: { nome: 'Acídia', estilo: 'vicio' },

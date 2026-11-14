@@ -3,7 +3,7 @@ import { ARFAGEM_LIVRE, CameraTerceira } from './core/Camera';
 import { Entrada, travarPonteiro } from './core/Entrada';
 import { CHEFOES, Estado } from './core/Estado';
 import { Som } from './core/Som';
-import { identidadePadrao, visualDe } from './core/Aparencia';
+import { type Idade, identidadePadrao, visualDe } from './core/Aparencia';
 import { Efeitos } from './fx/Efeitos';
 import { Hud } from './ui/Hud';
 import { Dialogos, type Passo } from './dialogo/Dialogos';
@@ -407,12 +407,26 @@ export class Jogo {
     this.pomba.raiz.position.set(x, y + 3, z);
   }
 
-  /** Aplica a identidade salva (ou a padrão). `?idade=jovem|adulto|idoso` testa o envelhecimento. */
+  /**
+   * A idade vem da história, não da criação (Documento base): jovem nas primeiras regiões (o Vale, o Deserto e a
+   * Cidade Dourada), adulto da Bahia em diante (os anos passam na viagem por mar) e idoso no capítulo final.
+   * `?idade=jovem|adulto|idoso` força uma idade para testar.
+   */
+  private idadeDaHistoria(): Idade {
+    const teste = new URLSearchParams(location.search).get('idade');
+    if (teste === 'jovem' || teste === 'adulto' || teste === 'idoso') return teste;
+    const f = this.estado.flags;
+    return f.has('peregrino_adulto') || f.has('bahia_entrou') ? 'adulto' : 'jovem';
+  }
+
+  /** A idade com que o peregrino está vestido agora (para só remontar o boneco quando ela muda). */
+  private idadeVestida: Idade | null = null;
+
+  /** Aplica a identidade salva (ou a padrão) com a idade em que a história está. */
   private vestirPeregrino() {
     const id = this.estado.identidade ?? identidadePadrao();
-    const teste = new URLSearchParams(location.search).get('idade');
-    const idade = teste === 'jovem' || teste === 'adulto' || teste === 'idoso' ? teste : id.idade;
-    this.peregrino.vestir(visualDe(id, idade));
+    this.idadeVestida = this.idadeDaHistoria();
+    this.peregrino.vestir(visualDe(id, this.idadeVestida));
   }
 
   /** Mostra a criação do personagem; ao confirmar, salva e começa o jogo. */
@@ -814,6 +828,8 @@ export class Jogo {
       this.area = destino;
       this.aplicarAmbiente();
       const y = destino.altura(pos.x, pos.z);
+      // um marco da história (a viagem para a Bahia): os anos passam no escuro da transição
+      if (this.idadeDaHistoria() !== this.idadeVestida) this.vestirPeregrino();
       this.peregrino.teleportar(pos.x, y, pos.z);
       this.peregrino.rumo = rumo;
       this.camera.guinada = rumo + Math.PI;
@@ -849,6 +865,13 @@ export class Jogo {
         },
       },
       ...this.interacoesDaCapela(m.capela, 'vale_altar'),
+      this.falarCom(m.jardim.agostinho),
+      {
+        pos: () => m.jardim.livro,
+        raio: 1.5,
+        rotulo: 'F: tomar e ler',
+        agir: () => this.dialogos.tocar('vale_livro'),
+      },
       {
         pos: () => m.entradaCripta,
         raio: 2.6,
@@ -1713,6 +1736,8 @@ export class Jogo {
             this.dialogos.tocar('cidade_estrada_mar');
             return;
           }
+          // a viagem por mar é longa: o peregrino chega à Bahia adulto
+          this.estado.flags.add('peregrino_adulto');
           this.trocarArea(this.bahiaBaixa, this.bahiaBaixa.chegada, Math.PI / 2, () => {
             if (this.primeiraVez('bahia_entrou')) this.dialogos.tocar('bahia_chegada');
           });
@@ -2181,14 +2206,20 @@ export class Jogo {
     const [ix, iy] = parado || this.puxao ? [0, 0] : e.eixo();
     const desejo = this.camera.frente().multiplyScalar(iy).add(this.camera.direita().multiplyScalar(ix));
     if (desejo.lengthSq() > 1) desejo.normalize();
-    const correndo = e.segurando('ShiftLeft', 'ShiftRight') && !this.travado;
+    // de joelhos (Z segurado): fazer-se pequeno. Debaixo da verga da porta estreita ninguém se levanta.
+    const sobVerga = this.area === this.mundo && this.mundo.jardim.tetoBaixo(per.pos.x, per.pos.z);
+    per.ajoelhado = sobVerga || (!parado && per.noChao && !per.carregando && e.segurando('KeyZ'));
+    this.mundo.pequeno = per.ajoelhado;
+    const correndo = e.segurando('ShiftLeft', 'ShiftRight') && !this.travado && !per.ajoelhado;
     // o ouro da Gula e a pedra no ombro pesam: mais devagar e com menos pulo
     const carga = this.pesoEfetivo();
-    const velocidade = (this.travado ? 3.8 : correndo ? 7.2 : 4.4) * per.fatorVelocidade * (this.torpor > 0 ? 0.5 : 1) * (this.indiferenca > 0 ? 0.55 : 1) * Math.max(0.45, 1 - carga * 0.1) * (this.dev?.velocidade ?? 1);
+    const velocidade = (per.ajoelhado ? 1.5 : this.travado ? 3.8 : correndo ? 7.2 : 4.4) * per.fatorVelocidade * (this.torpor > 0 ? 0.5 : 1) * (this.indiferenca > 0 ? 0.55 : 1) * Math.max(0.45, 1 - carga * 0.1) * (this.dev?.velocidade ?? 1);
     per.forcaPulo = per.carregando ? 0 : Math.max(0.55, 1 - carga * 0.12);
 
     const livre = !parado && per.acao === 'livre';
-    if (livre && this.nasCostas && e.apertou('Mouse0', 'KeyJ', 'Mouse2', 'KeyK')) {
+    if (livre && per.ajoelhado && e.apertou('Mouse0', 'KeyJ', 'Mouse2', 'KeyK', 'KeyC')) {
+      this.hud.anunciar('De joelhos, as mãos estão postas. Solte Z para se levantar.', 1.8);
+    } else if (livre && this.nasCostas && e.apertou('Mouse0', 'KeyJ', 'Mouse2', 'KeyK')) {
       const quem = this.nasCostas === 'menino' ? 'o menino' : enfermo(this.nasCostas)?.nome;
       this.hud.anunciar(`Com ${quem} nas costas, as mãos não largam: sem o cajado. Ainda se pode rezar (R).`, 2);
     } else if (livre && e.apertou('Mouse0', 'KeyJ')) {
@@ -2256,6 +2287,7 @@ export class Jogo {
     this.atualizarBarraChefe();
     if (this.area === this.mundo) {
       this.verificarVeu();
+      this.atualizarJardim();
     }
     this.atualizarCidade();
     this.atualizarBahia();
@@ -2266,6 +2298,9 @@ export class Jogo {
     // dica de interação
     const i = !parado && per.acao === 'livre' ? this.interacaoPerto() : null;
     if (i) this.hud.mostrarDica(typeof i.rotulo === 'function' ? i.rotulo() : i.rotulo);
+    else if (sobVerga) this.hud.mostrarDica('De joelhos, pela porta estreita…');
+    else if (!parado && !per.ajoelhado && this.area === this.mundo && per.pos.distanceTo(this.mundo.jardim.porta) < 2.6)
+      this.hud.mostrarDica('Segure Z para se ajoelhar e passar pela porta estreita');
     else if (per.acao === 'rezando' && !this.emConfissao) this.hud.mostrarDica(this.oracaoDobrada() ? 'Rezando (junto à cruz: força em dobro)…' : 'Rezando…');
     else if (!dialogo && this.estado.energia < 10) this.hud.mostrarDica('Pouca energia: pare e segure R para rezar');
     else this.hud.mostrarDica(null);
@@ -2477,6 +2512,31 @@ export class Jogo {
     setTimeout(() => this.som.graca(), 500);
     this.efeitos.ouro = 1;
     this.dialogos.tocar('vale_nevoa_desfeita');
+  }
+
+  /**
+   * O jardim de Agostinho: diante da porta estreita, o Espírito Santo ensina a se ajoelhar; ao entrar de joelhos
+   * pela primeira vez, a humildade abre o coração e vem a graça, com a voz de criança do outro lado do muro.
+   */
+  private atualizarJardim() {
+    const j = this.mundo.jardim, p = this.peregrino.pos;
+    if (this.hud.dialogoAberto || this.transitando) return;
+    if (j.dentro(p.x, p.z)) {
+      if (this.primeiraVez('vale_porta_estreita')) {
+        this.receberGraca('A humildade abriu a porta estreita');
+        this.dialogos.tocar('vale_jardim');
+      }
+    } else if (p.distanceTo(j.porta) < 2.6 && this.primeiraVez('vale_porta_vista')) this.dialogos.tocar('vale_jardim_porta');
+  }
+
+  /** Uma graça recebida (não conquistada): a luz desce, o som da graça e o aviso. */
+  private receberGraca(aviso: string) {
+    this.estado.gracas += 1;
+    this.estado.salvar();
+    this.efeitos.ouro = 0.9;
+    this.som.graca();
+    this.tempoColuna = 0;
+    this.hud.anunciar(`✦ ${aviso} · uma graça (G)`, 3);
   }
 
   /** O peregrino vira o corpo para a direção da mira (só no plano do chão). */
@@ -2887,6 +2947,7 @@ export class Jogo {
     const areas = (): AreaDev[] => [
       { id: 'vale', nome: NOMES_AREA.vale, pontos: [
         ponto('Início', m.inicio), ponto('Fogueira', m.fogueira.clone().add(v(2, 2))), ponto('Cruzeiro', m.cruzeiro.clone().add(v(0, 2.5))),
+        ponto('Jardim de Agostinho (porta)', m.jardim.porta, Math.PI / 2), ponto('Jardim de Agostinho (dentro)', m.jardim.livro.clone().add(v(-2.5, -0.3)), Math.PI / 2),
         ponto('Capela', v(CAPELA.x, CAPELA.y + 14)), ponto('Escada da cripta', m.entradaCripta.clone().add(v(0, 2.4)), norte),
         ponto('Véu do oeste', m.veu.clone().add(v(4, 0)), oeste), ponto('Fim da passagem', m.fimPassagem.clone().add(v(3, 0)), oeste),
       ] },
