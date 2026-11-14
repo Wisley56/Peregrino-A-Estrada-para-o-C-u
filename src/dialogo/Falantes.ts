@@ -27,6 +27,7 @@ export const FALANTES = {
   mercador: { nome: 'Mercador' },
   gula: { nome: 'Gula', estilo: 'vicio' },
   dulce: { nome: 'Irmã Dulce' },
+  superiora: { nome: 'A madre superiora' },
   dono_casa: { nome: 'O dono da casa' },
   comerciante: { nome: 'O dono do armazém' },
   // os esquecidos das Ruas da Bahia (entidades/Enfermos.ts)

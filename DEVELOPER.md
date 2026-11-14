@@ -363,7 +363,17 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
   embora. No convento, ele fala sozinho quando o peregrino chega a 6,5 m (`bahia_comerciante_doacao`, evento `doacao`:
   flag `bahia_comerciante_doou`, uma graça, os `mantimentos()` à porta) e, longe dos olhos, volta para a loja. As falas
   do episódio são do roteiro, não citações de Dulce.
-- O hospital, o interior do Bonfim e o Coração de Pedra vêm depois.
+- **O galinheiro** (`mundo/Hospital.ts`): o galinheiro do convento cresce em estágios, todos vindos das flags
+  (`Hospital.aplicar`). Depois da doação, Dulce pede à madre superiora (`SUPERIORA` em `entidades/Dulce.ts`, à porta
+  do convento) e ganha a licença (`bahia_galinheiro_licenca`; evento `dulce_galinheiro`: ela vai a pé para lá). O
+  peregrino tira as quatro sujeiras (`SUJEIRAS`, flags `bahia_galinheiro_<id>`, e no fim `bahia_galinheiro_limpo`),
+  estende as seis esteiras (`bahia_esteira_<id>`, e `bahia_galinheiro_esteiras`) e leva cada um do abrigo para a sua
+  (`bahia_leito_<id>`). Com os seis, `bahia_galinheiro_pronto` pede o evento `passagem`: a tela escurece e,
+  "semanas depois", vem a enfermaria (`bahia_enfermaria`, uma graça): paredes caiadas com barra azul, catres de
+  ferro (os seis e o menino), lamparinas com luz e a bacia. Com o peregrino dentro, o telhado some e a câmera
+  passa por cima das paredes, como na capela (`dentro`, `alturaCamera`). O Hospital Irmã Dulce (o terceiro
+  estágio) vem com a vitória sobre o Coração de Pedra.
+- O interior do Bonfim e o Coração de Pedra vêm depois.
 
 ## Diálogos
 
@@ -623,8 +633,8 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 
 O roteiro segue o Documento base e o GDD complementar (na pasta acima do projeto). Já estão prontos o Vale, o
 Deserto e a Cidade Dourada, com Mamom, a Acídia e a Gula. Das Ruas da Bahia, já estão prontos o mapa (Cidade
-Baixa e Cidade Alta), Irmã Dulce, a casa abandonada, a mecânica de carregar, os esquecidos e o comerciante. A seguir: o hospital em
-etapas, o interior do Bonfim com a Sala dos Milagres, o Coração de Pedra e os níveis 4 e 5 da Piedade.
+Baixa e Cidade Alta), Irmã Dulce, a casa abandonada, a mecânica de carregar, os esquecidos, o comerciante e o galinheiro que vira
+enfermaria. A seguir: o interior do Bonfim com a Sala dos Milagres, o Coração de Pedra e os níveis 4 e 5 da Piedade.
 
 ### A base do jogo
 

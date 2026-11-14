@@ -5,7 +5,8 @@ import { variar } from '../voxel/Modelo';
 import { Modelo } from '../voxel/Modelo';
 import { Sombra } from '../entidades/Sombra';
 import { Npc } from '../entidades/Npc';
-import { DULCE, DULCE_COM_MENINO, menino } from '../entidades/Dulce';
+import { DULCE, DULCE_COM_MENINO, SUPERIORA, menino } from '../entidades/Dulce';
+import { Hospital } from './Hospital';
 import { ENFERMOS, corpoDoEnfermo, type DefEnfermo } from '../entidades/Enfermos';
 import { FilaDePassantes } from '../entidades/Passantes';
 import { figurinoDoPovo } from '../voxel/Humano';
@@ -15,7 +16,7 @@ import type { FonteMapa } from '../ui/Minimapa';
 import { escurecer } from './PocoMeioDia';
 import {
   CORES_CASARIO, CATEDRAL, IGREJA_BONFIM, IGREJA_ROSARIO, IGREJA_SAO_FRANCISCO, Juntador, ROT, armazem, canoa, casaAbandonada, mantimentos, casario, chafariz, coqueiro, esteira, muroDeFitas,
-  conventoSantoAntonio, cruzeiroDePedra, elevadorLacerda, galinheiro, gradilDeFitas, igreja, mercadoModelo,
+  conventoSantoAntonio, cruzeiroDePedra, elevadorLacerda, gradilDeFitas, igreja, mercadoModelo,
   palafita, palmeiraImperial, pinguela, poste, saveiro, silhueta, type Frente,
 } from './BahiaModelos';
 
@@ -422,7 +423,10 @@ const LUGARES_DULCE = {
   casa: [CASA.x + 1.4, CASA.y - 0.8, Math.PI / 2],
   casaFora: [CASA.x + 4.6, CASA.y - 1.6, 0.4],
   convento: [CONVENTO.x - 2.8, CONVENTO.y + 1.4, -Math.PI / 2],
+  galinheiro: [GALINHEIRO.x + 3.4, GALINHEIRO.y + 1.2, 0],
 } as const;
+/** A madre superiora, à porta do convento, ao sul da esteira do menino. */
+const SUPERIORA_LUGAR: [number, number, number] = [CONVENTO.x - 2.6, CONVENTO.y - 4.6, -Math.PI / 2];
 export type LugarDulce = keyof typeof LUGARES_DULCE;
 /**
  * As esteiras do abrigo, à porta do convento, ao norte da porta (a do menino fica ao sul): uma por enfermo,
@@ -430,9 +434,11 @@ export type LugarDulce = keyof typeof LUGARES_DULCE;
  */
 const ABRIGO = (k: number): [number, number] => [CONVENTO.x - 2.4, CONVENTO.y + 3.8 + k * 2.3];
 /** Os caminhos de Irmã Dulce: da calçada até a casa, e da casa até o convento, por ruas livres. */
-const CAMINHOS_DULCE: Record<'casa' | 'convento', [number, number][]> = {
+const CAMINHOS_DULCE: Record<'casa' | 'convento' | 'galinheiro', [number, number][]> = {
   casa: [[-4, 26], [CASA.x + 4.6, CASA.y - 1.6]],
   convento: [[-4, 3], [-4, -28], [27, -28], [CONVENTO.x - 2.8, CONVENTO.y + 1.4]],
+  // do convento ao galinheiro, entrando pela porta (que fica em +z)
+  galinheiro: [[27, -37], [GALINHEIRO.x + 0.2, GALINHEIRO.y + 6.5], [GALINHEIRO.x + 0.2, GALINHEIRO.y + 2.4], [GALINHEIRO.x + 3.4, GALINHEIRO.y + 1.2]],
 };
 
 /** As quadras do Comércio: duas fileiras de sobrados de costas uma para a outra. */
@@ -482,6 +488,10 @@ export class BahiaBaixa extends MapaDaBahia {
   /** Irmã Dulce: com o menino nos braços (a primeira aparição) e com os braços livres (depois do abrigo). */
   readonly dulce: Npc;
   readonly dulceComMenino: Npc;
+  /** A madre superiora, à porta do convento: quem dá a licença para o galinheiro. */
+  readonly superiora: Npc;
+  /** O galinheiro, que vira enfermaria (e, depois da vitória, o hospital). */
+  readonly hospital: Hospital;
   /** O dono da casa abandonada, que chega e expulsa Dulce e o menino. */
   readonly dono: Npc;
   /**
@@ -551,7 +561,8 @@ export class BahiaBaixa extends MapaDaBahia {
     this.caixaLocal(CONVENTO.x, CONVENTO.y - 4, 14, 8);
     this.caixaLocal(CONVENTO.x, CONVENTO.y + 4, 12, 20);
     this.predios.push({ ret: [CONVENTO.x, CONVENTO.y - 4, 14, 28], cor: 0xf4f0e8 });
-    this.por(galinheiro(), GALINHEIRO.x, GALINHEIRO.y, 0);
+    this.hospital = new Hospital(this.w(GALINHEIRO.x, GALINHEIRO.y));
+    this.grupo.add(this.hospital.grupo);
     for (const [x0, z0, w, d] of [[-5, -3.5, 10, 0.4], [-5, 3.1, 4, 0.4], [1.5, 3.1, 3.5, 0.4], [-5, -3.5, 0.4, 7], [4.6, -3.5, 0.4, 7]] as Ret[])
       this.caixaLocal(GALINHEIRO.x + x0, GALINHEIRO.y + z0, w, d, CHAO + 2.8);
     this.predios.push({ ret: [GALINHEIRO.x - 5, GALINHEIRO.y - 3.5, 10, 7], cor: 0x8a7458 });
@@ -697,6 +708,10 @@ export class BahiaBaixa extends MapaDaBahia {
     this.circuloComerciante = { x: 0, z: 0, r: 0.45 };
     this.circulos.push(this.circuloComerciante);
     this.doacao = this.por(mantimentos(), DOACAO.x, DOACAO.y, 0.3, undefined, false);
+    // a madre superiora, à porta do convento
+    this.superiora = new Npc(SUPERIORA, this.w(SUPERIORA_LUGAR[0], SUPERIORA_LUGAR[1]), SUPERIORA_LUGAR[2]);
+    this.grupo.add(this.superiora.raiz);
+    this.circulo(SUPERIORA_LUGAR[0], SUPERIORA_LUGAR[1], 0.45);
     this.colocarComerciante('loja');
     this.colocarDulce('calcada', true);
     this.abrirCasa(false);
@@ -726,8 +741,8 @@ export class BahiaBaixa extends MapaDaBahia {
     this.mostrarDulce(comMenino);
   }
 
-  /** Irmã Dulce, de braços livres, vai a pé até a casa ou até o convento. */
-  dulceIr(para: 'casa' | 'convento') {
+  /** Irmã Dulce, de braços livres, vai a pé até a casa, o convento ou o galinheiro. */
+  dulceIr(para: 'casa' | 'convento' | 'galinheiro') {
     this.mostrarDulce(false);
     this.rotaDulce = CAMINHOS_DULCE[para].map(([x, z]) => this.w(x, z));
   }
@@ -772,6 +787,7 @@ export class BahiaBaixa extends MapaDaBahia {
     d.atualizar(dt, jogador);
     if (this.dono.raiz.visible) this.dono.atualizar(dt, jogador);
     this.comerciante.atualizar(dt, jogador);
+    this.superiora.atualizar(dt, jogador);
   }
 
   /** O comerciante à porta da loja ou à porta do convento (com a doação). */
@@ -795,6 +811,13 @@ export class BahiaBaixa extends MapaDaBahia {
     this.doacao.visible = v;
   }
 
+  /** Onde fica a esteira do enfermo no abrigo, à porta do convento. */
+  posAbrigo(id: string) {
+    const k = ENFERMOS.findIndex((e) => e.id === id);
+    const [x, z] = ABRIGO(Math.max(0, k));
+    return this.w(x, z);
+  }
+
   /** O enfermo recolhido está (ou não) na esteira dele, no abrigo. */
   mostrarAbrigado(id: string, visivel: boolean) {
     const a = this.abrigados.get(id);
@@ -805,6 +828,8 @@ export class BahiaBaixa extends MapaDaBahia {
   override reiniciar(sombrasVencidas: Set<string>, flags: Set<string>) {
     super.reiniciar(sombrasVencidas, flags);
     for (const id of this.abrigados.keys()) this.mostrarAbrigado(id, flags.has(`bahia_recolhido_${id}`));
+    this.hospital.aplicar(flags);
+    for (const id of this.abrigados.keys()) if (flags.has(`bahia_leito_${id}`)) this.mostrarAbrigado(id, false);
     // o comerciante: depois da resposta mansa ele está no convento com a doação, até entregá-la
     const doou = flags.has('bahia_comerciante_doou');
     this.colocarComerciante(flags.has('bahia_comerciante_manso') && !doou ? 'convento' : 'loja');
@@ -812,14 +837,16 @@ export class BahiaBaixa extends MapaDaBahia {
     const abrigado = flags.has('bahia_menino_abrigado'), expulsos = flags.has('bahia_casa_expulsos');
     this.abrirCasa(flags.has('bahia_casa_aberta'));
     this.dono.raiz.visible = expulsos && !abrigado;
+    // depois da enfermaria, o menino está num catre dela
+    const enfermaria = flags.has('bahia_enfermaria');
     if (abrigado) {
-      this.colocarDulce('convento', false);
-      this.deitarMenino('convento');
+      this.colocarDulce(flags.has('bahia_galinheiro_licenca') ? 'galinheiro' : 'convento', false);
+      this.deitarMenino(enfermaria ? null : 'convento');
     } else {
       this.colocarDulce(expulsos ? 'casaFora' : 'calcada', true);
       this.deitarMenino(null);
     }
-    (this.meninoNoConvento.userData.esteira as THREE.Object3D).visible = abrigado;
+    (this.meninoNoConvento.userData.esteira as THREE.Object3D).visible = abrigado && !enfermaria;
   }
 
   /** O menino foi para a esteira do convento: a esteira aparece com ele. */

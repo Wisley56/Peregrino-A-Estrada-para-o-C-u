@@ -842,33 +842,6 @@ export function conventoSantoAntonio() {
 }
 
 /**
- * O galinheiro do convento, como Irmã Dulce o encontrou (1949): telheiro baixo de madeira e tela, chão de
- * terra, poleiros e cochos (voxel de 0,25 m). É o primeiro estágio do que vai virar o hospital.
- */
-export function galinheiro() {
-  const m = new Modelo();
-  const W = 40, D = 28, H = 11;
-  const madeira = v(0x6a5440, 0.07), tela = 0x8a8a80;
-  for (const [x, z] of [[0, 0], [W - 1, 0], [0, D - 1], [W - 1, D - 1], [W >> 1, 0], [W >> 1, D - 1]]) m.caixa(x, 0, z, 1, H, 1, madeira);
-  // mureta de tijolo e tela por cima
-  for (let x = 0; x < W; x++) for (const z of [0, D - 1]) {
-    m.caixa(x, 0, z, 1, 3, 1, v(0xa8583a, 0.06)(x, 0, z));
-    for (let y = 3; y < H - 1; y++) if ((x + y) % 2 === 0) m.ponto(x, y, z, tela);
-  }
-  for (let z = 0; z < D; z++) for (const x of [0, W - 1]) {
-    m.caixa(x, 0, z, 1, 3, 1, v(0xa8583a, 0.06)(x, 0, z));
-    for (let y = 3; y < H - 1; y++) if ((z + y) % 2 === 0) m.ponto(x, y, z, tela);
-  }
-  m.caixa(16, 0, D - 1, 6, 9, 1, null); // a porta, aberta
-  // poleiros e cochos
-  for (let k = 0; k < 3; k++) m.caixa(4, 3 + k * 2, 4 + k * 3, W - 8, 1, 1, madeira);
-  m.caixa(26, 0, 18, 8, 1, 2, v(0x8a7458));
-  // telhado de zinco de uma água, velho
-  for (let z = -1; z <= D; z++) m.caixa(-1, H + Math.floor((D - z) / 6), z, W + 2, 1, 1, (x: number, _y: number, zz: number) => ((x * 7 + zz * 3) % 23 === 0 ? 0x6a4a32 : x & 1 ? 0x8a9094 : 0x707478));
-  return m.malha(0.25, [W / 2, 0, D / 2]);
-}
-
-/**
  * Silhueta de quarteirões ao longe (voxel de 1 m): blocos de cores de casario com janelas e telhados, para o
  * fundo do cenário (a Cidade Alta vista de baixo, a Cidade Baixa vista do alto). Ao longo de +x.
  */

@@ -17,6 +17,7 @@ import { Criacao } from './ui/Criacao';
 import { Mundo } from './mundo/Mundo';
 import { Cripta } from './mundo/Cripta';
 import { Alvo, Area, IdArea } from './mundo/Area';
+import { SUJEIRAS } from './mundo/Hospital';
 import { Deserto, TOTAL_SOMBRAS_DESERTO } from './mundo/Deserto';
 import { PocoMeioDia } from './mundo/PocoMeioDia';
 import { Cidade, NOME_ISCA, PEDRAS_DAMIAO, TOTAL_ATOS_CIDADE, TOTAL_SOMBRAS_CIDADE, type Isca, type Pobre } from './mundo/Cidade';
@@ -1106,6 +1107,9 @@ export class Jogo {
       if (this.nasCostas === 'menino') {
         b.colocarDulce(f.has('bahia_casa_expulsos') ? 'casaFora' : 'calcada', true);
         if (this.area === b) this.hud.anunciar('O menino voltou para os braços de Irmã Dulce.', 2.4);
+      } else if (f.has(`bahia_recolhido_${this.nasCostas}`)) {
+        b.mostrarAbrigado(this.nasCostas, true);
+        if (this.area === b || this.area === a) this.hud.anunciar(`${enfermo(this.nasCostas)?.nome} voltou para a esteira do abrigo.`, 2.6);
       } else {
         b.mostrarEnfermo(this.nasCostas, true);
         a.mostrarEnfermo(this.nasCostas, true);
@@ -1227,12 +1231,110 @@ export class Jogo {
       this.bahiaBaixa.colocarComerciante('convento');
       return true;
     }
+    if (nome === 'dulce_galinheiro') {
+      this.bahiaBaixa.dulceIr('galinheiro');
+      return true;
+    }
+    if (nome === 'passagem') {
+      this.passagemDoGalinheiro();
+      return true;
+    }
     if (nome === 'doacao') {
       this.bahiaBaixa.mostrarDoacao(true);
       this.atoDaBahia('bahia_comerciante_doou', 'Um coração de pedra se abriu');
       return true;
     }
     return false;
+  }
+
+  /** Uma fala de Irmã Dulce que o jogo começa (não o jogador): ela olha para o peregrino enquanto fala. */
+  private falaDeDulce(no: string, depois?: () => void) {
+    const d = this.bahiaBaixa.dulceEmCena;
+    d.falando = true;
+    this.interlocutor = d;
+    this.dialogos.tocar(no, () => {
+      d.falando = false;
+      depois?.();
+    });
+  }
+
+  // ─── O galinheiro (passo 6 da provação): limpar, estender as esteiras, trazer os doentes, a passagem de tempo ───
+
+  private limparGalinheiro(id: string) {
+    const b = this.bahiaBaixa, f = this.estado.flags;
+    this.marcar(`bahia_galinheiro_${id}`);
+    this.som.passo();
+    b.hospital.aplicar(f);
+    const feitas = b.hospital.limpas(f);
+    if (feitas < SUJEIRAS.length) {
+      this.hud.anunciar(`Galinheiro: ${feitas} de ${SUJEIRAS.length}`, 1.6);
+      return;
+    }
+    this.marcar('bahia_galinheiro_limpo');
+    b.hospital.aplicar(f);
+    this.falaDeDulce('bahia_galinheiro_limpo');
+  }
+
+  private estenderEsteira(id: string) {
+    const b = this.bahiaBaixa, f = this.estado.flags;
+    this.marcar(`bahia_esteira_${id}`);
+    this.som.passo();
+    b.hospital.aplicar(f);
+    const feitas = ENFERMOS.filter((e) => f.has(`bahia_esteira_${e.id}`)).length;
+    if (feitas < ENFERMOS.length) {
+      this.hud.anunciar(`Esteiras: ${feitas} de ${ENFERMOS.length}`, 1.6);
+      return;
+    }
+    if (this.primeiraVez('bahia_galinheiro_esteiras')) this.falaDeDulce('bahia_galinheiro_esteiras');
+  }
+
+  /** Do abrigo, à porta do convento, para as costas do peregrino (e daí para a esteira dele no galinheiro). */
+  private pegarDoAbrigo(id: string) {
+    const def = enfermo(id);
+    if (!def) return;
+    this.peregrino.carregar(corpoDoEnfermo(def, 'costas'), 'costas');
+    this.nasCostas = id;
+    this.bahiaBaixa.mostrarAbrigado(id, false);
+    this.som.passo();
+    this.hud.anunciar(`Leve ${def.nome} até a esteira ${def.figurino.genero === 'f' ? 'dela' : 'dele'} no galinheiro.`, 2.8);
+  }
+
+  private deitarNoGalinheiro() {
+    const id = this.nasCostas, def = id ? enfermo(id) : undefined;
+    if (!id || !def) return;
+    const b = this.bahiaBaixa, f = this.estado.flags;
+    this.peregrino.carregar(null);
+    this.nasCostas = null;
+    this.marcar(`bahia_leito_${id}`);
+    this.som.passo();
+    b.hospital.aplicar(f);
+    const feitos = ENFERMOS.filter((e) => f.has(`bahia_leito_${e.id}`)).length;
+    if (feitos < ENFERMOS.length) {
+      this.hud.anunciar(`${def.nome} tem uma esteira debaixo de um telhado (${feitos} de ${ENFERMOS.length}).`, 2.4);
+      return;
+    }
+    if (this.primeiraVez('bahia_galinheiro_todos')) setTimeout(() => this.falaDeDulce('bahia_galinheiro_pronto'), 300);
+  }
+
+  /** Semanas depois: o galinheiro virou enfermaria. Escurece, troca o estágio e Dulce mostra o que mudou. */
+  private passagemDoGalinheiro() {
+    const b = this.bahiaBaixa, h = b.hospital;
+    this.transitando = true;
+    this.hud.escurecer(true);
+    setTimeout(() => {
+      this.atoDaBahia('bahia_enfermaria', 'Semanas depois, o galinheiro virou enfermaria');
+      b.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+      // o peregrino entra pela porta, olhando os catres; Dulce está lá dentro
+      this.peregrino.teleportar(h.entrada.x, this.area.altura(h.entrada.x, h.entrada.z), h.entrada.z);
+      this.peregrino.rumo = Math.PI;
+      this.camera.guinada = 0;
+      this.camera.reposicionar();
+    }, 900);
+    setTimeout(() => {
+      this.hud.escurecer(false);
+      this.transitando = false;
+      setTimeout(() => this.falaDeDulce('bahia_enfermaria'), 700);
+    }, 3400);
   }
 
   /** Um ato de piedade da Bahia: graça, luz e, com Misericórdia (Piedade 3), um coração. */
@@ -1286,11 +1388,41 @@ export class Jogo {
         },
       },
       ...this.interacoesDosEnfermos(b),
+      { ...this.conversaCom(() => b.superiora, 'bahia_superiora', 'F: falar com a madre superiora', 2.4), ativa: () => this.nasCostas === null && !this.dialogos.ocupado },
+      // o galinheiro: a sujeira, as esteiras, quem vem do abrigo
+      ...b.hospital.sujeiras.map((s) => ({
+        pos: () => s.pos,
+        raio: 1.9,
+        ativa: () => f('bahia_galinheiro_licenca') && !f(`bahia_galinheiro_${s.id}`) && this.nasCostas === null,
+        rotulo: s.rotulo,
+        agir: () => this.limparGalinheiro(s.id),
+      })),
+      ...[...b.hospital.vagas].map(([id, vaga]) => ({
+        pos: () => vaga.pos,
+        raio: 1.3,
+        ativa: () => f('bahia_galinheiro_limpo') && !f(`bahia_esteira_${id}`) && this.nasCostas === null,
+        rotulo: 'F: estender uma esteira',
+        agir: () => this.estenderEsteira(id),
+      })),
+      ...ENFERMOS.map((e) => ({
+        pos: () => b.posAbrigo(e.id),
+        raio: 1.5,
+        ativa: () => f('bahia_galinheiro_esteiras') && f(`bahia_recolhido_${e.id}`) && !f(`bahia_leito_${e.id}`) && this.nasCostas === null && !this.dialogos.ocupado,
+        rotulo: `F: levar ${e.nome} para o galinheiro`,
+        agir: () => this.pegarDoAbrigo(e.id),
+      })),
+      {
+        pos: () => b.hospital.vagas.get(this.nasCostas ?? '')?.pos ?? b.hospital.entrada,
+        raio: 2.6,
+        ativa: () => this.nasCostas !== null && this.nasCostas !== 'menino' && f(`bahia_recolhido_${this.nasCostas}`),
+        rotulo: () => `F: deitar ${enfermo(this.nasCostas ?? '')?.nome ?? ''} na esteira`,
+        agir: () => this.deitarNoGalinheiro(),
+      },
       // à porta do convento: os esquecidos, um por um
       {
         pos: () => b.conventoPorta,
         raio: 3.4,
-        ativa: () => this.nasCostas !== null && this.nasCostas !== 'menino',
+        ativa: () => this.nasCostas !== null && this.nasCostas !== 'menino' && !f(`bahia_recolhido_${this.nasCostas}`),
         rotulo: () => `F: deitar ${enfermo(this.nasCostas ?? '')?.nome ?? ''} numa esteira`,
         agir: () => this.entregarEnfermo(),
       },
@@ -1330,7 +1462,8 @@ export class Jogo {
           }, this.nasCostas !== null && this.nasCostas !== 'menino');
         },
       },
-      { pos: () => b.galinheiro, raio: 3, rotulo: 'F: olhar o galinheiro', agir: () => this.dialogos.tocar('bahia_galinheiro') },
+      // antes da licença, o galinheiro é só um galinheiro
+      { pos: () => b.galinheiro, raio: 3, ativa: () => !f('bahia_galinheiro_licenca'), rotulo: 'F: olhar o galinheiro', agir: () => this.dialogos.tocar('bahia_galinheiro') },
       { pos: () => b.bonfim, raio: 3.5, rotulo: 'F: bater à porta do Bonfim', agir: () => this.dialogos.tocar('bahia_bonfim') },
       { pos: () => b.alagados, raio: 2.6, rotulo: 'F: olhar os Alagados', agir: () => this.dialogos.tocar('bahia_alagados') },
     ];
@@ -1812,9 +1945,14 @@ export class Jogo {
     // a primeira vez na capela do deserto, o Espírito conta de quem ela é
     if (naCapela && this.area === this.deserto && this.comecou && !this.hud.dialogoAberto && this.primeiraVez('deserto_capela'))
       this.dialogos.tocar('deserto_capela');
+    // no galinheiro da Bahia (e na enfermaria), o mesmo: o telhado some e a câmera passa por cima das paredes
+    const hosp = this.area === this.bahiaBaixa ? this.bahiaBaixa.hospital : null;
+    const noHospital = !!hosp && hosp.dentro(this.peregrino.pos);
+    hosp?.mostrarTelhado(!noHospital);
+    const dentro = naCapela || noHospital;
     if (this.area !== this.cripta) {
-      this.camera.subirAoBater = naCapela && !this.emConfissao;
-      this.camera.arfagemMin = naCapela && !this.emConfissao ? 0.35 : ARFAGEM_LIVRE;
+      this.camera.subirAoBater = dentro && !this.emConfissao;
+      this.camera.arfagemMin = dentro && !this.emConfissao ? 0.35 : ARFAGEM_LIVRE;
     }
     if (this.emConfissao) {
       // de fora da abertura do confessionário, de lado, à altura de quem está ajoelhado
@@ -1823,13 +1961,13 @@ export class Jogo {
       this.camera.distancia = 2.9;
     } else {
       // braço mais curto dentro da capela, para não ter de subir tanto por cima das paredes
-      const alvo = naCapela ? 4.3 : 6.2;
-      this.camera.elevacaoMira = this.comecou ? (naCapela ? 0.5 : 1.05) : 0;
+      const alvo = dentro ? 4.3 : 6.2;
+      this.camera.elevacaoMira = this.comecou ? (dentro ? 0.5 : 1.05) : 0;
       this.camera.distancia += (alvo - this.camera.distancia) * Math.min(1, dt * 3);
     }
     const area = this.area;
     const chao = area.alturaCamera ? (x: number, z: number) => area.alturaCamera!(x, z) : (x: number, z: number) => area.altura(x, z);
-    const alturaCam = naCapela ? (x: number, z: number) => cap!.alturaCamera(x, z, chao) : chao;
+    const alturaCam = naCapela ? (x: number, z: number) => cap!.alturaCamera(x, z, chao) : noHospital ? (x: number, z: number) => hosp!.alturaCamera(x, z, chao) : chao;
     this.camera.atualizar(dt, this.peregrino.pos, alvoCam, alturaCam);
     if (this.comecou) this.atualizarConversa(dt, alturaCam);
     if (this.modoCriacao) this.quadroCriacao(dt);
@@ -2615,6 +2753,7 @@ export class Jogo {
         ponto('Mercado Modelo', this.bahiaBaixa.mercado.clone().add(v(4, 0)), -Math.PI / 2), ponto('Largo de Roma e o galinheiro', this.bahiaBaixa.galinheiro.clone().add(v(0, 6))),
         ponto('Bonfim', this.bahiaBaixa.bonfim.clone().add(v(0, 10))), ponto('Alagados', this.bahiaBaixa.alagados.clone().add(v(3, 0)), -Math.PI / 2),
         ponto('Armazém do comerciante', this.bahiaBaixa.armazemPorta, Math.PI / 2),
+        ponto('Galinheiro (porta)', this.bahiaBaixa.galinheiro, Math.PI),
         ponto('Abrigo (porta do convento)', this.bahiaBaixa.conventoPorta.clone().add(v(-3, 0)), Math.PI / 2),
       ] },
       { id: 'bahiaalta', nome: NOMES_AREA.bahiaalta, pontos: [

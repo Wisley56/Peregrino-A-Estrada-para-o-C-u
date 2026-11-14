@@ -21,22 +21,22 @@ const pano = (hex: number, k = 0.05) => (x: number, y: number, z: number) => var
  * na frente e nas costas, a gola branca larga e arredondada sobre os ombros, a medalha de Nossa Senhora (verde e
  * prata) presa ao escapulário e os sapatos pretos. Sem os braços: eles são modelos próprios, ou a pose do colo.
  */
-function corpoDulce(m: Modelo) {
+function corpoDulce(m: Modelo, p = PESCOCO) {
   m.caixa(-2, 0, 0, 2, 1, 3, SAPATO).caixa(1, 0, 0, 2, 1, 3, SAPATO);
-  m.caixa(-3, 1, -2, 7, PESCOCO - 1, 5, pano(BRANCO, 0.03));
+  m.caixa(-3, 1, -2, 7, p - 1, 5, pano(BRANCO, 0.03));
   m.caixa(-4, 1, -3, 9, 4, 7, pano(BRANCO, 0.03)); // a barra mais larga embaixo
   for (const x of [-3, 3]) m.caixa(x, 1, 3, 1, 4, 1, pano(0xd8d6d2, 0.03)); // pregas da barra
   // o escapulário, do peito aos pés, na frente e nas costas
-  m.caixa(-2, 1, 3, 5, PESCOCO - 3, 1, pano(MARINHO, 0.02));
-  m.caixa(-2, 1, -3, 5, PESCOCO - 3, 1, pano(MARINHO, 0.02));
-  m.caixa(-2, 1, 3, 1, PESCOCO - 3, 1, pano(MARINHO_SOMBRA, 0.03)).caixa(2, 1, 3, 1, PESCOCO - 3, 1, pano(MARINHO_SOMBRA, 0.03));
+  m.caixa(-2, 1, 3, 5, p - 3, 1, pano(MARINHO, 0.02));
+  m.caixa(-2, 1, -3, 5, p - 3, 1, pano(MARINHO, 0.02));
+  m.caixa(-2, 1, 3, 1, p - 3, 1, pano(MARINHO_SOMBRA, 0.03)).caixa(2, 1, 3, 1, p - 3, 1, pano(MARINHO_SOMBRA, 0.03));
   // a gola branca larga, arredondada, cobrindo os ombros e caindo em meia-lua no peito
   const gola = pano(GOLA, 0.012);
-  m.caixa(-5, PESCOCO - 1, -3, 11, 1, 7, gola).caixa(-4, PESCOCO - 2, -3, 9, 1, 7, gola);
-  m.caixa(-3, PESCOCO - 3, 3, 7, 1, 1, gola).caixa(-1, PESCOCO - 4, 3, 3, 1, 1, gola);
-  m.caixa(-3, PESCOCO - 3, -3, 7, 1, 1, gola);
+  m.caixa(-5, p - 1, -3, 11, 1, 7, gola).caixa(-4, p - 2, -3, 9, 1, 7, gola);
+  m.caixa(-3, p - 3, 3, 7, 1, 1, gola).caixa(-1, p - 4, 3, 3, 1, 1, gola);
+  m.caixa(-3, p - 3, -3, 7, 1, 1, gola);
   // a medalha: redonda, verde no meio, aro de prata, presa logo abaixo da gola
-  const my = PESCOCO - 7;
+  const my = p - 7;
   m.ponto(0, my, 4, MEDALHA).ponto(-1, my, 4, PRATA).ponto(1, my, 4, PRATA).ponto(0, my + 1, 4, PRATA).ponto(0, my - 1, 4, PRATA);
   m.ponto(0, my + 2, 4, MARINHO_SOMBRA); // a fitinha que a prende
 }
@@ -98,14 +98,16 @@ function coloComMenino(m: Modelo) {
 }
 
 /** Os braços soltos (giram no ombro); a direita segura o crucifixo de madeira escura, pendente de um cordão. */
-function bracos() {
+function bracos(p = PESCOCO, crucifixo = true) {
   const manga = pano(BRANCO, 0.03);
   const pele = (x: number, y: number, z: number) => variar(PELE, x, y, z, 0.025);
-  const bd = new Modelo().caixa(-5, PESCOCO - 6, -1, 2, 6, 3, manga).caixa(-5, PESCOCO - 7, -1, 2, 1, 3, pele);
-  const be = new Modelo().caixa(4, PESCOCO - 6, -1, 2, 6, 3, manga).caixa(4, PESCOCO - 7, -1, 2, 1, 3, pele);
-  const c = PESCOCO - 8;
-  bd.ponto(-4, c, 1, 0x4a3a2a); // o cordão
-  bd.caixa(-4, c - 4, 1, 1, 4, 1, MADEIRA).caixa(-5, c - 2, 1, 3, 1, 1, MADEIRA).ponto(-4, c - 2, 2, 0xd8c070); // a cruz e o Cristo
+  const bd = new Modelo().caixa(-5, p - 6, -1, 2, 6, 3, manga).caixa(-5, p - 7, -1, 2, 1, 3, pele);
+  const be = new Modelo().caixa(4, p - 6, -1, 2, 6, 3, manga).caixa(4, p - 7, -1, 2, 1, 3, pele);
+  const c = p - 8;
+  if (crucifixo) {
+    bd.ponto(-4, c, 1, 0x4a3a2a); // o cordão
+    bd.caixa(-4, c - 4, 1, 1, 4, 1, MADEIRA).caixa(-5, c - 2, 1, 3, 1, 1, MADEIRA).ponto(-4, c - 2, 2, 0xd8c070); // a cruz e o Cristo
+  }
   return { bd, be };
 }
 
@@ -115,25 +117,33 @@ function bracos() {
  * Dentro da região ela não tem auréola: é só uma freira. A auréola vem na cena final.
  */
 export function montarDulce(comMenino = false): Humano {
+  return montarFreira(cabecaDulce(), PESCOCO, comMenino, true, comMenino ? 0.22 : 0.08);
+}
+
+/**
+ * Uma irmã da congregação de Dulce (o mesmo hábito branco e azul-marinho): a cabeça, a altura do pescoço, a pose
+ * do colo (só Dulce, com o menino), o crucifixo na mão e a inclinação da cabeça.
+ */
+function montarFreira(cabecaM: Modelo, p: number, comMenino: boolean, crucifixo: boolean, inclinacao: number): Humano {
   const c = new Modelo();
-  corpoDulce(c);
+  corpoDulce(c, p);
   if (comMenino) coloComMenino(c);
   const corpo = c.malha(S, [0.5, 0, 0.5]);
   const cabeca = new THREE.Group();
-  cabeca.position.set(0, PESCOCO * S, 0.4 * S);
-  cabeca.rotation.x = comMenino ? 0.22 : 0.08; // a postura um pouco curvada; no colo, olha para o menino
-  cabeca.add(cabecaDulce().malha(S, [3, 0, 3]));
+  cabeca.position.set(0, p * S, 0.4 * S);
+  cabeca.rotation.x = inclinacao; // a postura um pouco curvada; no colo, olha para o menino
+  cabeca.add(cabecaM.malha(S, [3, 0, 3]));
   const raiz = new THREE.Group();
   raiz.add(corpo, cabeca);
-  const h: Humano = { raiz, corpo, cabeca, alturaOlhos: (PESCOCO + 2.5) * S };
+  const h: Humano = { raiz, corpo, cabeca, alturaOlhos: (p + 2.5) * S };
   if (!comMenino) {
-    const { bd, be } = bracos();
+    const { bd, be } = bracos(p, crucifixo);
     const bracoD = new THREE.Group();
-    bracoD.position.set(-4.5 * S, PESCOCO * S, 0);
-    bracoD.add(bd.malha(S, [-4, PESCOCO, 0.5]));
+    bracoD.position.set(-4.5 * S, p * S, 0);
+    bracoD.add(bd.malha(S, [-4, p, 0.5]));
     const bracoE = new THREE.Group();
-    bracoE.position.set(4.5 * S, PESCOCO * S, 0);
-    bracoE.add(be.malha(S, [5, PESCOCO, 0.5]));
+    bracoE.position.set(4.5 * S, p * S, 0);
+    bracoE.add(be.malha(S, [5, p, 0.5]));
     // em repouso, as mãos se juntam na frente, segurando o crucifixo
     bracoD.rotation.set(-0.42, 0, 0.2);
     bracoE.rotation.set(-0.42, 0, -0.2);
@@ -148,11 +158,51 @@ export function montarDulce(comMenino = false): Humano {
  * `costas`: agarrado às costas de quem o carrega, os braços por cima dos ombros e a cabeça caída de lado;
  * `deitado`: de costas numa esteira, a cabeça para -z.
  */
-export function menino(pose: 'costas' | 'deitado'): THREE.Object3D {
+export function menino(pose: 'costas' | 'deitado', base?: number): THREE.Object3D {
   const f = { genero: 'm', idade: 'crianca', pele: PELE_MENINO, penteado: 'curto', corCabelo: CABELO_MENINO, traje: 'trapos', cor: CAMISA, cor2: CALCAO } as const;
   const h = montarHumano(f);
-  return pose === 'costas' ? nasCostas(h, f) : deitado(h, f);
+  return pose === 'costas' ? nasCostas(h, f) : deitado(h, f, base);
 }
+
+/**
+ * A cabeça da madre superiora: o mesmo véu e a mesma touca, um rosto mais velho e sério, os óculos redondos de aro
+ * escuro, as sobrancelhas grisalhas e a boca reta, de quem responde por uma casa inteira.
+ */
+function cabecaSuperiora() {
+  const h = new Modelo();
+  const PELE_S = 0xe0b89c, RUGA = 0xc09478, ARO = 0x2a2420, LENTE = 0xb8c8d0;
+  h.caixa(0, 0, 0, 6, 6, 6, (x, y, z) => variar(PELE_S, x, y, z, 0.03));
+  const veu = pano(MARINHO, 0.02);
+  h.caixa(-1, 6, -1, 8, 1, 7, veu);
+  h.caixa(-1, -3, -1, 8, 9, 1, veu).caixa(-1, -3, 0, 1, 9, 5, veu).caixa(6, -3, 0, 1, 9, 5, veu);
+  h.caixa(-1, 6, 6, 8, 1, 1, pano(MARINHO_SOMBRA, 0.02));
+  const touca = pano(GOLA, 0.012);
+  h.caixa(0, 5, 5, 6, 1, 1, touca).caixa(-1, -1, 5, 1, 7, 1, touca).caixa(6, -1, 5, 1, 7, 1, touca);
+  h.caixa(0, -1, 5, 6, 1, 1, touca);
+  // os óculos: as lentes sobre os olhos, a ponte no nariz e as hastes até a touca
+  h.ponto(1, 2, 6, LENTE).ponto(4, 2, 6, LENTE).caixa(2, 2, 6, 2, 1, 1, ARO).ponto(0, 2, 6, ARO).ponto(5, 2, 6, ARO);
+  h.ponto(1, 2, 5, OLHO).ponto(4, 2, 5, OLHO);
+  h.ponto(1, 3, 5, 0x9a948a).ponto(4, 3, 5, 0x9a948a); // sobrancelhas grisalhas
+  h.ponto(2, 3, 5, RUGA).ponto(3, 3, 5, RUGA); // a ruga entre as sobrancelhas
+  h.caixa(2, 1, 6, 2, 1, 1, RUGA); // nariz
+  h.ponto(0, 1, 5, RUGA).ponto(5, 1, 5, RUGA); // os sulcos das faces
+  h.caixa(1, 0, 5, 4, 1, 1, 0xa86a5c); // a boca reta
+  return h;
+}
+
+/** A madre superiora do Convento de Santo Antônio: mais alta que Dulce, as mãos juntas, sem o crucifixo na mão. */
+export function montarSuperiora(): Humano {
+  return montarFreira(cabecaSuperiora(), PESCOCO + 2, false, false, 0);
+}
+
+/** A madre superiora: quem dá (ou não) a licença para o galinheiro. */
+export const SUPERIORA: DefNpc = {
+  id: 'superiora',
+  falante: 'superiora',
+  no: 'bahia_superiora',
+  rotulo: 'F: falar com a madre superiora',
+  visual: () => montarSuperiora(),
+};
 
 /** Irmã Dulce, guia das Ruas da Bahia (aperfeiçoa o dom da Piedade). */
 export const DULCE: DefNpc = {

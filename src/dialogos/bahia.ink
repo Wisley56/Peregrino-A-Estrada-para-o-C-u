@@ -135,9 +135,10 @@ dulce: Esta noite ele dorme à porta do convento, perto de mim. Leve-o você, {g
 {
 - not tem("bahia_comerciante_pedido"): -> pedir
 - tem("bahia_comerciante_doou"):
-    { shuffle:
-    - dulce: Eles dormem de barriga cheia hoje. A febre do menino passou. Deus lhe pague, {g("meu filho", "minha filha")}. #gesto:abencoar
-    - dulce: Vou falar com a superiora sobre o galinheiro. Ali, com um pouco de cal e boa vontade, cabe todo mundo. #gesto:pensar
+    {
+    - not tem("bahia_galinheiro_licenca"): -> licenca
+    - not tem("bahia_enfermaria"): -> no_galinheiro
+    - else: -> na_enfermaria
     }
 - tem("bahia_comerciante_raiva") and not tem("bahia_comerciante_manso"):
     dulce: Ele bateu a porta? E você respondeu à altura, não foi? #gesto:pensar
@@ -146,6 +147,49 @@ dulce: Esta noite ele dorme à porta do convento, perto de mim. Leve-o você, {g
     dulce: Você não revidou? Então deixe. Quando a gente não devolve o mal, Deus trabalha no coração do outro. #gesto:ceu
 - else:
     dulce: O armazém fica na avenida, perto de onde a gente se encontrou. Peça com humildade. #gesto:explicar
+}
+-> END
+
+// ─── O galinheiro (seção 6, passo 6) ───
+// Em 1949, com licença da superiora, Irmã Dulce transformou o galinheiro do convento em enfermaria (seção 2).
+// As falas da cena são do roteiro.
+= licenca
+dulce: Eles comeram. Mas dormem no sereno, encostados na parede do convento. Se chover esta noite... #gesto:triste
+dulce: Venha comigo. Vou pedir uma coisa à madre. #gesto:explicar
+superiora: Irmã Dulce. Eu já sei o que a senhora vai pedir. #plano:geral
+superiora: A porta do convento virou enfermaria. As irmãs passam por cima de doentes para ir à capela. #gesto:nao
+dulce: Por isso mesmo, madre. Eles não podem ficar na porta. Mas também não podem voltar para a rua. #gesto:inclinar
+dulce: O galinheiro, madre. Tem telhado. Com cal e esteira, cabe todo mundo.
+superiora: O galinheiro? E as galinhas, que dão os ovos da casa? #gesto:surpresa
+* [Deixar Irmã Dulce responder.]
+    dulce: As galinhas dormem no quintal, madre. Os doentes não têm quintal. #gesto:acolher
+* ["Madre, eu limpo o galinheiro. Hoje mesmo."]
+    superiora: E quem é {g("este moço", "esta moça")}? #gesto:pensar
+    dulce: Quem carregou cada um deles nas costas até esta porta, madre. #gesto:acolher
+- superiora: ... #plano:perto
+superiora: Está bem. As galinhas vão para o quintal. Mas a limpeza é por sua conta, e o serviço da casa não para. #gesto:sim
+dulce: Deus lhe pague, madre! #gesto:ceu
+~ marcar("bahia_galinheiro_licenca")
+~ evento("dulce_galinheiro")
+espirito: Limpe o galinheiro, ao lado do convento: os poleiros, o cocho e a palha.
+-> END
+
+= no_galinheiro
+{
+- not tem("bahia_galinheiro_limpo"):
+    dulce: Primeiro a sujeira: os poleiros velhos, o cocho e a palha. Depois a gente pensa na cal. #gesto:explicar
+- not tem("bahia_galinheiro_esteiras"):
+    dulce: As esteiras estão enroladas junto da parede do fundo. Estenda uma para cada um. #gesto:explicar
+- else:
+    dulce: Traga um por um, da porta do convento. Devagar, que alguns ainda ardem em febre. #gesto:acolher
+}
+-> END
+
+= na_enfermaria
+{ shuffle:
+- dulce: A Lúcia já tosse menos. Ontem cantou baixinho para o menino dormir. #gesto:acolher
+- dulce: Um galinheiro, {g("meu filho", "minha filha")}. Quem diria. Nosso Senhor também nasceu entre os bichos. #gesto:ceu
+- dulce: Suba a Colina Sagrada. O Senhor do Bonfim espera você. #gesto:explicar
 }
 -> END
 
@@ -419,4 +463,55 @@ comerciante: E a mão continuou aberta. Não consegui ficar atrás do balcão.
 dulce: Então o senhor já ganhou mais do que deu. #gesto:abencoar
 espirito: Um coração de pedra amoleceu, e sem golpe nenhum. É assim que esta cidade vai voltar a ter cor.
 ~ evento("doacao")
+-> END
+
+// ─── O galinheiro: a limpeza, as esteiras, os doentes e a passagem de tempo ───
+
+=== bahia_galinheiro_limpo ===
+dulce: Olhe só! Já parece outro lugar. #plano:geral
+dulce: Trouxe as esteiras do convento. Estenda uma para cada um, junto da parede do fundo. #gesto:explicar
+-> END
+
+=== bahia_galinheiro_esteiras ===
+dulce: Seis esteiras, seis nomes. #gesto:acolher
+dulce: Agora vá buscar cada um na porta do convento. Um de cada vez, que ninguém é fardo. #gesto:explicar
+espirito: Leve cada um do abrigo, à porta do convento, para a sua esteira no galinheiro.
+-> END
+
+=== bahia_galinheiro_pronto ===
+dulce: Dona Zefa, Lúcia, Seu Bento, Raimundo, Dona Ana, João. Todos debaixo de um telhado. #plano:geral #gesto:acolher
+dulce: Ainda é um galinheiro. Mas Nosso Senhor nasceu numa estrebaria, não foi? #gesto:ceu
+espirito: O que fizestes a um destes meus irmãos mais pequeninos, a mim o fizestes.
+~ evento("passagem")
+-> END
+
+=== bahia_enfermaria ===
+dulce: Veja, {g("meu filho", "minha filha")}! Cal nas paredes, catre de ferro, lamparina para a noite. #plano:geral #gesto:acolher
+dulce: O comerciante mandou a cal e os catres. A madre mandou duas irmãs ajudarem no turno da noite.
+dulce: E o menino ganhou um catre só dele. A febre foi embora de vez. #gesto:sim
+dulce: Mas a cidade lá fora continua cinzenta. Tem alguma coisa endurecida no coração dela. #gesto:triste
+dulce: Antes de qualquer coisa, suba a Colina Sagrada. Vá ao Senhor do Bonfim: reze, confesse, descanse. #gesto:explicar
+espirito: Suba a Colina Sagrada até a Igreja do Senhor do Bonfim.
+-> END
+
+// ─── A madre superiora ───
+
+=== bahia_superiora ===
+{
+- tem("bahia_enfermaria"):
+    { shuffle:
+    - superiora: Eu dei a licença. O resto quem deu foi Deus. E aquela teimosa. #gesto:sim
+    - superiora: As galinhas se acostumaram com o quintal. Eu é que ainda não me acostumei com tanta gente na casa. #gesto:pensar
+    }
+- tem("bahia_galinheiro_licenca"):
+    { shuffle:
+    - superiora: A limpeza é por sua conta, lembra? Não deixe a Irmã Dulce carregar peso. #gesto:explicar
+    - superiora: Ouvi dizer que as galinhas já reclamaram de você. #gesto:sim
+    }
+- else:
+    { shuffle:
+    - superiora: A porta do convento virou um corredor de doentes. Irmã Dulce não pede nada para ela. É isso que me tira o sono. #gesto:pensar
+    - superiora: Paz e bem. Se veio por Irmã Dulce, ela está ali, junto dos doentes. Sempre junto dos doentes. #gesto:inclinar
+    }
+}
 -> END
