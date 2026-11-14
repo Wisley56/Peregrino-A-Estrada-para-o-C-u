@@ -8,6 +8,11 @@ export const META = TAM / 2;
 export const NIVEL_AGUA = 2.45;
 export const CAPELA = new THREE.Vector2(0, -36);
 export const LAGO = new THREE.Vector2(38, 16);
+/**
+ * O jardim murado de Santo Agostinho, à direita da estrada, logo depois da fogueira: o centro e a metade do lado
+ * de fora do muro (m). A trilha de terra sai da estrada e vai até a porta estreita, no meio do muro do oeste.
+ */
+export const JARDIM = { x: 17.5, z: 36, meio: 6 };
 /** Corredor pelas montanhas do oeste: o véu fica em `veu`, e o caminho termina em `fim`. */
 export const PASSAGEM = { z: 8, entrada: -52, veu: -61, fim: -67 };
 
@@ -65,6 +70,13 @@ export class Terreno {
     const hc = this.base(CAPELA.x, CAPELA.y);
     h = h + (hc - h) * (1 - suave(10, 15, dc));
     if (dc < 9 && z > CAPELA.y) pesoEstrada = Math.max(pesoEstrada, 1 - suave(1.4, 2.8, Math.abs(x - CAPELA.x)));
+
+    // o jardim de Agostinho: um patamar plano em volta do muro e a trilha de terra até a porta
+    const dj = Math.max(Math.abs(x - JARDIM.x), Math.abs(z - JARDIM.z));
+    const hj = this.base(JARDIM.x, JARDIM.z);
+    h = h + (hj - h) * (1 - suave(JARDIM.meio + 1.5, JARDIM.meio + 5, dj));
+    if (x > estradaX(z) + 1 && x < JARDIM.x - JARDIM.meio && Math.abs(z - JARDIM.z) < 1.2)
+      pesoEstrada = Math.max(pesoEstrada, 1 - suave(0.5, 1.1, Math.abs(z - JARDIM.z)));
 
     // lago
     const dl = Math.hypot(x - LAGO.x, (z - LAGO.y) * 1.3);

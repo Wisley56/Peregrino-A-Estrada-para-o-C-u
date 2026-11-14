@@ -23,6 +23,7 @@ const MAPA_CONTROLE: [number, string][] = [
   [B.DIREITA, 'KeyE'], // Ciência
   [B.CIMA, 'PadCima'],
   [B.BAIXO, 'PadBaixo'],
+  [B.BAIXO, 'KeyZ'], // ajoelhar-se (segurado): a porta estreita
 ];
 
 /** Giro da câmera com o analógico direito no máximo, em "pixels de mouse" por segundo (sensibilidade 1). */

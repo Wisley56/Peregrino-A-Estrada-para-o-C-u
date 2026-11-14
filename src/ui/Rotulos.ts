@@ -38,6 +38,9 @@ export function rotularTeclas(t: string, f: Familia) {
     .replace(/\b([Aa]perte) L\b/g, `$1 ${n.ESQ} no direcional`)
     .replace(/\b([Aa]perte) E\b/g, `$1 ${n.DIR} no direcional (ou ${n.LT})`)
     .replace(/\b([Ss]egure) R\b/g, `$1 ${n.LB}`)
+    .replace(/\b([Aa]perte) G\b/g, `$1 ${n.VOLTAR}`)
+    .replace(/\b([Ss]egure) Z\b/g, `$1 ${n.BAIXO} no direcional`)
+    .replace(/\b([Ss]olte) Z\b/g, `$1 ${n.BAIXO}`)
     .replace(/ · G$/, ` · ${n.VOLTAR}`)
     .replace(/ · L$/, ` · ${n.ESQ}`)
     .replace(/ · E$/, ` · ${n.DIR}`);

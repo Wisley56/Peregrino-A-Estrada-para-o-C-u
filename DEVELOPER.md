@@ -245,7 +245,7 @@ os mantém (o save guarda o número do nível, não o nome).
 
 | Área | Arquivo | Destaques técnicos |
 |---|---|---|
-| O Vale | `mundo/Mundo.ts` | Terreno gerado, capela com interior, cruzeiro, fauna pastoril; a névoa a oeste exige a lamparina acesa |
+| O Vale | `mundo/Mundo.ts` | Terreno gerado, capela com interior, cruzeiro, fauna pastoril, jardim de Agostinho (`mundo/Jardim.ts`); a névoa a oeste exige a lamparina acesa |
 | Cripta dos Primeiros Peregrinos | `mundo/Cripta.ts` | Braseiros com chama de 14 s; arena de Mamom (`entidades/Guardiao.ts`) |
 | Deserto das Vozes | `mundo/Deserto.ts` | Miragens que viram sombras, vozes, rocha falsa revelada pela Ciência, capela de cúpulas |
 | Poço do Meio-Dia | `mundo/PocoMeioDia.ts` | A Acídia (`entidades/Acedia.ts`), reflexos que só a Ciência desfaz, torpor |
@@ -253,6 +253,25 @@ os mantém (o save guarda o número do nível, não o nome).
 | Palácio da Gula | `mundo/Banquete.ts` | Salão do Banquete; a Gula (`entidades/Gula.ts`), travessas como alvos, peso repartido com os pobres |
 | Bahia: Cidade Baixa | `mundo/Bahia.ts` (`BahiaBaixa`) | Comércio, Mercado Modelo, Elevador Lacerda, Largo de Roma (convento e galinheiro), o Bonfim, os Alagados |
 | Bahia: Cidade Alta | `mundo/Bahia.ts` (`BahiaAlta`) | Praça Tomé de Sousa, Terreiro de Jesus, Largo do Cruzeiro (arena), ladeira e Largo do Pelourinho |
+
+**O jardim de Santo Agostinho e a porta estreita** (Vale; o dom do Temor de Deus)
+
+- `JARDIM` em `mundo/Terreno.ts` aplaina o chão do jardim (12 × 12 m, à direita da estrada) e abre uma trilha até a
+  porta. Os modelos ficam em `mundo/JardimModelos.ts` (muro com hera e roseiras, canteiros, figueira, banco de pedra,
+  livro aberto); a montagem, a colisão e o santo, em `mundo/Jardim.ts` (`JardimDeAgostinho`).
+- A porta estreita (1 m × 1,75 m) só se atravessa de joelhos: segurar Z (↓ no direcional) liga
+  `Peregrino.ajoelhado`, que anda devagar, com as mãos postas e sem pulo nem ataque. O jogo copia isso em
+  `Mundo.pequeno`, e a colisão ignora as caixas `baixa` quando ele está pequeno. Debaixo da verga
+  (`JardimDeAgostinho.tetoBaixo`) ninguém se levanta; a margem é menor que o raio do peregrino, para que ele não
+  fique de joelhos sem querer.
+- Ao entrar pela primeira vez (`vale_porta_estreita`), recebe uma graça (`Jogo.receberGraca`) e ouve o "Toma e lê".
+- **Santo Agostinho** (`entidades/Agostinho.ts`): bispo, de hábito agostiniano preto, capa pluvial dourada, mitra,
+  báculo e o coração em chamas trespassado por uma seta. As falas (`dialogos/vale.ink`, nós `agostinho*` e
+  `vale_livro`) são traduções nossas das Confissões e de Rm 13,13-14.
+
+**A idade do peregrino**: `Jogo.idadeDaHistoria` decide pela história. O peregrino é jovem até embarcar na estrada do
+mar para a Bahia (flag `peregrino_adulto`, ou `bahia_entrou` em saves antigos), e adulto daí em diante. A troca é
+feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a idade em teste.
 
 **A Cidade Dourada** (fase 2)
 
@@ -676,16 +695,16 @@ O roteiro segue o Documento base e o GDD complementar (na pasta acima do projeto
 Deserto e a Cidade Dourada, com Mamom, a Acídia e a Gula. Das Ruas da Bahia, já estão prontos o mapa (Cidade
 Baixa e Cidade Alta), Irmã Dulce, a casa abandonada, a mecânica de carregar, os esquecidos, o comerciante e o galinheiro que vira
 enfermaria, o interior do Bonfim com a Sala dos Milagres, o Coração de Pedra e "a cor volta": o Hospital Irmã
-Dulce e a Piedade aperfeiçoada (níveis 4 e 5). A provação da Bahia está completa.
+Dulce e a Piedade aperfeiçoada (níveis 4 e 5). A provação da Bahia está completa. No Vale, Santo Agostinho e a
+porta estreita fecham o Temor de Deus, e o peregrino envelhece com a história.
 
 ### A base do jogo
 
-1. **As 8 regiões que faltam**, cada uma com santo guia, provação, chefão-vício com mecânica própria, capela no
+1. **As 7 regiões que faltam**, cada uma com santo guia, provação, chefão-vício com mecânica própria, capela no
    estilo da região e a passagem do mundo cinza para a cor:
 
    | Região | Santo guia | Provação | Dom |
    |---|---|---|---|
-   | Ruas da Bahia | Santa Dulce dos Pobres | Cuidar dos doentes e esquecidos | Piedade |
    | Mar da Tempestade | São Paulo | Naufrágio, perseverar na missão | Conselho |
    | Catacumbas e Arena | Santas Perpétua e Felicidade, São Lourenço | Fidelidade sob ameaça | Fortaleza |
    | O Castelo Interior | Santa Teresa d'Ávila | Atravessar as 7 moradas da alma | Entendimento |

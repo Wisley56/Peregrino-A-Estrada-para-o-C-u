@@ -14,6 +14,7 @@ espirito: Mas ainda não é hora. Esta cidade ainda está presa ao banquete da G
 
 === bahia_chegada ===
 placa: Salvador, na Baía de Todos os Santos. "Estive doente e me visitastes." (Mt 25,36)
+espirito: Quantos anos de estrada, {nome()}... Você saiu do Vale tão jovem, e chega à Bahia {g("um homem feito", "uma mulher feita")}.
 espirito: Que cidade bonita... e que cinzenta. As portas estão fechadas, e o povo passa depressa, sem olhar para os lados.
 espirito: Há gente caída nas calçadas, e ninguém para. Repare em quem passa ao largo.
 espirito: No alto da escarpa fica a Cidade Alta. O elevador leva até lá. Ao norte, depois do Largo de Roma, fica a colina do Bonfim.

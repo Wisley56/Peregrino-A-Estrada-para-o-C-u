@@ -361,6 +361,14 @@ export class Peregrino {
     return this.carga !== null;
   }
 
+  /**
+   * De joelhos (Temor de Deus: fazer-se pequeno). O peregrino anda devagar sobre os joelhos, de mãos postas e
+   * curvado, como os romeiros nos santuários; não pula. É assim que se passa pela porta estreita (Mt 7,13).
+   */
+  ajoelhado = false;
+  /** 0 em pé … 1 de joelhos: a pose desce e sobe aos poucos. */
+  private joelhosK = 0;
+
   /** O idoso anda mais devagar. */
   get fatorVelocidade() {
     return this.visual.idade === 'idoso' ? 0.82 : 1;
@@ -441,7 +449,7 @@ export class Peregrino {
 
     // gravidade e pulo
     const chao = fis.altura(this.pos.x, this.pos.z);
-    if (pular && this.noChao && !travadoNaAcao && this.acao !== 'esquiva' && this.forcaPulo > 0) {
+    if (pular && this.noChao && !travadoNaAcao && !this.ajoelhado && this.acao !== 'esquiva' && this.forcaPulo > 0) {
       this.vy = 8.6 * this.forcaPulo;
       this.noChao = false;
     }
@@ -544,6 +552,29 @@ export class Peregrino {
       jD += k * 1.0;
       bE -= k * 0.35;
       corpoRx += k * 0.12;
+    }
+
+    // de joelhos: as coxas quase retas, as canelas deitadas para trás, o corpo curvado e as mãos postas; a cada
+    // passo um joelho vai à frente e o quadril balança
+    const alvoJoelhos = this.ajoelhado && this.acao === 'livre' ? 1 : 0;
+    this.joelhosK += (alvoJoelhos - this.joelhosK) * Math.min(1, dt * 7);
+    if (this.joelhosK > 0.01 && this.acao === 'livre') {
+      const k = this.joelhosK;
+      const passo = Math.sin(this.fase * 0.8) * this.passoK;
+      const mistura = (a: number, b: number) => a + (b - a) * k;
+      pE = mistura(pE, -0.12 + passo * 0.22);
+      pD = mistura(pD, -0.12 - passo * 0.22);
+      jE = mistura(jE, 1.57);
+      jD = mistura(jD, 1.57);
+      corpoY = mistura(corpoY, -4 * S + Math.abs(passo) * 0.02);
+      corpoRx = mistura(corpoRx, 0.5);
+      corpoRy += passo * 0.1 * k;
+      bE = mistura(bE, -0.95);
+      bD = mistura(bD, -0.95);
+      bEz = mistura(bEz, 0.42);
+      bDz = mistura(bDz, -0.42);
+      cabecaRx = mistura(cabecaRx, -0.25); // a cabeça levanta um pouco para ver o caminho
+      cajadoRx = mistura(cajadoRx, 1.15);
     }
 
     if (this.cargaNasCostas && this.acao === 'livre') {
