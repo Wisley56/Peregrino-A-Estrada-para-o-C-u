@@ -9,6 +9,7 @@ import { DULCE, DULCE_COM_MENINO, SUPERIORA, menino } from '../entidades/Dulce';
 import { Hospital } from './Hospital';
 import { CapelaRegional, type EstiloCapela } from './Capela';
 import { SalaDosMilagres } from './SalaDosMilagres';
+import { LargoDoCruzeiro, type EventosLargo } from './LargoDoCruzeiro';
 import type { DefNpc } from '../entidades/Npc';
 import { ENFERMOS, corpoDoEnfermo, type DefEnfermo } from '../entidades/Enfermos';
 import { FilaDePassantes } from '../entidades/Passantes';
@@ -1011,8 +1012,10 @@ export class BahiaAlta extends MapaDaBahia {
   readonly saoFrancisco: THREE.Vector3;
   readonly pelourinho: THREE.Vector3;
   readonly rosario: THREE.Vector3;
+  /** O Largo do Cruzeiro de São Francisco: a arena do Coração de Pedra, com os cinco enfermos. */
+  readonly largo: LargoDoCruzeiro;
 
-  constructor() {
+  constructor(eventosLargo: EventosLargo) {
     super(128, ORIGEM_BAHIA_ALTA);
     this.montarTerreno();
     this.pisoLocal(LADEIRA[0], LADEIRA[1], LADEIRA[2], LADEIRA[3], (_x, lz) => alturaLadeira(lz));
@@ -1059,6 +1062,20 @@ export class BahiaAlta extends MapaDaBahia {
     this.circulo(CHAFARIZ.x, CHAFARIZ.y, 4.8);
     this.por(cruzeiroDePedra(), CRUZEIRO.x, CRUZEIRO.y);
     this.circulo(CRUZEIRO.x, CRUZEIRO.y, 1.4);
+
+    // a arena: o colosso dorme sob o chão do largo, a leste do cruzeiro; os cinco nos degraus e nas soleiras
+    const [ax, az, aw, ad] = LARGO_CRUZEIRO, o = this.origem;
+    this.largo = new LargoDoCruzeiro(
+      this.sombras,
+      { x0: ax + o.x, x1: ax + aw + o.x, z0: az + o.z, z1: az + ad + o.z },
+      this.w(CRUZEIRO.x + 6, CRUZEIRO.y),
+      this.w(CRUZEIRO.x, CRUZEIRO.y),
+      ([[CRUZEIRO.x - 1.9, CRUZEIRO.y - 1.2, Math.PI / 2], [CRUZEIRO.x + 0.6, CRUZEIRO.y + 2.1, 0], [21, LARGO_CRUZEIRO[1] + 0.9, Math.PI / 2], [38, LARGO_CRUZEIRO[1] + 0.9, -Math.PI / 2], [25, LARGO_CRUZEIRO[1] + LARGO_CRUZEIRO[3] - 1.1, Math.PI / 2]] as [number, number, number][])
+        .map(([x, z, r]) => [x + o.x, z + o.z, r]),
+      eventosLargo,
+    );
+    this.largo.assentar((x, z) => this.altura(x, z));
+    this.grupo.add(this.largo.grupo);
 
     // palmeiras-imperiais e postes no Terreiro e na praça
     for (const [x, z] of [[-5, 9], [13, 9], [-5, 37], [13, 37], [-41, 15], [-41, 37], [-29, 37]]) {
@@ -1107,6 +1124,16 @@ export class BahiaAlta extends MapaDaBahia {
     // o resto das quadras são telhados, que descem junto com a ladeira
     const chao = z < LADEIRA[1] ? CHAO_PELOURINHO : z < LADEIRA[1] + LADEIRA[3] ? alturaLadeira(z) : PLANALTO;
     return [Math.round(chao) + 7, T.Quarteirao];
+  }
+
+  override reiniciar(sombrasVencidas: Set<string>, flags: Set<string>) {
+    super.reiniciar(sombrasVencidas, flags);
+    this.largo.reiniciar(sombrasVencidas, flags);
+  }
+
+  override atualizar(dt: number, jogador: THREE.Vector3) {
+    super.atualizar(dt, jogador);
+    this.largo.atualizar(dt, jogador);
   }
 
   /** Gatos nos telhados baixos e um cão no Terreiro. */

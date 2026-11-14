@@ -32,6 +32,22 @@ espirito: Daqui se vê a baía inteira. Adiante ficam o Terreiro de Jesus e o La
 }
 -> END
 
+// ─── O Coração de Pedra (seção 3; passo 8 da provação) ───
+
+=== bahia_coracao ===
+espirito: O chão do largo se levanta. É a dureza desta cidade: a indiferença de quem vê o doente e atravessa a rua. #plano:geral
+espirito: Ele não olha para ninguém. Nada o fere enquanto a grade do peito estiver fechada.
+espirito: A pedra está subindo nos enfermos. Socorra-os (F): a oração de quem se levanta racha a couraça. Com três, o coração fica à mostra.
+espirito: E se o olhar cinzento cair sobre você, fique atrás de quem você socorreu.
+-> END
+
+=== bahia_coracao_vencido ===
+espirito: Olhe: por dentro da pedra havia um coração de carne. Batendo. #plano:geral
+espirito: "Tirarei do vosso peito o coração de pedra e vos darei um coração de carne" (Ez 36,26).
+espirito: Ninguém mais vai passar ao largo. Escute: as portas estão se abrindo.
+espirito: Volte ao hospital, lá embaixo. Irmã Dulce espera por você.
+-> END
+
 === bahia_galinheiro ===
 espirito: Um galinheiro velho, ao lado do convento. Chão de terra, telha de zinco, poleiros.
 espirito: Parece pouco. Mas o que é pequeno, nas mãos de Deus, pode virar abrigo para muitos.

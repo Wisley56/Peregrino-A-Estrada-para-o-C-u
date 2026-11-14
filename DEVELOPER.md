@@ -382,7 +382,18 @@ Os dons seguem a ordem de Is 11,2. O nível 1 vem do santo da região. Por enqua
   bilhetes, a cascata de fitinhas, o nicho das velas e a grade dos corações de prata. Com `bahia_coracao_vencido`,
   cada `bahia_leito_<id>` deixa ali uma foto e uma carta que se lê (`bahia_milagre_<id>`). Primeira entrada:
   `bahia_bonfim_entrada`; primeira vez na sala: `bahia_sala_milagres`; no altar: `bahia_altar`.
-- O Coração de Pedra vem depois.
+- **O Coração de Pedra** (`entidades/CoracaoDePedra.ts`, `mundo/LargoDoCruzeiro.ts`; id `bahiaalta_coracao`): o
+  chefão da Bahia, no Largo do Cruzeiro, só depois da enfermaria (`bahia_enfermaria`). Um colosso de calçamento de
+  sobrecasaca e cartola, máscara lisa sem boca, que não olha para ninguém; o coração de pedra fica atrás de uma
+  grade de ferro colonial no peito. Ele não sente golpe (`ferir` devolve `bloqueado`) enquanto a grade estiver
+  fechada. Cinco enfermos no largo viram pedra aos poucos (`TEMPO_PEDRA`); socorrer um (F) o põe de pé, rezando,
+  com um raio de oração no peito do colosso. Com três orações a grade cai e o coração fica exposto por 8 s (o
+  estado `atordoada`); depois todos voltam ao chão. Um enfermo que petrifica cura o chefe (+3). Ataques: o
+  **olhar cinzento** (um cone; quem é pego fica *indiferente* por 4 s: anda devagar e não socorre, salvo se estiver
+  atrás de alguém que socorreu), as **pedras rolando** (fileiras com vãos) e as **portas batendo** (uma onda que se
+  pula). Na segunda fase ele leva a mão ao ouvido ("Não é comigo."): fica surdo, os olhos aparecem e tudo acelera.
+  Vencido: a pedra desmorona, sobra um coração de carne batendo, `bahia_coracao_vencido`, o diálogo
+  `bahia_coracao_vencido` (Ez 36,26) e o largo se esvazia. Diálogo de entrada: `bahia_coracao`.
 
 ## Diálogos
 
@@ -643,7 +654,8 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 O roteiro segue o Documento base e o GDD complementar (na pasta acima do projeto). Já estão prontos o Vale, o
 Deserto e a Cidade Dourada, com Mamom, a Acídia e a Gula. Das Ruas da Bahia, já estão prontos o mapa (Cidade
 Baixa e Cidade Alta), Irmã Dulce, a casa abandonada, a mecânica de carregar, os esquecidos, o comerciante e o galinheiro que vira
-enfermaria e o interior do Bonfim com a Sala dos Milagres. A seguir: o Coração de Pedra e os níveis 4 e 5 da Piedade.
+enfermaria, o interior do Bonfim com a Sala dos Milagres e o Coração de Pedra. A seguir: "a cor volta" (o passo 9:
+o hospital, a despedida de Dulce e o dom da Piedade) e os níveis 4 e 5 da Piedade.
 
 ### A base do jogo
 

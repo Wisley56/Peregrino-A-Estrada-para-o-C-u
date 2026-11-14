@@ -25,6 +25,7 @@ import { pedraDeCarregar } from './mundo/CidadeModelos';
 import { menino } from './entidades/Dulce';
 import { ENFERMOS, corpoDoEnfermo, enfermo, registrarRetratosDosEnfermos } from './entidades/Enfermos';
 import { BahiaAlta, BahiaBaixa } from './mundo/Bahia';
+import { ID_CORACAO } from './mundo/LargoDoCruzeiro';
 import { Banquete, type Ajudante, type IdAjudante } from './mundo/Banquete';
 import { Chefe } from './entidades/Guardiao';
 import { Minimapa, Marca } from './ui/Minimapa';
@@ -141,7 +142,11 @@ export class Jogo {
   readonly cidade = new Cidade();
   /** As Ruas da Bahia: a Cidade Baixa (com Itapagipe) e a Cidade Alta, ligadas pelo Elevador Lacerda. */
   readonly bahiaBaixa = new BahiaBaixa();
-  readonly bahiaAlta = new BahiaAlta();
+  readonly bahiaAlta = new BahiaAlta({
+    lutaComecou: () => this.lutaDoLargoComecou(),
+    socorrido: (n) => this.enfermoDoLargoSocorrido(n),
+    petrificou: () => this.enfermoDoLargoPetrificou(),
+  });
   /** O Salão do Banquete, dentro do palácio: a arena da Gula. Os pobres da cidade vêm com o peregrino. */
   readonly banquete = new Banquete(
     {
@@ -198,6 +203,8 @@ export class Jogo {
   private vezDe: 'npc' | 'peregrino' = 'npc';
   /** Segundos de torpor (o vício da acídia): o peregrino fica pesado até rezar. */
   private torpor = 0;
+  /** O olhar do Coração de Pedra: por uns segundos o peregrino passa ao largo (não socorre, anda devagar). */
+  private indiferenca = 0;
   /** Segundos que ainda restam do dom da Ciência ligado. */
   private tempoCiencia = 0;
   readonly deserto = new Deserto({
@@ -1119,6 +1126,9 @@ export class Jogo {
     }
     // os que passam abrem caminho para quem carrega um doente; na primeira vez que empurram, o jogo explica
     b.alguemNasCostas = a.alguemNasCostas = this.nasCostas !== null;
+    // a arena do Coração de Pedra: a pedra para nos diálogos; com a Ciência, os enfermos brilham de leve
+    a.largo.pausado = this.hud.dialogoAberto || this.morrendo || this.transitando;
+    a.largo.ciencia = this.tempoCiencia > 0;
     const empurrou = b.houveEmpurrao() || a.houveEmpurrao();
     if (empurrou && (this.area === b || this.area === a) && this.primeiraVez('bahia_passantes_empurram'))
       this.hud.anunciar('Os que passam não desviam: empurram quem está no caminho. Uma luz desfaz um deles por um tempo. Com um doente nas costas, a fila para e abre caminho.', 5);
@@ -1490,7 +1500,18 @@ export class Jogo {
         },
       },
       ...this.interacoesDosEnfermos(a),
-      { pos: () => a.cruzeiro, raio: 2.8, rotulo: 'F: contemplar o cruzeiro', agir: () => this.dialogos.tocar('bahia_cruzeiro') },
+      { pos: () => a.cruzeiro, raio: 2.8, ativa: () => !a.largo.lutando, rotulo: 'F: contemplar o cruzeiro', agir: () => this.dialogos.tocar('bahia_cruzeiro') },
+      // os cinco do Largo do Cruzeiro, na luta contra o Coração de Pedra
+      ...a.largo.enfermos.map((e, i): Interacao => ({
+        pos: () => e.pos,
+        raio: 1.7,
+        ativa: () => a.largo.precisa(i),
+        rotulo: () => (this.indiferenca > 0 ? 'Não é comigo… (a indiferença passa logo)' : e.situacao === 'petrificado' ? 'F: socorrer (desfazer a pedra)' : 'F: socorrer'),
+        agir: () => {
+          if (this.indiferenca > 0) return this.hud.anunciar('A indiferença ainda pesa: você não consegue parar. Espere passar.', 1.8);
+          a.largo.socorrer(i);
+        },
+      })),
     ];
   }
 
@@ -1847,6 +1868,45 @@ export class Jogo {
     if (restantes > 0) this.hud.anunciar(`Travessa derrubada · ${restantes === 1 ? 'falta 1' : `faltam ${restantes}`}`, 1.3);
   }
 
+  // ───────────────────────────── o Coração de Pedra ─────────────────────────────
+
+  private lutaDoLargoComecou() {
+    this.som.tensao();
+    this.indiferenca = 0;
+    this.hud.anunciar('O Coração de Pedra', 3);
+    if (this.primeiraVez('bahia_coracao_dica')) this.dialogos.tocar('bahia_coracao');
+  }
+
+  private enfermoDoLargoSocorrido(oracoes: number) {
+    this.som.item();
+    this.hud.acertou();
+    if (oracoes > 0) this.hud.anunciar(oracoes < 3 ? `Ele se levanta e reza: a couraça racha (${oracoes} de 3)` : 'Três orações: a grade do peito cede!', 1.6);
+    else this.hud.anunciar('Ele se levanta e reza com você.', 1.4);
+  }
+
+  private enfermoDoLargoPetrificou() {
+    this.som.dissolver();
+    this.hud.anunciar('Alguém virou pedra: a couraça do colosso endureceu.', 2.2);
+  }
+
+  /** O colosso desmoronou: o coração de carne, e as portas do largo se abrem. */
+  private coracaoVencido() {
+    this.efeitos.ouro = 1.4;
+    this.som.graca();
+    setTimeout(() => this.som.item(), 600);
+    this.tempoColuna = 0;
+    this.hud.anunciar('✦ A pedra rachou: por dentro havia um coração de carne', 3.4);
+    this.dialogos.tocar('bahia_coracao_vencido', () => {
+      this.hud.escurecer(true);
+      setTimeout(() => {
+        this.bahiaAlta.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+        this.bahiaBaixa.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
+        this.hud.escurecer(false);
+        this.hud.anunciar('As portas do largo se abriram: os moradores levaram os enfermos ao hospital.', 3.4);
+      }, 900);
+    });
+  }
+
   private gulaVencida() {
     this.efeitos.ouro = 1.4;
     this.som.graca();
@@ -2070,7 +2130,7 @@ export class Jogo {
     const correndo = e.segurando('ShiftLeft', 'ShiftRight') && !this.travado;
     // o ouro da Gula e a pedra no ombro pesam: mais devagar e com menos pulo
     const carga = this.pesoEfetivo();
-    const velocidade = (this.travado ? 3.8 : correndo ? 7.2 : 4.4) * per.fatorVelocidade * (this.torpor > 0 ? 0.5 : 1) * Math.max(0.45, 1 - carga * 0.1) * (this.dev?.velocidade ?? 1);
+    const velocidade = (this.travado ? 3.8 : correndo ? 7.2 : 4.4) * per.fatorVelocidade * (this.torpor > 0 ? 0.5 : 1) * (this.indiferenca > 0 ? 0.55 : 1) * Math.max(0.45, 1 - carga * 0.1) * (this.dev?.velocidade ?? 1);
     per.forcaPulo = per.carregando ? 0 : Math.max(0.55, 1 - carga * 0.12);
 
     const livre = !parado && per.acao === 'livre';
@@ -2214,6 +2274,8 @@ export class Jogo {
 
   /** Torpor: pesa, gasta energia e se desfaz sozinho bem devagar (rezando, depressa). */
   private atualizarTorpor(dt: number) {
+    this.indiferenca = Math.max(0, this.indiferenca - dt);
+    if (this.indiferenca > 0 && !this.hud.dialogoAberto) this.hud.mostrarDica('Indiferente: não é comigo… (passa logo)');
     if (this.torpor <= 0) {
       this.hud.mostrarTorpor(0);
       return;
@@ -2266,6 +2328,7 @@ export class Jogo {
     if (this.area === this.cripta) return this.cripta.guardiao;
     if (this.area === this.meiodia) return this.meiodia.acedia;
     if (this.area === this.banquete) return this.banquete.gula;
+    if (this.area === this.bahiaAlta) return this.bahiaAlta.largo.chefe;
     return null;
   }
 
@@ -2278,6 +2341,9 @@ export class Jogo {
       return this.hud.mostrarChefe('ACÍDIA · O DEMÔNIO DO MEIO-DIA', a.vida / a.vidaMax, !a.revelado, a.alerta);
     const gu = this.area === this.banquete ? this.banquete.gula : null;
     if (gu && this.banquete.lutando && gu.ativa) return this.hud.mostrarChefe('GULA · O BANQUETE SEM FIM', gu.vida / gu.vidaMax, !gu.faminta, gu.alerta);
+    const lg = this.area === this.bahiaAlta ? this.bahiaAlta.largo : null;
+    if (lg?.chefe && lg.lutando && lg.chefe.ativa)
+      return this.hud.mostrarChefe('O CORAÇÃO DE PEDRA · A DUREZA DE CORAÇÃO', lg.chefe.vida / lg.chefe.vidaMax, !lg.chefe.exposto, lg.chefe.alerta);
     this.hud.mostrarChefe(null);
   }
 
@@ -2305,6 +2371,12 @@ export class Jogo {
         this.peregrino.iniciar('ferido');
       }
       if (imp.sussurro) this.hud.sussurrar(imp.sussurro, 2.8);
+      if (imp.indiferenca) {
+        this.indiferenca = imp.indiferenca;
+        this.som.torpor();
+        this.peregrino.iniciar('ferido');
+        this.hud.anunciar('O olhar cinzento pegou você: por uns segundos, você passa ao largo.', 2.2);
+      }
       if (imp.peso) {
         this.pesoBanquete = Math.min(8, this.pesoBanquete + imp.peso);
         this.som.moedas();
@@ -2537,7 +2609,7 @@ export class Jogo {
     this.estado.salvar();
     const guardiao = s.id === 'cripta_guardiao';
     if (guardiao) this.cripta.guardiaoVencido();
-    if (guardiao || s.id === 'meiodia_acedia' || s.id === 'palacio_gula') {
+    if (guardiao || s.id === 'meiodia_acedia' || s.id === 'palacio_gula' || s.id === ID_CORACAO) {
       // cada chefão vencido dá um coração a mais, e o peregrino sai da luta curado
       this.estado.coracoes = this.estado.coracoesMax;
       setTimeout(() => this.hud.anunciar('❤️ Mais um coração!', 2.6), 3400);
@@ -2547,6 +2619,13 @@ export class Jogo {
       this.pesoBanquete = 0;
       this.marcar('gula_vencida');
       setTimeout(() => this.gulaVencida(), 900);
+      return;
+    }
+    if (s.id === ID_CORACAO) {
+      this.bahiaAlta.largo.chefeVencido();
+      this.indiferenca = 0;
+      this.marcar('bahia_coracao_vencido');
+      setTimeout(() => this.coracaoVencido(), 1800);
       return;
     }
     if (s.id === 'meiodia_acedia') {
@@ -2689,6 +2768,8 @@ export class Jogo {
       this.cripta.reiniciarLuta();
       this.meiodia.reiniciarLuta();
       this.banquete.reiniciarLuta();
+      this.bahiaAlta.largo.reiniciarLuta();
+      this.indiferenca = 0;
       this.pesoBanquete = 0;
       this.peregrino.carregar(null);
       this.torpor = 0;
@@ -2846,6 +2927,15 @@ export class Jogo {
             for (const f of ['intro', 'cidade_damiao', 'cidade_lobo', 'palacio_entrou', 'palacio_dica']) e.flags.add(f);
           },
           entrada: () => b.centro.clone().add(v(0, 7)), rumo: norte,
+        }),
+        chefe({
+          id: ID_CORACAO, nome: 'O Coração de Pedra', area: 'bahiaalta',
+          entidade: () => this.bahiaAlta.largo.chefe, lutando: () => this.bahiaAlta.largo.lutando, reiniciarLuta: () => this.bahiaAlta.largo.reiniciarLuta(),
+          preparar: () => {
+            desvencer(ID_CORACAO, 'bahia_coracao_vencido');
+            for (const f of ['intro', 'bahia_enfermaria', 'bahia_alta_entrou', 'bahia_coracao_dica']) e.flags.add(f);
+          },
+          entrada: () => this.bahiaAlta.cruzeiro.clone().add(v(-11, 0)), rumo: -oeste,
         }),
       ],
       info: () => {
