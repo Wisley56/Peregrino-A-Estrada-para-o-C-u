@@ -36,5 +36,6 @@ INCLUDE meiodia.ink
 INCLUDE cidade.ink
 INCLUDE palacio.ink
 INCLUDE bahia.ink
+INCLUDE creta.ink
 
 -> END

@@ -1047,6 +1047,7 @@ export class Jogo {
     this.interacoes.palacio = this.interacoesDoBanquete();
     this.interacoes.bahiabaixa = this.interacoesDaBahiaBaixa();
     this.interacoes.bahiaalta = this.interacoesDaBahiaAlta();
+    this.interacoes.creta = this.interacoesDeCreta();
     for (const id of Object.keys(this.interacoes) as IdArea[]) this.interacoes[id].push(...this.interacoesDaFauna(id));
   }
 
@@ -1287,8 +1288,29 @@ export class Jogo {
     );
   }
 
+  /** Para onde o barco vai quando a conversa da partida acabar (`~ evento("viajar_…")`). */
+  private viagem: 'cidade' | 'creta' | 'bahia' | null = null;
+
+  /** Faz a viagem escolhida na conversa do barco (depois que a caixa fecha). */
+  private fazerViagem() {
+    const destino = this.viagem;
+    this.viagem = null;
+    if (destino === 'cidade') this.trocarArea(this.cidade, this.cidade.estradaDoMar.clone().add(new THREE.Vector3(0, 0, -3)), Math.PI);
+    else if (destino === 'bahia') this.trocarArea(this.bahiaBaixa, this.bahiaBaixa.saveiro.clone().add(new THREE.Vector3(0, 0, -2.5)), Math.PI);
+    else if (destino === 'creta') {
+      this.hud.anunciar('O saveiro sai da baía, mar afora…', 2);
+      this.trocarArea(this.creta, this.creta.chegada, 0, () => {
+        if (this.primeiraVez('creta_entrou')) this.dialogos.tocar('creta_chegada');
+      });
+    }
+  }
+
   /** Efeitos pedidos pelo roteiro da Bahia. Devolve true se o evento era daqui. */
   private eventoDaBahia(nome: string) {
+    if (nome === 'viajar_cidade' || nome === 'viajar_creta' || nome === 'viajar_bahia') {
+      this.viagem = nome === 'viajar_cidade' ? 'cidade' : nome === 'viajar_creta' ? 'creta' : 'bahia';
+      return true;
+    }
     if (nome === 'carregar_enfermo') {
       if (this.enfermoAtual) this.pegarEnfermo(this.enfermoAtual);
       this.enfermoAtual = null;
@@ -1538,11 +1560,15 @@ export class Jogo {
           this.dialogos.tocar('bahia_convento', () => (d.falando = false));
         },
       },
+      // o saveiro: de volta à Cidade Dourada e, depois do Coração de Pedra, mar afora até Creta
       {
         pos: () => b.saveiro,
         raio: 3.2,
-        rotulo: 'F: voltar de saveiro à Cidade Dourada',
-        agir: () => this.trocarArea(c, c.estradaDoMar.clone().add(new THREE.Vector3(0, 0, -3)), Math.PI),
+        rotulo: () => (f('bahia_coracao_vencido') ? 'F: embarcar no saveiro' : 'F: voltar de saveiro à Cidade Dourada'),
+        agir: () => {
+          if (!f('bahia_coracao_vencido')) return this.trocarArea(c, c.estradaDoMar.clone().add(new THREE.Vector3(0, 0, -3)), Math.PI);
+          this.dialogos.tocar('bahia_saveiro', () => this.fazerViagem());
+        },
       },
       {
         pos: () => b.elevador,
@@ -1577,6 +1603,16 @@ export class Jogo {
       })),
       { pos: () => b.hospital.cadeira, raio: 1.3, ativa: () => b.hospital.estagio === 3, rotulo: 'F: olhar a cadeira', agir: () => this.dialogos.tocar('bahia_cadeira') },
       { pos: () => b.hospital.altar, raio: 1.5, ativa: () => b.hospital.estagio === 3, rotulo: 'F: olhar a capelinha', agir: () => this.dialogos.tocar('bahia_capelinha') },
+    ];
+  }
+
+  /** Creta: a gente do porto e de Laseia, a porta da casa onde Paulo reza e o barco de volta à Bahia. */
+  private interacoesDeCreta(): Interacao[] {
+    const k = this.creta;
+    return [
+      ...k.npcs.map((n) => this.falarCom(n)),
+      { pos: () => k.casaDePaulo, raio: 2.2, rotulo: 'F: bater à porta', agir: () => this.dialogos.tocar('creta_casa_paulo') },
+      { pos: () => k.barcoDeVolta, raio: 3, rotulo: 'F: voltar de barco à Bahia', agir: () => this.dialogos.tocar('creta_barco_volta', () => this.fazerViagem()) },
     ];
   }
 
@@ -3008,6 +3044,10 @@ export class Jogo {
       ] },
       { id: 'creta', nome: NOMES_AREA.creta, pontos: [
         ponto('Chegada (praia da enseada)', this.creta.chegada, sul), ponto('Ilhota (a nado)', this.creta.ilhota.clone().add(v(0, -10)), sul),
+        ponto('Cais (prancha do navio)', this.creta.cais, -oeste), ponto('Convés do navio', this.creta.conves, sul),
+        ponto('Casa de Paulo (Lucas e Aristarco)', this.creta.casaDePaulo.clone().add(v(0, 3))),
+        ponto('Laseia (porta)', this.creta.portaLaseia, -oeste), ponto('Laseia (praça)', this.creta.praca),
+        ponto('Farol', this.creta.farol, -oeste), ponto('Cabana do pastor', this.creta.cabana),
       ] },
     ];
     /** Desfaz uma vitória: tira a sombra das vencidas e as flags que ela deixou. */

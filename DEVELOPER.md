@@ -99,12 +99,12 @@ src/
              Humano (gente do povo montada a partir de um figurino)
   dialogos/  roteiros Ink (.ink): peregrino.ink inclui um arquivo por região
   dialogo/   Dialogos (executa o Ink), Falantes (quem fala e com que estilo), Retratos (rostos da caixa de diálogo)
-  mundo/     Area (interface comum), Terreno, Oceano, Mundo (o Vale), Creta, Cripta, Deserto, PocoMeioDia, Cidade (a Cidade Dourada),
+  mundo/     Area (interface comum), Terreno, Oceano, Mundo (o Vale), Creta (com CretaModelos e NavioModelos), Cripta, Deserto, PocoMeioDia, Cidade (a Cidade Dourada),
              CidadeModelos (casas, palácio, São Damião, iscas), Capela (capela de região com interior, confessionário
              e CapelaRegional), Cenario (cruzeiro, céu, entrada da cripta, véu, lamparina)
   fauna/     Especies (fichas), Corpo (esqueletos do Veloren), Animal (comportamento), Fauna (povoamento por área)
   entidades/ Peregrino, Npc (base de quem conversa), Sombra, Guardiao (Mamom e a interface Chefe),
-             Acedia, Antao e Francisco (fichas de NPC com modelo próprio), Pomba
+             Acedia, Antao e Francisco (fichas de NPC com modelo próprio), Romanos, Companheiros e GenteDeCreta, Pomba
   core/      Aparencia (identidade e paletas), Camera, Entrada (teclado, mouse e controle), Controle (gamepad),
              Estado (save), Dons, Preferencias, Ruido, Som
   fx/        Efeitos (pós-processamento)
@@ -261,7 +261,7 @@ os mantém (o save guarda o número do nível, não o nome).
 | Palácio da Gula | `mundo/Banquete.ts` | Salão do Banquete; a Gula (`entidades/Gula.ts`), travessas como alvos, peso repartido com os pobres |
 | Bahia: Cidade Baixa | `mundo/Bahia.ts` (`BahiaBaixa`) | Comércio, Mercado Modelo, Elevador Lacerda, Largo de Roma (convento e galinheiro), o Bonfim, os Alagados |
 | Bahia: Cidade Alta | `mundo/Bahia.ts` (`BahiaAlta`) | Praça Tomé de Sousa, Terreiro de Jesus, Largo do Cruzeiro (arena), ladeira e Largo do Pelourinho |
-| Creta: Bons Portos | `mundo/Creta.ts` | Mar da Tempestade, 1ª parte (em construção): costa sul de Creta em blocos, enseada com ilhotas, mar aberto com o `Oceano` |
+| Creta: Bons Portos | `mundo/Creta.ts` | Mar da Tempestade, 1ª parte (em construção): costa sul de Creta em blocos, enseada com ilhotas, mar aberto com o `Oceano`; o cais com o navio de Alexandria atracado, a vila de Bons Portos, a estrada das colinas até Laseia (murada, com praça, fonte e pórtico), o farol e a cabana do pastor |
 
 **A natação** (`entidades/Peregrino.ts`)
 
@@ -275,6 +275,30 @@ os mantém (o save guarda o número do nível, não o nome).
   funda e `bracada` no ritmo do nado.
 - Não há afogamento nem parede invisível no mar: fora do mapa de Creta é mar aberto e se nada para onde quiser.
   O lago do Vale também deixa nadar no meio.
+
+**Creta: Bons Portos e Laseia** (Mar da Tempestade, At 27,8-12)
+
+- Chega-se pelo saveiro da Bahia depois do Coração de Pedra (`bahia_coracao_vencido`): o nó `bahia_saveiro` oferece
+  Creta ou a Cidade Dourada. O roteiro marca a escolha com `~ evento("viajar_creta")` (ou `viajar_cidade`,
+  `viajar_bahia`), e `Jogo.fazerViagem` troca de área quando a conversa fecha. A primeira chegada (`creta_entrou`)
+  toca `creta_chegada`. O barco de pesca no fim da praia leva de volta à Bahia.
+- Todo o desenho fica em constantes no topo de `Creta.ts` (coordenadas locais; x para leste, +z para o mar):
+  `CAIS`, `BACIA`, `NAVIO`, `CASAS`, `ESTRADA`, `LASEIA`, `CASAS_LASEIA`, `FAROL`, `CABANA`. O chão (`gerar`) aplaina
+  as plataformas das casas e de Laseia, pinta a estrada de terra, draga a bacia e levanta o cais.
+- Os objetos de voxel vão para um `Juntador` (blocos de 40 m). As casas são física por `altura`: o terraço é um
+  piso com a mureta em volta, e a escada de fora é uma rampa de degraus de 0,25 m. Muralhas e muros são caixas;
+  árvores, postes e gente são círculos.
+- **O navio** (`mundo/NavioModelos.ts`): o cargueiro de trigo de Alexandria (30 × 8,5 m), com casco de olhos pintados,
+  pescoço de cisne na popa, cabine, escotilha, mastro e verga, artemão, cordame e os dois remos de governo.
+  `navioAlexandrino(aberta)` serve ao porto (vela recolhida) e à tempestade (vela aberta). Para a física,
+  `convesEm`, `meiaLarguraConves`, `bordaEm`, `MASTRO` e `CABINE`; `Creta.alturaNavio` faz do convés um chão, da
+  borda falsa uma parede (aberta onde chega a prancha) e da cabine um bloco.
+- **A gente** (`Creta.npcs`, interações em `Jogo.interacoesDeCreta`): Júlio, o centurião, e os soldados
+  (`entidades/Romanos.ts`, modelo próprio: crista transversa, fáleras, grevas, vara de videira; pilo e escudo);
+  São Lucas e Santo Aristarco (`entidades/Companheiros.ts`, `montarApostolico`, que também servirá a São Paulo);
+  o piloto, o dono do navio, marinheiros, presos, o pescador, a mulher do forno, a gente de Laseia e o pastor
+  (`entidades/GenteDeCreta.ts`). Os diálogos estão em `dialogos/creta.ink`; a tripulação e o dono do navio já
+  mostram a impaciência que vira Ira na tempestade. Paulo ainda reza na casa da praia (`creta_casa_paulo`).
 
 **O jardim de Santo Agostinho e a porta estreita** (Vale; o dom do Temor de Deus)
 
