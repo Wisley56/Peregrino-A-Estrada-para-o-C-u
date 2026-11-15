@@ -38,5 +38,6 @@ INCLUDE palacio.ink
 INCLUDE bahia.ink
 INCLUDE creta.ink
 INCLUDE navio.ink
+INCLUDE naufragio.ink
 
 -> END

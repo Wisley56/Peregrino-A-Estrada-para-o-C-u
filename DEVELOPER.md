@@ -263,6 +263,7 @@ os mantém (o save guarda o número do nível, não o nome).
 | Bahia: Cidade Alta | `mundo/Bahia.ts` (`BahiaAlta`) | Praça Tomé de Sousa, Terreiro de Jesus, Largo do Cruzeiro (arena), ladeira e Largo do Pelourinho |
 | Creta: Bons Portos | `mundo/Creta.ts` | Mar da Tempestade, 1ª parte (em construção): costa sul de Creta em blocos, enseada com ilhotas, mar aberto com o `Oceano`; o cais com o navio de Alexandria atracado, a vila de Bons Portos, a estrada das colinas até Laseia (murada, com praça, fonte e pórtico), o farol e a cabana do pastor |
 | O Mar da Tempestade | `mundo/Tempestade.ts` | Mar da Tempestade, 2ª parte: o convés do navio de Alexandria no Euroaquilão, de noite e sob chuva, com mar alto, relâmpagos e ondas que varrem o convés (At 27,14-38) |
+| O Naufrágio | `mundo/Naufragio.ts` | Mar da Tempestade, 3ª parte: o navio encalhado no banco de areia com a popa desfeita, a água rasa até a praia de Malta e a arena da Ira (`entidades/Ira.ts`) (At 27,39-44) |
 
 **A natação** (`entidades/Peregrino.ts`)
 
@@ -293,7 +294,9 @@ os mantém (o save guarda o número do nível, não o nome).
   pescoço de cisne na popa, cabine, escotilha, mastro e verga, artemão, cordame e os dois remos de governo.
   `navioAlexandrino(aberta)` serve ao porto (vela recolhida) e à tempestade (vela aberta). Para a física,
   `convesEm`, `meiaLarguraConves`, `bordaEm`, `MASTRO` e `CABINE`; `Creta.alturaNavio` faz do convés um chão, da
-  borda falsa uma parede (aberta onde chega a prancha) e da cabine um bloco.
+  borda falsa uma parede (aberta onde chega a prancha) e da cabine um bloco. A borda tem só 0,75 m e o peregrino
+  sobe degraus de até 1,05 m, por isso as três áreas do navio somam `BORDA_PAREDE` (0,35 m) à altura física dela:
+  a borda vista continua baixa, mas não se passa por cima andando.
 - **A gente** (`Creta.npcs`, interações em `Jogo.interacoesDeCreta`): Júlio, o centurião, e os soldados
   (`entidades/Romanos.ts`, modelo próprio: crista transversa, fáleras, grevas, vara de videira; pilo e escudo);
   São Lucas e Santo Aristarco (`entidades/Companheiros.ts`, `montarApostolico`, que também servirá a São Paulo);
@@ -322,7 +325,7 @@ os mantém (o save guarda o número do nível, não o nome).
   (`Tempestade.balancar(cam)`, chamado depois de `atualizarConversa`).
 - **O céu**: `Tempestade.escuridao` (0 a 1, por etapa) e `relampago` (o clarão que decai) entram no ramo
   `noNavio` de `Jogo.aplicarAmbiente`, que mistura névoa, luz e céu. A chuva é um `LineSegments` de 1400 gotas
-  que segue o jogador. Som: `Som.ambienteDe('tempestade')` (drones graves e vento com rajadas), `trovao()` e
+  que segue o jogador (`mundo/Chuva.ts`, a mesma do naufrágio). Som: `Som.ambienteDe('tempestade')` (drones graves e vento com rajadas), `trovao()` e
   `vagalhao()`.
 - **As ondas no convés**: de 16 a 28 s, com aviso 2,2 s antes (`aoAvisarOnda`), uma onda quebra de um bordo
   (`aoQuebrarOnda(lado)`) e empurra o peregrino por `Peregrino.empurrao`, uma velocidade de fora que se desfaz
@@ -342,9 +345,42 @@ os mantém (o save guarda o número do nível, não o nome).
   8. `fuga`: os marinheiros descem o bote para fugir; falar com Paulo leva ao aviso a Júlio e aos soldados que
      cortam os cabos (`Tempestade.soltarBote`, `navio_fuga`, At 27,30-32).
   9. `pao`: todos em roda do mastro; Paulo dá graças e parte o pão (`navio_pao`, At 27,33-38), que restaura a vida.
-  10. `amanhecer`: o fim por enquanto; o naufrágio e a Ira vêm na próxima parte.
+  10. `amanhecer`: com o pão partido, `Jogo.encalhar` marca `naufragio_encalhou` e leva à área `naufragio`.
 - Os nós que tocam sozinhos (`navio_anjo`, `navio_fuga_vista`, `navio_pao`) tocam uma vez cada
   (`primeiraVez(no + '_tocou')`). Os eventos do roteiro chegam a `Jogo.eventoDoNavio`.
+
+**O naufrágio e a Ira** (Mar da Tempestade, At 27,39-44; `mundo/Naufragio.ts`, `entidades/Ira.ts`, `dialogos/naufragio.ink`)
+
+- **O lugar**: o navio fica encalhado (`NAVIO`, inclinado `INCLINACAO` e com a proa enterrada) num banco de areia
+  entre dois mares. A popa se desfaz (`POPA_QUEBRADA`) e solta tábuas que derivam (40 instâncias). A borda tem uma
+  brecha (`BRECHA`) por onde se desce à água. Entre o navio e a praia de Malta (`costa(x)`) ficam a água rasa da
+  arena (`ARENA`), baixios, um poço e uma ilhota. Todo o desenho está em constantes no topo do arquivo, em
+  coordenadas locais a partir de `ORIGEM_NAUFRAGIO`.
+- **As etapas** (`EtapaNaufragio`, lidas das flags), com `Naufragio.arrumar` pondo cada um no lugar:
+  1. `presos`: todos na proa. O encalhe (`naufragio_encalhe`, At 27,40-42) e a cena dos soldados que querem matar
+     os presos (`naufragio_presos`). O peregrino responde com mansidão, com raiva ou cala (`naufragio_presos_manso`,
+     `_ira`, `_calado`); Júlio os poupa por causa de Paulo, e todos se lançam ao mar (At 27,43-44).
+  2. `ira`: a gente vai para a praia e os náufragos derivam em tábuas. A luta começa quando o peregrino entra na
+     arena fora do navio (`naArena`).
+  3. `praia`: depois da vitória (`naufragio_ira_vencida`), todos em roda de Paulo na praia (`naufragio_praia`,
+     At 28,1). O mar se acalma e a chuva afina. Malta, o fogo e a víbora são a próxima parte.
+- **A brasa da ira** (`Jogo.brasa`, 0 a 100, barra "Brasa da ira" no HUD): sobe quando o peregrino bate na Ira
+  fora da hora (+8, a luz +5), quando é atingido (o `Impacto.brasa` de cada ataque) e quando a Ira o provoca sem
+  que ele esteja rezando. Esfria 2,5 por segundo sozinha e 22 rezando (R). Cheia, deixa o peregrino `irado` até
+  baixar de 50: cada golpe seu cura a Ira. A luta começa com +15 para cada vez que ele respondeu com raiva antes
+  (`creta_conselho_ira`, `navio_gritou`, `naufragio_presos_ira`).
+- **A Ira** (`Ira extends Sombra`, 60 de vida): uma tromba d'água com cara, braços de espuma e uma brasa no peito.
+  Ataques: `punho` (o mar sobe em punhos nas marcas, com empurrão), `vagalhao` (um anel que se pula),
+  `provocar` (sussurros que acendem a brasa, desarmados pela oração), `raios` (só na fase 2) e a `furia`.
+  A fúria são três punhos seguidos. Se o peregrino não revida, não é pego, não está irado e tem a brasa abaixo de
+  `BRASA_MANSA` (70), a Ira se cansa (Pr 15,1) e fica exposta 5 s (`TEMPO_CANSADA`), com a brasa acesa. Só então
+  o cajado e a luz a ferem. Revidar durante a fúria a cura. Na metade da vida ela cresce (fase 2, Ef 4,26), a
+  exposição acaba na hora e as fúrias vêm mais cedo.
+- **Efeitos**: as marcas e os punhos usam material aditivo claro, para que leiam no mundo ainda dessaturado.
+- **Ganchos no Jogo**: `atualizarNaufragio` (etapa, brasa e HUD), `acenderBrasa`, `lutaDaIraComecou`,
+  `iraVencida` (diálogo, praia e checkpoint), `sombraVencida` (+1 coração pela lista `CHEFOES`) e `morrer`
+  (`reiniciarLuta`, brasa zerada). No modo desenvolvedor, o chefão "A Ira" prepara as flags e leva à arena, e a
+  área "O Naufrágio" tem os pontos da proa, da arena e da praia. `?teste=naufragio` abre direto na área.
 
 **O jardim de Santo Agostinho e a porta estreita** (Vale; o dom do Temor de Deus)
 
@@ -805,7 +841,7 @@ porta estreita fecham o Temor de Deus, e o peregrino envelhece com a história.
    | Mundo Digital (bônus) | São Carlo Acutis | Usar a tecnologia para o bem | Conselho |
    | A Passagem (final) | Todos os santos | Travessia do rio de luz | — |
 
-   Os vícios que ainda não viraram chefão são a Soberba, a Inveja, a Ira e a Ilusão. Como há mais regiões do que
+   Os vícios que ainda não viraram chefão são a Soberba, a Inveja e a Ilusão (a Ira é o chefão do naufrágio). Como há mais regiões do que
    vícios, falta decidir o chefão de cada região.
 2. **Árvore de dons**: os níveis 1 a 5 de Conselho, Fortaleza, Entendimento e Sabedoria, as combinações de dons
    (por exemplo, Fortaleza + Piedade protege os NPCs) e o ajuste do equilíbrio dos dons que já existem.

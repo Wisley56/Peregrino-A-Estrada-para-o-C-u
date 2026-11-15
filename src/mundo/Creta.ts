@@ -14,7 +14,7 @@ import {
   PISO, alfarrobeira, barcoDePesca, casaCretense, cipreste, farol, fonteDaPraca, forno, muralha, muroSeco, oliveira, portaDaCidade,
   portico, posteDeAmarracao, redeSecando, rochedo,
 } from './CretaModelos';
-import { CABINE, MASTRO, MEIO_COMPRIMENTO, anfora, bote, bordaEm, convesEm, meiaLarguraConves, navioAlexandrino, sacoDeTrigo } from './NavioModelos';
+import { BORDA_PAREDE, CABINE, MASTRO, MEIO_COMPRIMENTO, anfora, bote, bordaEm, convesEm, meiaLarguraConves, navioAlexandrino, sacoDeTrigo } from './NavioModelos';
 import { Oceano } from './Oceano';
 import { blocosDeColunas } from './Terreno';
 
@@ -589,7 +589,7 @@ export class Creta implements Area {
     const conves = this.navio.y + convesEm(lz);
     if (Math.abs(lx) > meia) {
       if (lx < 0 && Math.abs(lz - PRANCHA_Z) < 0.55) return conves; // a abertura da prancha
-      return this.navio.y + bordaEm(lz);
+      return this.navio.y + bordaEm(lz) + BORDA_PAREDE;
     }
     if (lx > CABINE.x0 && lx < CABINE.x1 && lz > CABINE.z0 && lz < CABINE.z1) return conves + CABINE.altura + 0.7;
     if (lz > 3.5 && lz < 6.5 && Math.abs(lx) < 1.5) return conves + 0.25; // a escotilha com a tampa

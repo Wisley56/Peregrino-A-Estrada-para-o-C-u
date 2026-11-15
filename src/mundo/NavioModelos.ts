@@ -53,6 +53,12 @@ export function bordaEm(z: number) {
   return convesEm(z) + BORDA * V;
 }
 
+/**
+ * Quanto a borda falsa sobe na física acima do que se vê (m): com isso ela passa do degrau que o peregrino sobe
+ * andando (1,05 m) e vira parede. Passa-se por cima só pulando, de propósito.
+ */
+export const BORDA_PAREDE = 0.35;
+
 /** Meio comprimento do navio (m). */
 export const MEIO_COMPRIMENTO = (L / 2) * V;
 /** O mastro grande (m, local) e a cabine da popa (retângulo local, m). */

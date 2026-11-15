@@ -34,6 +34,10 @@ export interface Impacto {
   sussurro?: string;
   /** Segundos de indiferença (o olhar do Coração de Pedra): não socorre e anda devagar. */
   indiferenca?: number;
+  /** Quanto a brasa do peregrino sobe (ou desce, se negativo): a Ira acende quem responde no mesmo tom. */
+  brasa?: number;
+  /** Uma velocidade que joga o peregrino para longe (m/s), que passa pela física: o punho do mar, o vagalhão. */
+  empurrao?: THREE.Vector3;
 }
 
 export interface InfoJogador {
@@ -43,6 +47,11 @@ export interface InfoJogador {
   invulneravel: boolean;
   /** Quanto o peregrino carrega (o devorar da Gula puxa mais forte quem pesa mais). */
   peso?: number;
+  /** Está rezando (a oração guarda o coração da provocação da Ira). */
+  rezando?: boolean;
+  /** A brasa do peregrino (0 a 100) e se ele está irado (a brasa encheu e ainda não esfriou). */
+  brasa?: number;
+  irado?: boolean;
 }
 
 /** O que o jogo precisa de um chefão: o que ele acertou, o aviso da barra e onde está o peregrino. */

@@ -8,7 +8,8 @@ import { Sombra } from '../entidades/Sombra';
 import type { FonteMapa } from '../ui/Minimapa';
 import { figurinoDoPovo } from '../voxel/Humano';
 import type { Area } from './Area';
-import { CABINE, MASTRO, MEIO_COMPRIMENTO, anfora, ancora, bote, bordaEm, convesEm, meiaLarguraConves, navioAlexandrino, sacoDeTrigo } from './NavioModelos';
+import { Chuva } from './Chuva';
+import { BORDA_PAREDE, CABINE, MASTRO, MEIO_COMPRIMENTO, anfora, ancora, bote, bordaEm, convesEm, meiaLarguraConves, navioAlexandrino, sacoDeTrigo } from './NavioModelos';
 import { Oceano } from './Oceano';
 
 /** Onde fica o navio no mundo (longe das outras áreas). O navio não sai do lugar: é o mar que corre por ele. */
@@ -55,7 +56,7 @@ const doNavio = (d: DefNpc, no: string): DefNpc => ({ ...d, id: `navio_${d.id}`,
 /**
  * O navio de Alexandria no meio da tempestade (At 27,14-38): o Euraquilão, catorze dias sem sol nem estrelas, o anjo
  * que Paulo viu, as âncoras da popa, a fuga dos marinheiros e o pão partido antes do amanhecer. É a segunda parte do
- * Mar da Tempestade; o naufrágio e a Ira vêm depois.
+ * Mar da Tempestade; o naufrágio e a Ira vêm depois (`Naufragio`).
  *
  * - O navio fica parado no mundo; o mar corre por ele (`Oceano.deriva`) e a câmera balança (`balancar`), como quem
  *   está a bordo. Chuva em volta do peregrino, relâmpagos que clareiam tudo.
@@ -95,8 +96,7 @@ export class Tempestade implements Area {
   private readonly cabosVisuais: THREE.Mesh[] = [];
   private readonly cargas: THREE.Object3D[] = [];
   private readonly ancoras: THREE.Mesh[] = [];
-  private readonly chuva: THREE.LineSegments;
-  private readonly gotas: Float32Array;
+  private readonly chuva = new Chuva(NIVEL);
   private readonly luzRaio = new THREE.AmbientLight(0xdde6ff, 0);
   private readonly sorte = aleatorio(2714);
   private t = 0;
@@ -152,15 +152,7 @@ export class Tempestade implements Area {
       this.grupo.add(a);
     }
 
-    // a chuva: riscos que caem de lado com o vento, numa caixa em volta do peregrino
-    const N = 1400;
-    this.gotas = new Float32Array(N * 6);
-    for (let i = 0; i < N; i++) this.reporGota(i, new THREE.Vector3(), true);
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(this.gotas, 3));
-    this.chuva = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xb8c4cc, transparent: true, opacity: 0.45 }));
-    this.chuva.frustumCulled = false;
-    this.grupo.add(this.chuva);
+    this.grupo.add(this.chuva.malha);
 
     // a gente a bordo
     const npc = (def: DefNpc) => {
@@ -231,18 +223,6 @@ export class Tempestade implements Area {
   /** Distância (m) do ponto ao mastro, no plano. */
   pertoDoMastro(p: THREE.Vector3) {
     return Math.hypot(p.x - (this.navio.x + MASTRO.x), p.z - (this.navio.z + MASTRO.z));
-  }
-
-  private reporGota(i: number, centro: THREE.Vector3, espalhar: boolean) {
-    const x = centro.x + (this.sorte() - 0.5) * 44, z = centro.z + (this.sorte() - 0.5) * 44;
-    const y = centro.y + (espalhar ? this.sorte() * 26 - 6 : 18 + this.sorte() * 4);
-    const o = i * 6;
-    this.gotas[o] = x;
-    this.gotas[o + 1] = y;
-    this.gotas[o + 2] = z;
-    this.gotas[o + 3] = x - 0.18;
-    this.gotas[o + 4] = y - 0.9;
-    this.gotas[o + 5] = z - 0.35;
   }
 
   // ───────────── a história ─────────────
@@ -350,19 +330,7 @@ export class Tempestade implements Area {
       b.rotation.set(Math.sin(this.t * 1.3) * 0.15, 0.2, Math.sin(this.t * 1.1) * 0.18);
     }
 
-    // a chuva cai inclinada pelo vento e renasce no alto
-    const g = this.gotas;
-    const queda = 22 * dt;
-    for (let i = 0; i < g.length; i += 6) {
-      g[i] -= queda * 0.2;
-      g[i + 3] -= queda * 0.2;
-      g[i + 1] -= queda;
-      g[i + 4] -= queda;
-      g[i + 2] -= queda * 0.4;
-      g[i + 5] -= queda * 0.4;
-      if (g[i + 1] < NIVEL - 2 || Math.abs(g[i] - jogador.x) > 24 || Math.abs(g[i + 2] - jogador.z) > 24) this.reporGota(i / 6, jogador, false);
-    }
-    (this.chuva.geometry.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+    this.chuva.atualizar(dt, jogador);
 
     // os relâmpagos (e o trovão, um pouco depois)
     this.proximoRaio -= dt;
@@ -408,7 +376,7 @@ export class Tempestade implements Area {
     const meia = meiaLarguraConves(lz);
     if (Math.abs(lx) > meia + 0.3) return null;
     const conves = this.navio.y + convesEm(lz);
-    if (Math.abs(lx) > meia) return this.navio.y + bordaEm(lz);
+    if (Math.abs(lx) > meia) return this.navio.y + bordaEm(lz) + BORDA_PAREDE;
     if (lx > CABINE.x0 && lx < CABINE.x1 && lz > CABINE.z0 && lz < CABINE.z1) return conves + CABINE.altura + 0.7;
     if (lz > 3.5 && lz < 6.5 && Math.abs(lx) < 1.5) return conves + 0.25; // a escotilha
     if (this.boteNaAgua === 'conves' && lx > 1.6 && lx < 3.3 && lz > 2.1 && lz < 7.1) return conves + 0.75; // o bote içado

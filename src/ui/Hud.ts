@@ -112,6 +112,19 @@ export class Hud implements Palco {
     this.peso.style.display = texto ? 'block' : 'none';
     if (texto && this.peso.textContent !== texto) this.peso.textContent = texto;
   }
+  private brasa = $('#brasa');
+  private brasaBarra = $('#brasa .barra > div');
+  private brasaRotulo = $('#brasa .rotulo');
+
+  /** A brasa da ira (0 a 1) na luta contra a Ira; `null` esconde. Irado: a barra pulsa em vermelho. */
+  mostrarBrasa(k: number | null, irado = false) {
+    this.brasa.style.display = k === null ? 'none' : 'block';
+    if (k === null) return;
+    this.brasaBarra.style.width = `${Math.round(Math.max(0, Math.min(1, k)) * 100)}%`;
+    this.brasa.classList.toggle('irado', irado);
+    const r = irado ? 'Irado: reze (R) para esfriar' : 'Brasa da ira';
+    if (this.brasaRotulo.textContent !== r) this.brasaRotulo.textContent = r;
+  }
   private rotuloCor = $('#rotulo-cor');
   private torporEl = $('#torpor');
 

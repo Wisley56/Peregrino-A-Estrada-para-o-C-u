@@ -42,6 +42,7 @@ export const FALANTES = {
   beppo: { nome: 'Beppo' },
   mercador: { nome: 'Mercador' },
   gula: { nome: 'Gula', estilo: 'vicio' },
+  ira: { nome: 'Ira', estilo: 'vicio' },
   dulce: { nome: 'Irmã Dulce' },
   superiora: { nome: 'A madre superiora' },
   capelao: { nome: 'O capelão do Bonfim' },

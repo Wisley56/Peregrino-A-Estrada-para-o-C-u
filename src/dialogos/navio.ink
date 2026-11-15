@@ -1,7 +1,7 @@
 // ═══════════════════════════ O Mar da Tempestade: o navio ═══════════════════════════
 // Segunda parte da região de São Paulo: a viagem de Creta até a noite antes do naufrágio (At 27,14-38).
 // O Euraquilão, o bote içado, o casco cintado, a carga ao mar, os dias sem sol nem estrelas, o anjo que Paulo viu,
-// a sonda e as âncoras, a fuga dos marinheiros e o pão partido. O naufrágio e a Ira ficam para a parte seguinte.
+// a sonda e as âncoras, a fuga dos marinheiros e o pão partido. O naufrágio e a Ira ficam para a parte seguinte (naufragio.ink).
 //
 // A Ira cresce aos poucos: o medo vira raiva, e a raiva briga. O dom do Conselho é a palavra certa no tom certo.
 // As falas de Atos vêm com a referência; o resto é fala de personagem.
@@ -206,7 +206,6 @@ espirito: Dito isso, tomou o pão, deu graças a Deus diante de todos, partiu-o 
 - espirito: Todos se animaram e comeram também. Eram ao todo duzentas e setenta e seis pessoas no navio (At 27,36-37).
 espirito: Depois de comerem, aliviaram o navio, lançando o trigo ao mar (At 27,38).
 espirito: Quando o dia clareou, não reconheciam a terra, mas avistaram uma enseada com uma praia (At 27,39). #pausa:0.8
-espirito: (O naufrágio e a Ira são a próxima parte do caminho, ainda em construção.)
 ~ evento("amanhecer")
 -> END
 
