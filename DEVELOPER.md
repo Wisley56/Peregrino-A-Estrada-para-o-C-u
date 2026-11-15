@@ -264,6 +264,7 @@ os mantém (o save guarda o número do nível, não o nome).
 | Creta: Bons Portos | `mundo/Creta.ts` | Mar da Tempestade, 1ª parte (em construção): costa sul de Creta em blocos, enseada com ilhotas, mar aberto com o `Oceano`; o cais com o navio de Alexandria atracado, a vila de Bons Portos, a estrada das colinas até Laseia (murada, com praça, fonte e pórtico), o farol e a cabana do pastor |
 | O Mar da Tempestade | `mundo/Tempestade.ts` | Mar da Tempestade, 2ª parte: o convés do navio de Alexandria no Euroaquilão, de noite e sob chuva, com mar alto, relâmpagos e ondas que varrem o convés (At 27,14-38) |
 | O Naufrágio | `mundo/Naufragio.ts` | Mar da Tempestade, 3ª parte: o navio encalhado no banco de areia com a popa desfeita, a água rasa até a praia de Malta e a arena da Ira (`entidades/Ira.ts`) (At 27,39-44) |
+| Malta | `mundo/Malta.ts` | Mar da Tempestade, 4ª parte: a praia do fogo, a garriga com os gravetos, a estrada até a casa de campo de Públio (pátio com pórtico, quartos, o leito do pai), o povoado com o poço, o porto com o cais e o navio dos Dióscuros, e Melite murada (At 28,1-11) |
 
 **A natação** (`entidades/Peregrino.ts`)
 
@@ -363,7 +364,8 @@ os mantém (o save guarda o número do nível, não o nome).
   2. `ira`: a gente vai para a praia e os náufragos derivam em tábuas. A luta começa quando o peregrino entra na
      arena fora do navio (`naArena`).
   3. `praia`: depois da vitória (`naufragio_ira_vencida`), todos em roda de Paulo na praia (`naufragio_praia`,
-     At 28,1). O mar se acalma e a chuva afina. Malta, o fogo e a víbora são a próxima parte.
+     At 28,1). O mar se acalma e a chuva afina. Ao fechar a conversa, `Jogo.irParaMalta` leva à área `malta`; depois,
+     a praia tem também "F: subir ao fogo dos moradores".
 - **A brasa da ira** (`Jogo.brasa`, 0 a 100, barra "Brasa da ira" no HUD): sobe quando o peregrino bate na Ira
   fora da hora (+8, a luz +5), quando é atingido (o `Impacto.brasa` de cada ataque) e quando a Ira o provoca sem
   que ele esteja rezando. Esfria 2,5 por segundo sozinha e 22 rezando (R). Cheia, deixa o peregrino `irado` até
@@ -381,6 +383,53 @@ os mantém (o save guarda o número do nível, não o nome).
   `iraVencida` (diálogo, praia e checkpoint), `sombraVencida` (+1 coração pela lista `CHEFOES`) e `morrer`
   (`reiniciarLuta`, brasa zerada). No modo desenvolvedor, o chefão "A Ira" prepara as flags e leva à arena, e a
   área "O Naufrágio" tem os pontos da proa, da arena e da praia. `?teste=naufragio` abre direto na área.
+
+**Malta e o dom do Conselho** (Mar da Tempestade, At 28,1-11; `mundo/Malta.ts`, `mundo/MaltaModelos.ts`,
+`entidades/GenteDeMalta.ts`, `dialogos/malta.ink`)
+
+- **O lugar**: a ilha em coordenadas locais a partir de `ORIGEM_MALTA`, com a terra em `z < costa(x)`. A baía do
+  naufrágio fica em x≈0 (o fogo em `FOGO`, os oito montes de gravetos em `GRAVETOS`), a casa de Públio em
+  `CASA_PUBLIO` (desenho em `VILLA`), o povoado em `CASAS` e `POCO_ALDEIA`, o porto em `CAIS`/`NAVIO` e Melite em
+  `MELITE`. As estradas (`ESTRADAS`) são polilinhas, e os NPCs que andam seguem por elas (`Malta.levar`, com
+  `espera` para saírem um depois do outro e o ponto `PATIO` para entrarem pela porta).
+- **As etapas** (`EtapaMalta`, lidas das flags por `etapaDeMalta`), com `Malta.arrumar` pondo cada um no lugar:
+  1. `fogo`: juntar os feixes (`malta_feixe_<i>`) e lançá-los ao fogo (`malta_lancou_1..5`). No quinto, `malta_fogo`.
+  2. `vibora`: a cena `malta_vibora` (At 28,3-6). Os eventos `vibora_lanca`, `vibora_prende` e `vibora_sacode`
+     animam a víbora na mão direita de Paulo (`Malta.cenaDaVibora`). O peregrino julga, corre ou espera
+     (`malta_vibora_julgou`, `_correu`, `_esperou`). `dom_conselho` dá o dom, e `vibora_fim` marca
+     `malta_vibora`. A cena põe o peregrino do outro lado do fogo, de frente para Paulo, para a roda não tapar a
+     víbora. Se o jogo for salvo no meio, falar com Paulo recomeça a cena.
+  3. `boatos`: o ancião, a mulher, o pescador e o rapaz tiraram cada um a sua conclusão da víbora. A resposta certa
+     marca `malta_boato_<id>` e o evento `boato`; no quarto, `malta_boatos`, e Públio desce (`malta_publio_chega`).
+  4. `publio`: `hospedar` marca `malta_publio` e leva Públio, o criado, Paulo e os companheiros pela estrada até
+     a casa (`Malta.subirParaACasa`).
+  5. `pai`: `rezar_pai` marca `malta_pai_rezar`. Segurar R a até 3,4 m do leito enche a barra "Rezando com Paulo"
+     (`Hud.mostrarOracao`) em 6 s, e ela baixa sozinha. Cheia, `Jogo.paiCurado` marca `malta_pai_curado` (+1 graça).
+  6. `enfermos`: a mulher do poço, o pescador da muleta, o velho cego de Melite e a mãe do menino (`ENFERMOS_MALTA`).
+     Convidados, vão à casa (`enfermo_<id>`, `malta_enfermo_<id>`, `Malta.mandarParaACasa`). Com os quatro no
+     pátio (`valorDialogo('malta_no_patio')`), falar com Paulo toca `malta_curas`, e o evento `curas` marca
+     `malta_curas` e `mar_restaurado` (+2 graças): a cor volta ao mar.
+  7. `honras`: Júlio espera no porto. `tres_meses` escurece a tela e leva ao cais (checkpoint e `malta_partida`).
+  8. `partida`: todos no cais com as provisões. A prancha (`malta_embarque`) diz que Roma é a próxima região.
+- **O clima** (`Malta.clima`): chuva até a víbora, nublado até as curas, e depois a luz de Creta.
+  `Jogo.aplicarAmbiente` roda de novo quando o clima muda (`climaDeMalta`).
+- **Viagens**: o barqueiro (`malta_barco`) leva à Bahia, a Creta e à Cidade Dourada, e o saveiro da Bahia leva a
+  Malta depois de `mar_restaurado`. O barqueiro fica fora da lista genérica de conversas, senão a conversa sem
+  viagem tomaria a vez.
+- **O Conselho** (`core/Dons.ts`):
+  - nível 1, discernir os caminhos: nas conversas, a escolha marcada mostra o fruto dela (`Hud.caixaFruto`). O
+    roteiro põe a tag dentro dos colchetes, `* [Texto #fruto: o fruto]`. `Dialogos.frutos` só a lê com
+    `nivel('conselho') >= 1`;
+  - nível 2, a rosa dos ventos: o minimapa marca o próximo passo com uma estrela azul (`Jogo.rumoDoCaminho`, para
+    Malta, o naufrágio, o navio e Creta);
+  - nível 3, prudência: o minimapa enxerga 60 m;
+  - níveis 4 e 5 (conselho ao irmão, luz para os passos) ficam travados até o Mundo Digital (`PELO_CARLO`, flag
+    `digital_conselho_aperfeicoado`).
+- **Deitados**: `deitar` põe o pai de Públio no leito por um grupo entre o NPC e o corpo, porque os gestos de
+  conversa mexem a cada quadro na raiz do corpo. `Npc.fixo` faz o NPC não virar o corpo para ninguém.
+- **Ganchos no Jogo**: `irParaMalta`, `atualizarMalta` (arrumação, `aposDialogo`, clima e oração), `paiCurado`,
+  `eventoDeMalta`, `interacoesDeMalta` e `cenaDaVibora`. No modo desenvolvedor, a área "Malta" tem os pontos da
+  praia, da casa de Públio, do povoado, do porto e de Melite. `?teste=malta` abre direto na área.
 
 **O jardim de Santo Agostinho e a porta estreita** (Vale; o dom do Temor de Deus)
 
@@ -782,7 +831,8 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 - **`Criacao.ts`**: criação do personagem.
 - **`Hud.ts`**: corações inteiros e meios (o da Eucaristia em dourado), barras, mira, barra do chefão e a
   caixa de diálogo (retrato, texto que corre, escolhas numeradas).
-- **`Minimapa.ts`**: minimapa redondo que gira com a câmera.
+- **`Minimapa.ts`**: minimapa redondo que gira com a câmera. O parâmetro `conselho` (`alvo`, `raio`) desenha a
+  estrela azul do próximo passo (na borda, com a ponta para ele, se estiver longe) e muda o alcance.
 - **Mira livre** (`Jogo.atualizarMiraLivre`, `Hud.mostrarRetic`), inspirada no Veloren e no Minecraft:
   - a câmera olha 1,05 m acima da cabeça (`CameraTerceira.elevacaoMira`; 0,5 m na capela). O peregrino fica um
     pouco abaixo do centro e a mira fica livre por cima dele, como no Veloren;
@@ -824,7 +874,9 @@ Deserto e a Cidade Dourada, com Mamom, a Acídia e a Gula. Das Ruas da Bahia, j�
 Baixa e Cidade Alta), Irmã Dulce, a casa abandonada, a mecânica de carregar, os esquecidos, o comerciante e o galinheiro que vira
 enfermaria, o interior do Bonfim com a Sala dos Milagres, o Coração de Pedra e "a cor volta": o Hospital Irmã
 Dulce e a Piedade aperfeiçoada (níveis 4 e 5). A provação da Bahia está completa. No Vale, Santo Agostinho e a
-porta estreita fecham o Temor de Deus, e o peregrino envelhece com a história.
+porta estreita fecham o Temor de Deus, e o peregrino envelhece com a história. O Mar da Tempestade está completo:
+Creta, o navio no Euroaquilão, o naufrágio com a Ira e Malta, com o dom do Conselho (níveis 1 a 3) e a cor que
+volta ao mar.
 
 ### A base do jogo
 

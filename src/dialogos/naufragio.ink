@@ -71,7 +71,7 @@ julio: Paulo... Eu ia deixar que matassem os presos. E você estava entre eles. 
 paulo: Mas você não deixou. Deus viu isso também. #gesto:acolher #plano:perto
 espirito: Depois de salvos, souberam que a ilha se chamava Malta (At 28,1). #plano:geral
 espirito: Está frio, e a garoa não para. Lá do alto, os moradores da ilha descem para ver o que o mar trouxe.
-espirito: (Malta, o fogo, a víbora e a cor que volta são a próxima parte do caminho, ainda em construção.)
+espirito: Suba até o fogo dos moradores, lá em cima da praia.
 -> END
 
 // ─── A gente do naufrágio ───

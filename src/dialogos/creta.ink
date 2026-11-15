@@ -16,6 +16,8 @@
 }
 * [Navegar até Creta.]
     ~ evento("viajar_creta")
+* {tem("mar_restaurado")} [Navegar até Malta.]
+    ~ evento("viajar_malta")
 * [Voltar à Cidade Dourada.]
     ~ evento("viajar_cidade")
 * [Ficar na Bahia.]

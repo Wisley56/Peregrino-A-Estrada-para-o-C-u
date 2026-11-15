@@ -15,6 +15,9 @@ export interface NivelDom {
 /** A Piedade 4 e 5: Francisco planta, Irmã Dulce faz florescer (docs/regioes/01-ruas-da-bahia.md, seção 7). */
 const PELA_DULCE = { flag: 'bahia_piedade_aperfeicoada', texto: 'Aperfeiçoado nas Ruas da Bahia, com Irmã Dulce.' };
 
+/** O Conselho 4 e 5: Paulo dá o dom no mar; São Carlo Acutis o aperfeiçoa no Mundo Digital (GDD, as regiões). */
+const PELO_CARLO = { flag: 'digital_conselho_aperfeicoado', texto: 'Aperfeiçoado no Mundo Digital, com São Carlo Acutis.' };
+
 export interface Dom {
   id: IdDom;
   nome: string;
@@ -48,7 +51,14 @@ export const DONS: Dom[] = [
   {
     id: 'conselho', nome: 'Conselho', cor: '#5b8def',
     essencia: 'Nas escolhas, mostra as consequências de cada caminho antes de decidir.',
-    origem: 'São Paulo, no Mar da Tempestade', niveis: [],
+    origem: 'São Paulo, no Mar da Tempestade',
+    niveis: [
+      { nome: 'Discernir os caminhos', texto: 'Nas conversas, a resposta marcada mostra o fruto dela antes da escolha.' },
+      { nome: 'A rosa dos ventos', texto: 'O minimapa aponta, em azul, o próximo passo do caminho na região (e a borda dele, quando está longe).' },
+      { nome: 'Prudência', texto: 'O minimapa enxerga quase o dobro da distância (60 m).' },
+      { nome: 'Conselho ao irmão', trava: PELO_CARLO, texto: 'Quem está em dúvida pede o seu conselho: a palavra certa, dada a tempo, rende uma graça.' },
+      { nome: 'Luz para os passos', trava: PELO_CARLO, texto: 'A rosa dos ventos aponta também os segredos e as graças escondidas da região (Sl 119,105).' },
+    ],
   },
   {
     id: 'fortaleza', nome: 'Fortaleza', cor: '#d6453d',
