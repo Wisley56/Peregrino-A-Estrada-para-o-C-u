@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { aleatorio, Ruido } from '../core/Ruido';
-import { ARISTARCO, LUCAS } from '../entidades/Companheiros';
+import { ARISTARCO, LUCAS, PAULO } from '../entidades/Companheiros';
 import { GENTE_DE_LASEIA, MARINHEIROS, NAUCLERO, PADEIRA, PASTOR, PESCADOR, PILOTO, PRESOS } from '../entidades/GenteDeCreta';
 import { Npc, type DefNpc } from '../entidades/Npc';
 import { JULIO, soldado } from '../entidades/Romanos';
@@ -127,6 +127,16 @@ export class Creta implements Area {
   readonly cabana: THREE.Vector3;
   /** Quem vive aqui ou espera o navio partir. */
   readonly npcs: Npc[] = [];
+  /** São Paulo: reza na casa da praia até baterem à porta; depois desce ao cais e, após o conselho, embarca. */
+  paulo!: Npc;
+  lucas!: Npc;
+  aristarco!: Npc;
+  /** Onde se embarca (a ponta da prancha, no cais). */
+  readonly prancha: THREE.Vector3;
+  /** Chamado quando Paulo chega ao cais. */
+  aoChegarPaulo: (() => void) | null = null;
+  private caminhoPaulo: THREE.Vector3[] = [];
+  private portaPaulo = new THREE.Vector3();
 
   private readonly alturas = new Int16Array(TAM * TAM);
   private readonly tipo = new Uint8Array(TAM * TAM);
@@ -171,6 +181,7 @@ export class Creta implements Area {
     this.portaLaseia = this.w(LASEIA.x0 - 4, LASEIA.porta);
     this.farol = this.w(FAROL.x - 6, FAROL.z);
     this.cabana = this.w(CABANA.x, CABANA.z + 5);
+    this.prancha = this.w(CAIS.x1 - 0.8, NAVIO.z + PRANCHA_Z);
   }
 
   // ───────────── o chão ─────────────
@@ -498,12 +509,17 @@ export class Creta implements Area {
     const az = costa(ax) - ad + af / 2 + 2;
     npc(PRESOS[0], ax - 1.2, az, 0);
     npc(PRESOS[1], ax + 0.4, az + 0.3, -0.4);
-    npc(soldado(2), ax + 2.4, az + 1, -Math.PI / 2);
+    npc(soldado(2), ax, az - 1.7, 0); // de guarda à porta do armazém
     // diante da casa onde Paulo espera: Lucas, que escreve, e Aristarco
     const [cx, cd, , cf] = CASAS[0];
     const cz = costa(cx) - cd + cf / 2 + 2.6;
-    npc(LUCAS, cx + 2.2, cz, -0.3);
-    npc(ARISTARCO, cx - 1.6, cz + 0.2, 0.4);
+    this.lucas = npc(LUCAS, cx + 2.2, cz, -0.3);
+    this.aristarco = npc(ARISTARCO, cx - 1.6, cz + 0.2, 0.4);
+    // Paulo, lá dentro: só aparece à porta quando alguém bate
+    this.paulo = npc(PAULO, cx, cz - 1.6, 0);
+    this.portaPaulo.copy(this.paulo.pos);
+    this.paulo.raiz.visible = false;
+    this.circulos.pop(); // ele anda: não deixa um círculo parado na porta
     // na vila: o velho pescador junto aos barcos e a mulher do forno
     npc(PESCADOR, -71.5, costa(-70) - 6.5, 0.4);
     npc(PADEIRA, -75.5, costa(-74) - 21, -Math.PI / 2);
@@ -514,6 +530,43 @@ export class Creta implements Area {
     npc(GENTE_DE_LASEIA[3], LASEIA.x0 + 3, LASEIA.porta - 2.2, -Math.PI / 2);
     // nas encostas do norte: o pastor
     npc(PASTOR, CABANA.x + 3, CABANA.z + 4, 0.6);
+  }
+
+  // ───────────── a história de Paulo em Creta ─────────────
+
+  /** Paulo abre a porta da casa (bateram). */
+  pauloNaPorta() {
+    this.paulo.colocar(this.portaPaulo, 0);
+    this.paulo.raiz.visible = true;
+  }
+
+  /** Paulo desce ao cais, para o conselho do centurião: pela praia, à frente do armazém, e pelo cais até a prancha. */
+  levarPauloAoCais() {
+    const [cx] = CASAS[0];
+    const pts: [number, number][] = [[cx, -3], [-51, -3], [-46.5, -9.5], [-43, -9.5], [-42.6, 4], [-42.6, NAVIO.z + PRANCHA_Z - 1.6]];
+    this.caminhoPaulo = pts.map(([x, z]) => this.w(x, z));
+  }
+
+  /** Põe cada um no seu lugar conforme a história (ao carregar o jogo ou depois de um evento). */
+  arrumar(tem: (flag: string) => boolean) {
+    this.caminhoPaulo = [];
+    const [cx, cd, , cf] = CASAS[0];
+    const cz = costa(cx) - cd + cf / 2 + 2.6;
+    const conves = (lx: number, lz: number) => new THREE.Vector3(this.navio.x + lx, this.navio.y + convesEm(lz), this.navio.z + lz);
+    if (tem('creta_conselho')) {
+      // decidida a partida, os três esperam a bordo, junto ao mastro
+      this.paulo.colocar(conves(-1.2, MASTRO.z - 1.2), Math.PI / 2);
+      this.lucas.colocar(conves(1.4, MASTRO.z - 2.4), -Math.PI / 2);
+      this.aristarco.colocar(conves(-0.6, MASTRO.z - 3.2), Math.PI / 4);
+      this.paulo.raiz.visible = true;
+    } else {
+      this.lucas.colocar(this.w(cx + 2.2, cz), -0.3);
+      this.aristarco.colocar(this.w(cx - 1.6, cz + 0.2), 0.4);
+      if (tem('creta_paulo_no_cais')) this.paulo.colocar(this.w(-42.6, NAVIO.z + PRANCHA_Z - 1.6), -Math.PI / 2);
+      else this.paulo.colocar(this.portaPaulo, 0);
+      this.paulo.raiz.visible = tem('creta_paulo_conheceu');
+      if (tem('creta_paulo_conheceu') && !tem('creta_paulo_no_cais')) this.levarPauloAoCais();
+    }
   }
 
   // ───────────── física ─────────────
@@ -588,7 +641,17 @@ export class Creta implements Area {
 
   atualizar(dt: number, jogador: THREE.Vector3) {
     this.oceano.atualizar(dt, jogador);
-    for (const n of this.npcs) n.atualizar(dt, jogador);
+    if (this.caminhoPaulo.length) {
+      const chao = (x: number, z: number) => this.altura(x, z);
+      if (this.paulo.andarPara(this.caminhoPaulo[0], dt, chao, 1.6)) {
+        this.caminhoPaulo.shift();
+        if (!this.caminhoPaulo.length) {
+          this.paulo.colocar(this.paulo.pos, -Math.PI / 2);
+          this.aoChegarPaulo?.();
+        }
+      }
+    }
+    for (const n of this.npcs) if (n !== this.paulo || !this.caminhoPaulo.length) n.atualizar(dt, jogador);
   }
 
   povoamento(): Povoamento[] {

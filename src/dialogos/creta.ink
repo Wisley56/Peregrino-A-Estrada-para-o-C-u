@@ -126,11 +126,19 @@ piloto: Eu cuido do leme. Os dois remos de governo, ali na popa: um navio deste 
 // ─── Os companheiros de Paulo ───
 
 === creta_lucas ===
+{ tem("creta_conselho"): -> a_bordo }
 { primeira("creta_lucas_conheceu"): -> conhecer }
 { shuffle:
 - lucas: Saímos de Mira num navio de Alexandria. A navegação tem sido lenta: o vento não nos deixa ir aonde queremos. #gesto:explicar
 - lucas: Paulo ainda reza. Espere um pouco. #gesto:sim
 - lucas: Escrevo devagar. A pressa estraga a tinta e as histórias.
+}
+-> END
+
+= a_bordo
+{ shuffle:
+- lucas: Anotei tudo: o aviso de Paulo, o parecer do piloto, a decisão da maioria. A verdade não precisa de enfeite. #gesto:explicar
+- lucas: O vento sul está brando. Brando demais, diria um velho pescador. #gesto:pensar
 }
 -> END
 
@@ -146,10 +154,18 @@ lucas: Anoto o caminho: os portos, os ventos, os dias. Um dia alguém vai querer
 -> END
 
 === creta_aristarco ===
+{ tem("creta_conselho"): -> a_bordo }
 { primeira("creta_aristarco_conheceu"): -> conhecer }
 { shuffle:
 - aristarco: Os marinheiros andam com os nervos à flor da pele. Uma palavra torta e começa a briga. #gesto:triste
 - aristarco: Paulo pediu silêncio por um tempo. Nós dois guardamos a porta. #gesto:sim
+}
+-> END
+
+= a_bordo
+{ shuffle:
+- aristarco: Onde ele for, eu vou. Já passei por coisa pior que um mar bravo: uma multidão brava. #gesto:sim
+- aristarco: Fique perto de nós quando o tempo virar. #gesto:explicar
 }
 -> END
 
@@ -164,8 +180,93 @@ aristarco: Em Éfeso, a multidão me arrastou para o teatro, gritando sem nem sa
 -> END
 
 === creta_casa_paulo ===
-espirito: Lá dentro, um homem reza em voz baixa. É Paulo. #plano:geral
-espirito: Ainda não é hora de interromper. Volte quando o navio estiver para partir.
+espirito: Lá dentro, um homem reza em voz baixa. A reza para. Passos vêm até a porta. #plano:geral
+-> END
+
+// ─── São Paulo (At 27,9-13) ───
+
+=== creta_paulo ===
+{
+- tem("creta_conselho"): -> a_bordo
+- tem("creta_paulo_no_cais"): -> creta_conselho
+- tem("creta_paulo_conheceu"): -> a_caminho
+- else: -> encontro
+}
+
+= encontro
+paulo: A paz do Senhor esteja com você. Ouvi bater. #gesto:acolher #plano:perto
+paulo: Sou Paulo, de Tarso. Preso, como vê. Mas a Palavra de Deus não está acorrentada. #gesto:peito
+espirito: Ele mesmo escreveu isso, de outra prisão, anos depois (2Tm 2,9).
+* [O senhor estava rezando por quê?]
+    paulo: Pela viagem. Pelos duzentos e tantos que vão neste navio, presos e livres, romanos e gregos. #gesto:rezar
+    paulo: E para saber o que dizer. Dizer a coisa certa no tom errado é perder as duas.
+* [Por que o senhor está preso?]
+    paulo: Porque anunciei Jesus ressuscitado. Em Jerusalém quiseram me matar; apelei a César, e César me espera em Roma. #gesto:explicar
+    paulo: Não reclamo. Se é para lá que a Palavra precisa ir, que eu vá junto, nem que seja de corrente.
+* [Lucas disse que o senhor gosta de perguntas.]
+    paulo: Lucas me conhece bem demais. #gesto:sim
+    paulo: Gosto. Quem pergunta está procurando. E quem procura, acha.
+- paulo: Agora preciso ir ao cais. O centurião reuniu o piloto e o dono do navio para decidir se partimos. #gesto:explicar
+paulo: Eles querem ir. Eu tenho medo de que o mar não queira. Venha comigo, {g("meu irmão", "minha irmã")}.
+~ marcar("creta_paulo_conheceu")
+~ evento("paulo_ao_cais")
+espirito: Siga Paulo até o cais, junto à prancha do navio. #pausa:0.6
+-> END
+
+= a_caminho
+{ shuffle:
+- paulo: Vamos ao cais. Júlio não gosta de esperar, e o dono do navio menos ainda. #gesto:explicar
+- paulo: Ande comigo. A estrada fica mais curta quando se conversa. #gesto:acolher
+}
+-> END
+
+= a_bordo
+{ shuffle:
+- paulo: A decisão foi tomada. Agora cabe a nós ficar em paz, aconteça o que acontecer. #gesto:sim
+- paulo: Não tenha medo do mar. Tenha cuidado com o que o medo faz com a gente. #gesto:explicar
+- paulo: Rezei pelo piloto também. Ele não é mau: só confia demais no que sabe. #gesto:rezar
+}
+-> END
+
+=== creta_conselho ===
+espirito: O conselho se reúne no cais: o centurião, o dono do navio, o piloto e Paulo. #plano:geral
+julio: Muito bem. O tempo passa, o porto é ruim. Digam o que pensam. #gesto:explicar
+nauclero: Já disse cem vezes: Fênix! Um porto de verdade, a poucas horas daqui. #gesto:nao
+piloto: Com vento sul brando, contornamos o cabo. Lá passamos o inverno em segurança.
+espirito: Já se passara muito tempo, e navegar ficara perigoso: até o Jejum já tinha passado (At 27,9). #plano:geral
+paulo: Senhores, vejo que a viagem vai ser com avaria e grande prejuízo, não só para a carga e o navio, mas também para as nossas vidas. #gesto:triste #plano:perto
+espirito: São as palavras de Paulo, como Lucas as escreveu (At 27,10).
+nauclero: Um preso agora vai me ensinar a navegar?! #gesto:nao
+* [Apoiar Paulo, sem levantar a voz.]
+    espirito: Você fala devagar: o mar é traiçoeiro nesta estação, e o pescador da vila diz o mesmo. #plano:geral
+    nauclero: Mais um! Todo mundo virou marinheiro neste porto! #gesto:nao
+    julio: Deixe {g("o homem", "a mulher")} falar. Quem fala baixo, eu escuto. #gesto:sim
+    espirito: Viu? Você não convenceu o dono do navio, mas não lhe deu motivo para gritar mais. O conselho não força: oferece.
+    ~ marcar("creta_conselho_manso")
+* [Responder ao dono do navio no mesmo tom.]
+    espirito: Você levanta a voz: ele é que não sabe nada, que só pensa no dinheiro! #plano:geral
+    nauclero: Fora daqui! Quem manda neste navio sou eu! #gesto:nao
+    marinheiro: Isso, quem é esse aí para mandar no navio?! #gesto:nao
+    espirito: Repare: uma raiva acendeu a outra, e agora ninguém escuta ninguém. É assim que a Ira cresce: de boca em boca, como fogo em palha.
+    ~ marcar("creta_conselho_ira")
+* [Ficar em silêncio.]
+    paulo: ... #gesto:pensar
+    espirito: Calar às vezes é prudência. Hoje, Paulo ficou sozinho. Lembre-se disso: o conselho também pede coragem.
+    ~ marcar("creta_conselho_calado")
+- julio: Já ouvi bastante. #plano:geral
+espirito: Mas o centurião confiava mais no piloto e no dono do navio do que no que Paulo dizia (At 27,11).
+julio: Paulo, você é um homem sério, e eu o respeito. Mas o mar é ofício deles. Partimos. #gesto:explicar
+espirito: Como o porto não era bom para passar o inverno, a maioria foi de parecer que se partisse, para tentar chegar a Fênix, um porto de Creta voltado para o sudoeste e o noroeste (At 27,12).
+paulo: Seja feita a vontade de Deus. Eu vou com vocês. #gesto:rezar #plano:perto
+espirito: E, soprando brandamente o vento sul, julgaram ter alcançado o que queriam (At 27,13). #plano:geral
+~ evento("conselho")
+espirito: Paulo, Lucas e Aristarco já estão a bordo. Quando estiver pronto, embarque pela prancha. #pausa:0.6
+-> END
+
+=== creta_embarcar ===
+espirito: Daqui em diante é o mar. O vento sul está brando, e todos acham que chegarão a Fênix antes do anoitecer. #plano:geral
+espirito: Mas o vento que desce das montanhas não pediu licença a ninguém.
+espirito: (A viagem e a tempestade são a próxima parte do caminho, ainda em construção.)
 -> END
 
 // ─── A gente de Bons Portos ───

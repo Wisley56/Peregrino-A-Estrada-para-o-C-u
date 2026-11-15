@@ -14,6 +14,7 @@ export const FALANTES = {
   inscricao: { nome: 'Inscrição', estilo: 'inscricao' },
   placa: { nome: 'Placa', estilo: 'inscricao' },
   agostinho: { nome: 'Santo Agostinho' },
+  paulo: { nome: 'São Paulo' },
   julio: { nome: 'Júlio, o centurião' },
   soldado: { nome: 'Soldado romano' },
   piloto: { nome: 'O piloto' },

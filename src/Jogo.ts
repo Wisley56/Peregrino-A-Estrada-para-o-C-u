@@ -829,6 +829,7 @@ export class Jogo {
     }
     if (this.eventoDaCidade(nome)) return;
     if (this.eventoDaBahia(nome)) return;
+    if (this.eventoDeCreta(nome)) return;
     if (import.meta.env.DEV) console.warn(`[ink] evento desconhecido: ${nome}`);
   }
 
@@ -1305,6 +1306,24 @@ export class Jogo {
     }
   }
 
+  /** Creta já pôs cada um no seu lugar conforme as flags? (Refeito ao entrar e depois do conselho.) */
+  private cretaArrumada = false;
+
+  /** Efeitos pedidos pelo roteiro de Creta. Devolve true se o evento era daqui. */
+  private eventoDeCreta(nome: string) {
+    if (nome === 'paulo_ao_cais') {
+      this.creta.levarPauloAoCais();
+      return true;
+    }
+    // decidida a partida (At 27,12-13): Paulo e os companheiros embarcam quando a conversa acabar
+    if (nome === 'conselho') {
+      this.marcar('creta_conselho');
+      this.cretaArrumada = false;
+      return true;
+    }
+    return false;
+  }
+
   /** Efeitos pedidos pelo roteiro da Bahia. Devolve true se o evento era daqui. */
   private eventoDaBahia(nome: string) {
     if (nome === 'viajar_cidade' || nome === 'viajar_creta' || nome === 'viajar_bahia') {
@@ -1609,9 +1628,22 @@ export class Jogo {
   /** Creta: a gente do porto e de Laseia, a porta da casa onde Paulo reza e o barco de volta à Bahia. */
   private interacoesDeCreta(): Interacao[] {
     const k = this.creta;
+    const f = (x: string) => this.estado.flags.has(x);
+    k.aoChegarPaulo = () => this.marcar('creta_paulo_no_cais');
     return [
-      ...k.npcs.map((n) => this.falarCom(n)),
-      { pos: () => k.casaDePaulo, raio: 2.2, rotulo: 'F: bater à porta', agir: () => this.dialogos.tocar('creta_casa_paulo') },
+      ...k.npcs.map((n): Interacao => ({ ...this.falarCom(n), ativa: () => n.raiz.visible })),
+      // Paulo reza lá dentro; quem bate o faz abrir a porta
+      {
+        pos: () => k.casaDePaulo,
+        raio: 2.2,
+        ativa: () => !f('creta_paulo_conheceu'),
+        rotulo: 'F: bater à porta',
+        agir: () => this.dialogos.tocar('creta_casa_paulo', () => {
+          k.pauloNaPorta();
+          this.falarCom(k.paulo).agir();
+        }),
+      },
+      { pos: () => k.prancha, raio: 2.2, ativa: () => f('creta_conselho'), rotulo: 'F: embarcar com Paulo', agir: () => this.dialogos.tocar('creta_embarcar') },
       { pos: () => k.barcoDeVolta, raio: 3, rotulo: 'F: voltar de barco à Bahia', agir: () => this.dialogos.tocar('creta_barco_volta', () => this.fazerViagem()) },
     ];
   }
@@ -2334,6 +2366,10 @@ export class Jogo {
     this.avisoCouraca = Math.max(0, this.avisoCouraca - dt);
 
     this.atualizarProjeteis(dt);
+    if (this.area === this.creta && !this.cretaArrumada && !this.hud.dialogoAberto) {
+      this.cretaArrumada = true;
+      this.creta.arrumar((x) => this.estado.flags.has(x));
+    }
     this.area.atualizar?.(dt, per.pos);
 
     const chefe = this.chefeDaArea();
@@ -3046,6 +3082,7 @@ export class Jogo {
         ponto('Chegada (praia da enseada)', this.creta.chegada, sul), ponto('Ilhota (a nado)', this.creta.ilhota.clone().add(v(0, -10)), sul),
         ponto('Cais (prancha do navio)', this.creta.cais, -oeste), ponto('Convés do navio', this.creta.conves, sul),
         ponto('Casa de Paulo (Lucas e Aristarco)', this.creta.casaDePaulo.clone().add(v(0, 3))),
+        ponto('Prancha (conselho e embarque)', this.creta.prancha.clone().add(v(-2, -2)), -oeste),
         ponto('Laseia (porta)', this.creta.portaLaseia, -oeste), ponto('Laseia (praça)', this.creta.praca),
         ponto('Farol', this.creta.farol, -oeste), ponto('Cabana do pastor', this.creta.cabana),
       ] },

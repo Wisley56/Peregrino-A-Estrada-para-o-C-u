@@ -29,6 +29,12 @@ export interface FichaApostolica {
   maoEsquerda: Atributo;
   /** Fios grisalhos no cabelo e na barba (0 … 1). */
   grisalho?: number;
+  /** Pés descalços em vez das sandálias (Paulo, como nos ícones). */
+  descalco?: boolean;
+  /** As rugas da testa alta. */
+  rugas?: boolean;
+  /** A corrente do preso no pulso direito (At 28,20). */
+  corrente?: boolean;
 }
 
 /** Cor de fio de cabelo, com os grisalhos sorteados por posição. */
@@ -44,8 +50,14 @@ function fio(f: FichaApostolica) {
  * as costas e cruza a frente do corpo na diagonal, como nos ícones.
  */
 function corpo(m: Modelo, f: FichaApostolica) {
-  m.caixa(-2, 0, 0, 2, 1, 3, SANDALIA).caixa(1, 0, 0, 2, 1, 3, SANDALIA);
-  m.ponto(-1, 0, 2, f.pele).ponto(2, 0, 2, f.pele); // os dedos aparecendo na sandália
+  if (f.descalco) {
+    // os pés descalços, com os dedos marcados pela sombra
+    m.caixa(-2, 0, 0, 2, 1, 3, (x, y, z) => variar(f.pele, x, y, z, 0.03)).caixa(1, 0, 0, 2, 1, 3, (x, y, z) => variar(f.pele, x, y, z, 0.03));
+    m.ponto(-2, 0, 2, f.sombraPele).ponto(2, 0, 2, f.sombraPele);
+  } else {
+    m.caixa(-2, 0, 0, 2, 1, 3, SANDALIA).caixa(1, 0, 0, 2, 1, 3, SANDALIA);
+    m.ponto(-1, 0, 2, f.pele).ponto(2, 0, 2, f.pele); // os dedos aparecendo na sandália
+  }
   m.caixa(-3, 1, -2, 7, P - 1, 5, pano(f.tunica, 0.04));
   m.caixa(-3, 1, -2, 7, 1, 5, pano(f.tunica, 0.08)); // a barra
   if (f.clavo) m.caixa(-2, 2, 3, 1, P - 3, 1, f.clavo).caixa(2, 2, 3, 1, P - 3, 1, f.clavo);
@@ -83,6 +95,7 @@ function cabeca(f: FichaApostolica) {
     nuca(1);
     for (let x = 0; x < 6; x++) for (let z = 0; z < 3; z++) h.ponto(x, 6, z, fios(x, 6, z));
     h.ponto(2, 6, 3, fios(2, 6, 3)).ponto(3, 6, 3, fios(3, 6, 3));
+    if (f.rugas) h.caixa(1, 5, 5, 4, 1, 1, f.sombraPele); // a ruga funda da testa calva
   } else {
     nuca(2);
     h.caixa(0, 6, 0, 6, 1, 6, fios);
@@ -137,6 +150,11 @@ function bracos(f: FichaApostolica) {
   bd.caixa(-7, P - 9, 0, 2, 3, 4, pano(f.tunica, 0.04)); // o antebraço, dobrado para a frente
   bd.caixa(-7, P - 9, 4, 2, 2, 1, pele);
   atributo(bd, f.maoDireita, -7);
+  if (f.corrente) {
+    // a algema de ferro no pulso e os elos caindo dela
+    bd.caixa(-8, P - 8, 3, 4, 1, 2, 0x4a4c52);
+    for (let k = 0; k < 6; k++) bd.ponto(-8 + (k % 2), P - 10 - k, 5, k % 2 ? 0x6a6c72 : 0x3a3c42);
+  }
   const be = new Modelo();
   be.caixa(6, P - 6, -1, 2, 6, 3, pano(f.himacio, 0.05)); // o himácio cobre o braço esquerdo
   be.caixa(6, P - 9, 0, 2, 3, 4, pano(f.himacio, 0.05));
@@ -195,5 +213,23 @@ export const ARISTARCO: DefNpc = {
     montarApostolico({
       pele: 0xc89c76, sombraPele: 0xa67a56, cabelo: 0x5a4a3a, penteado: 'cheio', barba: 'longa', corBarba: 0x6a5a4a, grisalho: 0.45,
       tunica: 0xd8ccb0, himacio: 0x5a6a80, clavo: 0x8a2a24, maoDireita: 'nada', maoEsquerda: 'rolo',
+    }),
+};
+
+/**
+ * São Paulo Apóstolo, levado preso a Roma (At 27,1). Como na imagem de referência e nos ícones: calvo na frente, de
+ * testa alta e barba comprida castanha, túnica clara e himácio vermelho-terra, descalço, com a espada (do martírio)
+ * na mão direita e o livro (as cartas) na esquerda, e a auréola. Leva a corrente no pulso.
+ */
+export const PAULO: DefNpc = {
+  id: 'paulo',
+  falante: 'paulo',
+  no: 'creta_paulo',
+  rotulo: 'F: falar com São Paulo',
+  visual: () =>
+    montarApostolico({
+      pele: 0xc89470, sombraPele: 0xa0704e, cabelo: 0x5a3420, penteado: 'calvo_frente', barba: 'longa', corBarba: 0x6a3c22, grisalho: 0.12,
+      tunica: 0xe4dcc8, himacio: 0xa04a2a, clavo: 0x8a3a22, maoDireita: 'espada', maoEsquerda: 'livro',
+      descalco: true, rugas: true, corrente: true,
     }),
 };

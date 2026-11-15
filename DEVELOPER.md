@@ -298,7 +298,20 @@ os mantém (o save guarda o número do nível, não o nome).
   São Lucas e Santo Aristarco (`entidades/Companheiros.ts`, `montarApostolico`, que também servirá a São Paulo);
   o piloto, o dono do navio, marinheiros, presos, o pescador, a mulher do forno, a gente de Laseia e o pastor
   (`entidades/GenteDeCreta.ts`). Os diálogos estão em `dialogos/creta.ink`; a tripulação e o dono do navio já
-  mostram a impaciência que vira Ira na tempestade. Paulo ainda reza na casa da praia (`creta_casa_paulo`).
+  mostram a impaciência que vira Ira na tempestade.
+- **São Paulo** (`PAULO` em `entidades/Companheiros.ts`): calvo na frente, com a ruga da testa, barba comprida
+  castanha, túnica clara e himácio vermelho-terra, descalço, espada na direita e livro na esquerda, auréola e a
+  corrente do preso no pulso (as opções `descalco`, `rugas` e `corrente` da `FichaApostolica`).
+- **A história em Creta** (At 27,9-13), guardada em flags, com cada um posto no lugar por `Creta.arrumar` ao entrar
+  na área e depois do conselho:
+  1. Paulo reza na casa da praia. Quem bate à porta (`creta_casa_paulo`) o faz sair; o encontro (`creta_paulo`)
+     marca `creta_paulo_conheceu` e o evento `paulo_ao_cais` o faz descer andando (`Creta.levarPauloAoCais`).
+  2. Ao chegar à prancha, `creta_paulo_no_cais`. Falar com ele abre o conselho (`creta_conselho`): o aviso de
+     Paulo (At 27,10), e o peregrino escolhe apoiá-lo com mansidão, responder ao dono do navio no mesmo tom (a Ira)
+     ou calar (`creta_conselho_manso`, `_ira`, `_calado`, para usar adiante). O desfecho é o de Atos: o centurião
+     confia no piloto e no dono, e partem com o vento sul brando.
+  3. O evento `conselho` marca `creta_conselho`; Paulo, Lucas e Aristarco passam para o convés, e a prancha
+     oferece "embarcar com Paulo" (`creta_embarcar`), que por enquanto avisa que a tempestade vem na próxima parte.
 
 **O jardim de Santo Agostinho e a porta estreita** (Vale; o dom do Temor de Deus)
 
