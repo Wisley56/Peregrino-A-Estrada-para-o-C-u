@@ -266,7 +266,6 @@ espirito: Paulo, Lucas e Aristarco já estão a bordo. Quando estiver pronto, em
 === creta_embarcar ===
 espirito: Daqui em diante é o mar. O vento sul está brando, e todos acham que chegarão a Fênix antes do anoitecer. #plano:geral
 espirito: Mas o vento que desce das montanhas não pediu licença a ninguém.
-espirito: (A viagem e a tempestade são a próxima parte do caminho, ainda em construção.)
 -> END
 
 // ─── A gente de Bons Portos ───

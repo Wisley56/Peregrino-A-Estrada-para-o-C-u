@@ -14,7 +14,7 @@ function grao(freq: number, cor: string, alfa: number, semente: number) {
 }
 
 const nomeArea = (r: ResumoSave) =>
-  r.area === 'creta' ? 'Creta: Bons Portos' : r.area === 'bahiabaixa' || r.area === 'bahiaalta' ? 'Ruas da Bahia' : r.area === 'palacio' ? 'Palácio da Gula' : r.area === 'cidade' ? 'Cidade Dourada' : r.area === 'meiodia' ? 'Poço do Meio-Dia' : r.area === 'deserto' ? 'Deserto das Vozes' : r.area === 'cripta' ? 'A Cripta' : r.flags.has('veu_oeste') ? 'Passagem oeste' : r.flags.has('lamparina') ? 'O Vale · com a Lamparina' : 'O Vale';
+  r.area === 'creta' ? 'Creta: Bons Portos' : r.area === 'navio' ? 'O Mar da Tempestade' : r.area === 'bahiabaixa' || r.area === 'bahiaalta' ? 'Ruas da Bahia' : r.area === 'palacio' ? 'Palácio da Gula' : r.area === 'cidade' ? 'Cidade Dourada' : r.area === 'meiodia' ? 'Poço do Meio-Dia' : r.area === 'deserto' ? 'Deserto das Vozes' : r.area === 'cripta' ? 'A Cripta' : r.flags.has('veu_oeste') ? 'Passagem oeste' : r.flags.has('lamparina') ? 'O Vale · com a Lamparina' : 'O Vale';
 
 function tempoDeJogo(s: number) {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);

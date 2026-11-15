@@ -26,6 +26,8 @@ import { menino } from './entidades/Dulce';
 import { ENFERMOS, corpoDoEnfermo, enfermo, registrarRetratosDosEnfermos } from './entidades/Enfermos';
 import { BahiaAlta, BahiaBaixa } from './mundo/Bahia';
 import { Creta } from './mundo/Creta';
+import { etapaDoNavio, Tempestade, CARGAS } from './mundo/Tempestade';
+import { sacoDeTrigo } from './mundo/NavioModelos';
 import { ID_CORACAO } from './mundo/LargoDoCruzeiro';
 import { Banquete, type Ajudante, type IdAjudante } from './mundo/Banquete';
 import { Chefe } from './entidades/Guardiao';
@@ -46,7 +48,7 @@ import type { AreaDev, ChefeDev, GanchosDev, OpcoesDev } from './dev/tipos';
 
 const TOTAL_SOMBRAS_VALE = 5;
 
-const NOMES_AREA: Record<IdArea, string> = { vale: 'O Vale', cripta: 'A Cripta', deserto: 'Deserto das Vozes', meiodia: 'Poço do Meio-Dia', cidade: 'Cidade Dourada', palacio: 'Palácio da Gula', bahiabaixa: 'Bahia: Cidade Baixa', bahiaalta: 'Bahia: Cidade Alta', creta: 'Creta: Bons Portos' };
+const NOMES_AREA: Record<IdArea, string> = { vale: 'O Vale', cripta: 'A Cripta', deserto: 'Deserto das Vozes', meiodia: 'Poço do Meio-Dia', cidade: 'Cidade Dourada', palacio: 'Palácio da Gula', bahiabaixa: 'Bahia: Cidade Baixa', bahiaalta: 'Bahia: Cidade Alta', creta: 'Creta: Bons Portos', navio: 'O Mar da Tempestade' };
 const NOME_AJUDANTE: Record<IdAjudante, string> = { tomas: 'Tomás', rita: 'Rita', beppo: 'Beppo', leproso: 'o homem curado' };
 /** O que cada pobre diz quando o peregrino reparte com ele o peso do banquete. */
 const FALA_REPARTIR: Record<IdAjudante, string> = {
@@ -139,9 +141,10 @@ export class Jogo {
   private lamparinaAcesa = false;
   /** A fauna de cada região (só a da área atual aparece e se mexe). */
   private faunas = new Map<IdArea, Fauna>();
-  private interacoes: Record<IdArea, Interacao[]> = { vale: [], cripta: [], deserto: [], meiodia: [], cidade: [], palacio: [], bahiabaixa: [], bahiaalta: [], creta: [] };
+  private interacoes: Record<IdArea, Interacao[]> = { vale: [], cripta: [], deserto: [], meiodia: [], cidade: [], palacio: [], bahiabaixa: [], bahiaalta: [], creta: [], navio: [] };
   /** O Mar da Tempestade, primeira parte: a costa sul de Creta, em Bons Portos (At 27,8). */
   readonly creta = new Creta();
+  readonly navio = new Tempestade();
   readonly cidade = new Cidade();
   /** As Ruas da Bahia: a Cidade Baixa (com Itapagipe) e a Cidade Alta, ligadas pelo Elevador Lacerda. */
   readonly bahiaBaixa = new BahiaBaixa();
@@ -256,7 +259,7 @@ export class Jogo {
     this.sol.shadow.bias = -0.0006;
     this.sol.shadow.normalBias = 0.04;
     this.cena.add(this.sol, this.sol.target);
-    this.cena.add(this.mundo.grupo, this.deserto.grupo, this.meiodia.grupo, this.cidade.grupo, this.banquete.grupo, this.bahiaBaixa.grupo, this.bahiaAlta.grupo, this.creta.grupo, this.peregrino.raiz, this.pomba.raiz, this.coluna, this.flashLuz);
+    this.cena.add(this.mundo.grupo, this.deserto.grupo, this.meiodia.grupo, this.cidade.grupo, this.banquete.grupo, this.bahiaBaixa.grupo, this.bahiaAlta.grupo, this.creta.grupo, this.navio.grupo, this.peregrino.raiz, this.pomba.raiz, this.coluna, this.flashLuz);
     this.coluna.visible = false;
     this.aplicarGraficos();
 
@@ -346,7 +349,7 @@ export class Jogo {
 
   /** Cria a fauna de todas as regiões (a mesma distribuição em toda partida). */
   private async povoarFauna() {
-    const areas = [this.mundo, this.cripta, this.deserto, this.meiodia, this.cidade, this.bahiaBaixa, this.bahiaAlta, this.creta] as Area[];
+    const areas = [this.mundo, this.cripta, this.deserto, this.meiodia, this.cidade, this.bahiaBaixa, this.bahiaAlta, this.creta, this.navio] as Area[];
     await Promise.all(
       areas.map(async (a, i) => {
         const fauna = new Fauna(a);
@@ -514,6 +517,8 @@ export class Jogo {
     this.bahiaAlta.grupo.visible = this.area === this.bahiaAlta;
     const emCreta = this.area === this.creta;
     this.creta.grupo.visible = emCreta;
+    const noNavio = this.area === this.navio;
+    this.navio.grupo.visible = noNavio;
     for (const [id, fauna] of this.faunas) fauna.grupo.visible = id === this.area.id;
     this.ceu.visible = !naCripta;
     this.sol.visible = !naCripta;
@@ -562,6 +567,19 @@ export class Jogo {
       this.sol.intensity = 2.6;
       ceu.topo.value.setHex(0x4f8ad8);
       ceu.horizonte.value.setHex(0xf6d29a);
+    } else if (noNavio) {
+      // a tempestade: céu de chumbo, chuva que fecha o horizonte, e a noite de catorze dias; o relâmpago clareia tudo
+      const e = this.navio.escuridao, r = this.navio.relampago;
+      fog.color.setHex(0x6a747c).lerp(new THREE.Color(0x10161c), e).lerp(new THREE.Color(0xd8e0ea), r * 0.6);
+      fog.near = 18;
+      fog.far = 110 - e * 30;
+      this.hemi.color.setHex(0xb8c6d4);
+      this.hemi.groundColor.setHex(0x2a3238);
+      this.hemi.intensity = 1.05 - e * 0.62 + r * 1.4;
+      this.sol.color.setHex(0xc8d4e0);
+      this.sol.intensity = 0.7 - e * 0.55;
+      ceu.topo.value.setHex(0x3a424a).lerp(new THREE.Color(0x05080c), e).lerp(new THREE.Color(0xc0c8d8), r * 0.5);
+      ceu.horizonte.value.setHex(0x6a747c).lerp(new THREE.Color(0x141a20), e).lerp(new THREE.Color(0xd8e0ea), r * 0.5);
     } else if (emCreta) {
       // o fim do verão no Mediterrâneo: luz clara e seca, mar de um azul fundo, e o horizonte longe
       fog.color.setHex(0xd9e6ec);
@@ -619,11 +637,11 @@ export class Jogo {
   }
 
   private tipoAmbiente() {
-    return this.area === this.cripta ? 'cripta' : this.area === this.deserto || this.area === this.meiodia ? 'deserto' : null;
+    return this.area === this.cripta ? 'cripta' : this.area === this.deserto || this.area === this.meiodia ? 'deserto' : this.area === this.navio ? 'tempestade' : null;
   }
 
   private areaPorId(id: IdArea): Area {
-    return id === 'cripta' ? this.cripta : id === 'deserto' ? this.deserto : id === 'meiodia' ? this.meiodia : id === 'cidade' ? this.cidade : id === 'palacio' ? this.banquete : id === 'bahiabaixa' ? this.bahiaBaixa : id === 'bahiaalta' ? this.bahiaAlta : id === 'creta' ? this.creta : this.mundo;
+    return id === 'cripta' ? this.cripta : id === 'deserto' ? this.deserto : id === 'meiodia' ? this.meiodia : id === 'cidade' ? this.cidade : id === 'palacio' ? this.banquete : id === 'bahiabaixa' ? this.bahiaBaixa : id === 'bahiaalta' ? this.bahiaAlta : id === 'creta' ? this.creta : id === 'navio' ? this.navio : this.mundo;
   }
 
   private sombrasDoDesertoVencidas() {
@@ -636,7 +654,7 @@ export class Jogo {
     if (this.area === this.banquete) return 1; // o ouro falso da Gula brilha sempre
     if (this.area === this.bahiaBaixa || this.area === this.bahiaAlta) return this.corDaBahia();
     // o Mar da Tempestade só recupera a cor em Malta, depois do naufrágio
-    if (this.area === this.creta) return this.estado.flags.has('mar_restaurado') ? 1 : 0;
+    if (this.area === this.creta || this.area === this.navio) return this.estado.flags.has('mar_restaurado') ? 1 : 0;
     return this.area === this.deserto || this.area === this.meiodia ? this.sombrasDoDesertoVencidas() / TOTAL_SOMBRAS_DESERTO : this.estado.cor;
   }
 
@@ -830,6 +848,7 @@ export class Jogo {
     if (this.eventoDaCidade(nome)) return;
     if (this.eventoDaBahia(nome)) return;
     if (this.eventoDeCreta(nome)) return;
+    if (this.eventoDoNavio(nome)) return;
     if (import.meta.env.DEV) console.warn(`[ink] evento desconhecido: ${nome}`);
   }
 
@@ -1049,6 +1068,7 @@ export class Jogo {
     this.interacoes.bahiabaixa = this.interacoesDaBahiaBaixa();
     this.interacoes.bahiaalta = this.interacoesDaBahiaAlta();
     this.interacoes.creta = this.interacoesDeCreta();
+    this.interacoes.navio = this.interacoesDoNavio();
     for (const id of Object.keys(this.interacoes) as IdArea[]) this.interacoes[id].push(...this.interacoesDaFauna(id));
   }
 
@@ -1304,6 +1324,195 @@ export class Jogo {
         if (this.primeiraVez('creta_entrou')) this.dialogos.tocar('creta_chegada');
       });
     }
+  }
+
+  // ───────────── o navio na tempestade (At 27,14-38) ─────────────
+
+  /** O navio já pôs cada um no seu lugar para a etapa? (Refeito ao entrar e a cada etapa.) */
+  private navioArrumado = false;
+  /** A etapa cuja fala de abertura já tocou nesta sessão (para não repetir). */
+  private etapaAnunciada = '';
+  /** Há quanto tempo o peregrino está no mar, fora do navio (os marinheiros o puxam de volta). */
+  private noMarHa = 0;
+  /** O peregrino leva uma carga para lançar ao mar. */
+  private levandoCarga = false;
+
+  /** Sobe a bordo: o navio parte de Creta com o vento sul brando, e logo vem o Euraquilão. */
+  private embarcar() {
+    this.trocarArea(this.navio, this.navio.chegada, 0, () => {
+      this.navioArrumado = false;
+      this.etapaAnunciada = '';
+      if (this.primeiraVez('navio_entrou')) this.dialogos.tocar('navio_inicio');
+    });
+  }
+
+  /** O que o roteiro do navio pede. Devolve true se o evento era daqui. */
+  private eventoDoNavio(nome: string) {
+    const f = (x: string) => this.estado.flags.has(x);
+    const avancar = (flag: string) => {
+      this.marcar(flag);
+      this.navioArrumado = false;
+    };
+    if (nome === 'bote') avancar('navio_bote');
+    else if (nome === 'briga') {
+      if ([1, 2, 3].every((n) => f(`navio_briga_${n}`))) this.marcar('navio_brigas');
+      this.navioArrumado = false;
+    } else if (nome === 'anjo') avancar('navio_anjo');
+    else if (nome === 'sonda') avancar('navio_sonda');
+    else if (nome === 'cortar_bote') {
+      this.navio.soltarBote();
+      this.marcar('navio_fuga');
+      this.navioArrumado = false;
+    } else if (nome === 'pao') {
+      this.estado.restaurar();
+      this.som.graca();
+      this.efeitos.ouro = 0.8;
+      this.hud.anunciar('O pão partido: as forças voltam.', 2.5);
+    } else if (nome === 'amanhecer') avancar('navio_pao');
+    else return false;
+    return true;
+  }
+
+  /** A cada quadro no navio: arruma a etapa, toca a fala de abertura dela, e puxa de volta quem caiu no mar. */
+  private atualizarNavio(dt: number) {
+    const k = this.navio, per = this.peregrino;
+    const tem = (x: string) => this.estado.flags.has(x);
+    if (!this.navioArrumado && !this.hud.dialogoAberto && !this.transitando) {
+      this.navioArrumado = true;
+      k.arrumar(tem);
+    }
+    // a fala que abre cada etapa (as que não abrem com uma conversa do próprio peregrino)
+    const etapa = etapaDoNavio(tem);
+    if (etapa !== this.etapaAnunciada && !this.hud.dialogoAberto && !this.transitando && tem('navio_entrou')) {
+      this.etapaAnunciada = etapa;
+      const no = { anjo: 'navio_anjo', fuga: 'navio_fuga_vista', pao: 'navio_pao' }[etapa as string];
+      if (no && this.primeiraVez(`${no}_tocou`)) {
+        if (etapa === 'anjo' || etapa === 'pao') {
+          const p = k.paulo;
+          p.falando = true;
+          this.interlocutor = p;
+          this.dialogos.tocar(no, () => (p.falando = false));
+        } else this.dialogos.tocar(no);
+      }
+    }
+    // caiu no mar: os marinheiros jogam um cabo e o puxam de volta
+    if (per.nadando && !this.transitando) {
+      this.noMarHa += dt;
+      if (this.noMarHa > 1.6) {
+        this.noMarHa = 0;
+        this.levandoCarga = false;
+        per.carregar(null);
+        this.hud.anunciar('Os marinheiros jogam um cabo e puxam você de volta a bordo.', 3);
+        this.trocarArea(k, k.chegada, 0);
+      }
+    } else this.noMarHa = 0;
+    k.pausa = this.hud.dialogoAberto || this.transitando;
+  }
+
+  /** Interações a bordo: a gente, o bote, os cabos, a carga, as brigas, a sonda e as âncoras. */
+  private interacoesDoNavio(): Interacao[] {
+    const k = this.navio, per = this.peregrino;
+    const f = (x: string) => this.estado.flags.has(x);
+    const etapa = () => etapaDoNavio(f);
+    k.aoTrovejar = () => this.som.trovao();
+    k.aoAvisarOnda = () => this.hud.anunciar('Uma onda vem pelo través! Segure-se junto ao mastro!', 2);
+    k.aoQuebrarOnda = (lado) => {
+      this.som.vagalhao();
+      if (this.area !== k || k.pertoDoMastro(per.pos) < 2.4) return;
+      per.empurrao.set(lado * 7.5, 0, -2);
+    };
+    const cabos = [0, 1, 2].map((i): Interacao => ({
+      pos: () => k.pontoDoCabo(i),
+      raio: 1.8,
+      ativa: () => etapa() === 'cintar' && !f(`navio_cabo_${i + 1}`),
+      rotulo: 'F: passar o cabo por baixo do casco',
+      agir: () => {
+        this.marcar(`navio_cabo_${i + 1}`);
+        this.som.corrente();
+        this.navioArrumado = false;
+        if ([1, 2, 3].every((n) => f(`navio_cabo_${n}`))) {
+          this.marcar('navio_cintado');
+          this.dialogos.tocar('navio_cintado');
+        } else this.hud.anunciar('O cabo passa por baixo do casco e é esticado de borda a borda.', 2);
+      },
+    }));
+    const brigas = [0, 1, 2].map((i): Interacao => ({
+      pos: () => k.centroDaBriga(i),
+      raio: 2.2,
+      ativa: () => etapa() === 'brigas' && !f(`navio_briga_${i + 1}`),
+      rotulo: 'F: separar a briga',
+      agir: () => {
+        const [a, b] = k.brigas[i];
+        a.falando = b.falando = true;
+        this.interlocutor = a;
+        this.dialogos.tocar(`navio_briga_${i + 1}`, () => (a.falando = b.falando = false));
+      },
+    }));
+    const ancoras = [0, 1, 2, 3].map((i): Interacao => ({
+      pos: () => k.pontoDaAncora(i),
+      raio: 1.3,
+      ativa: () => etapa() === 'ancoras' && !f(`navio_ancora_${i + 1}`),
+      rotulo: 'F: lançar a âncora da popa',
+      agir: () => {
+        this.marcar(`navio_ancora_${i + 1}`);
+        this.som.corrente();
+        this.som.respingo();
+        this.navioArrumado = false;
+        if ([1, 2, 3, 4].every((n) => f(`navio_ancora_${n}`))) {
+          this.marcar('navio_ancoras');
+          this.dialogos.tocar('navio_ancoras_feitas');
+        } else this.hud.anunciar(`A âncora desce para o fundo. (${[1, 2, 3, 4].filter((n) => f(`navio_ancora_${n}`)).length} de 4)`, 2);
+      },
+    }));
+    return [
+      ...k.npcs.map((n): Interacao => ({ ...this.falarCom(n), ativa: () => n.raiz.visible && !(etapa() === 'brigas' && k.brigas.flat().includes(n)) })),
+      {
+        pos: () => k.cabosDoBote,
+        raio: 2,
+        ativa: () => etapa() === 'bote',
+        rotulo: 'F: puxar o cabo do bote',
+        agir: () => this.dialogos.tocar('navio_bote'),
+      },
+      ...cabos,
+      // a carga: pegar na pilha e lançar pela borda
+      {
+        pos: () => k.pilha,
+        raio: 1.6,
+        ativa: () => etapa() === 'carga' && !this.levandoCarga,
+        rotulo: 'F: pegar a carga',
+        agir: () => {
+          this.levandoCarga = true;
+          per.carregar(sacoDeTrigo(7));
+        },
+      },
+      {
+        pos: () => k.bordaPerto(per.pos),
+        raio: 1.4,
+        ativa: () => this.levandoCarga,
+        rotulo: 'F: lançar a carga ao mar',
+        agir: () => {
+          this.levandoCarga = false;
+          per.carregar(null);
+          this.som.respingo();
+          const n = [1, 2, 3, 4, 5].filter((x) => f(`navio_lancou_${x}`)).length + 1;
+          this.marcar(`navio_lancou_${n}`);
+          this.navioArrumado = false;
+          if (n >= CARGAS) {
+            this.marcar('navio_carga');
+            this.dialogos.tocar('navio_carga_feita');
+          } else this.hud.anunciar(`A carga some nas ondas. (${n} de ${CARGAS})`, 2);
+        },
+      },
+      ...brigas,
+      {
+        pos: () => k.proa,
+        raio: 2,
+        ativa: () => etapa() === 'sonda',
+        rotulo: 'F: lançar a sonda',
+        agir: () => this.dialogos.tocar(f('navio_sonda_1') ? 'navio_sonda' : 'navio_sonda_1'),
+      },
+      ...ancoras,
+    ];
   }
 
   /** Creta já pôs cada um no seu lugar conforme as flags? (Refeito ao entrar e depois do conselho.) */
@@ -1643,7 +1852,13 @@ export class Jogo {
           this.falarCom(k.paulo).agir();
         }),
       },
-      { pos: () => k.prancha, raio: 2.2, ativa: () => f('creta_conselho'), rotulo: 'F: embarcar com Paulo', agir: () => this.dialogos.tocar('creta_embarcar') },
+      {
+        pos: () => k.prancha,
+        raio: 2.2,
+        ativa: () => f('creta_conselho'),
+        rotulo: 'F: embarcar com Paulo',
+        agir: () => this.dialogos.tocar('creta_embarcar', () => this.embarcar()),
+      },
       { pos: () => k.barcoDeVolta, raio: 3, rotulo: 'F: voltar de barco à Bahia', agir: () => this.dialogos.tocar('creta_barco_volta', () => this.fazerViagem()) },
     ];
   }
@@ -2208,11 +2423,12 @@ export class Jogo {
     const alturaCam = naCapela ? (x: number, z: number) => cap!.alturaCamera(x, z, chao) : noHospital ? (x: number, z: number) => hosp!.alturaCamera(x, z, chao) : chao;
     this.camera.atualizar(dt, this.peregrino.pos, alvoCam, alturaCam);
     if (this.comecou) this.atualizarConversa(dt, alturaCam);
+    if (this.area === this.navio) this.navio.balancar(this.camera.cam);
     if (this.modoCriacao) this.quadroCriacao(dt);
     this.hud.posicionarMira(this.travado ? this.travado.centro().add(new THREE.Vector3(0, 0.9, 0)) : null, this.camera.cam);
     this.atualizarMiraLivre(dt);
     const cor = this.corVisivel(dt);
-    this.hud.atualizar(dt, this.estado, cor, this.area === this.cidade || this.area === this.banquete ? 'Cor da Cidade' : this.area === this.bahiaBaixa || this.area === this.bahiaAlta ? 'Cor da Bahia' : this.area === this.creta ? 'Cor do Mar' : this.area === this.deserto || this.area === this.meiodia ? 'Cor do Deserto' : 'Cor do Vale');
+    this.hud.atualizar(dt, this.estado, cor, this.area === this.cidade || this.area === this.banquete ? 'Cor da Cidade' : this.area === this.bahiaBaixa || this.area === this.bahiaAlta ? 'Cor da Bahia' : this.area === this.creta || this.area === this.navio ? 'Cor do Mar' : this.area === this.deserto || this.area === this.meiodia ? 'Cor do Deserto' : 'Cor do Vale');
 
     // sol acompanha o peregrino para a sombra ficar nítida por perto
     const p = this.peregrino.pos;
@@ -2366,6 +2582,7 @@ export class Jogo {
     this.avisoCouraca = Math.max(0, this.avisoCouraca - dt);
 
     this.atualizarProjeteis(dt);
+    if (this.area === this.navio) this.atualizarNavio(dt);
     if (this.area === this.creta && !this.cretaArrumada && !this.hud.dialogoAberto) {
       this.cretaArrumada = true;
       this.creta.arrumar((x) => this.estado.flags.has(x));
@@ -3086,6 +3303,7 @@ export class Jogo {
         ponto('Laseia (porta)', this.creta.portaLaseia, -oeste), ponto('Laseia (praça)', this.creta.praca),
         ponto('Farol', this.creta.farol, -oeste), ponto('Cabana do pastor', this.creta.cabana),
       ] },
+      { id: 'navio', nome: NOMES_AREA.navio, pontos: [ponto('Convés (junto ao mastro)', this.navio.chegada, sul), ponto('Popa (o bote)', this.navio.cabosDoBote.clone().add(v(0, 2)), norte), ponto('Proa (a sonda)', this.navio.proa.clone().add(v(0, -2)), sul)] },
     ];
     /** Desfaz uma vitória: tira a sombra das vencidas e as flags que ela deixou. */
     const desvencer = (id: string, ...flags: string[]) => {

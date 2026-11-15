@@ -31,10 +31,14 @@ export class Oceano {
   amplitude = 1.6;
   /** 0 calmaria … 1 tempestade. */
   intensidade = 0.18;
+  /** O mar correndo (m/s): o navio fica parado e a água passa por ele, como se ele navegasse. */
+  readonly deriva = new THREE.Vector2();
   private t = 0;
+  private readonly desloc = new THREE.Vector2();
   private readonly uniforms = {
     uTempo: { value: 0 },
     uAmplitude: { value: 0 },
+    uDesloc: { value: new THREE.Vector2() },
     uEspuma: { value: new THREE.Color(0xeef4f2) },
   };
 
@@ -57,6 +61,7 @@ export class Oceano {
           `#include <common>
           uniform float uTempo;
           uniform float uAmplitude;
+          uniform vec2 uDesloc;
           varying float vOnda;
           float onda(vec2 p) { return ${ondas.join(' + ')}; }`,
         )
@@ -64,7 +69,7 @@ export class Oceano {
           '#include <begin_vertex>',
           `#include <begin_vertex>
           vec2 pMundo = (modelMatrix * vec4(transformed, 1.0)).xz;
-          vOnda = onda(pMundo);
+          vOnda = onda(pMundo + uDesloc);
           transformed.y += vOnda * uAmplitude;`,
         );
       s.fragmentShader = s.fragmentShader
@@ -89,6 +94,8 @@ export class Oceano {
 
   /** A altura da superfície em (x, z) agora, com as ondas. */
   altura(x: number, z: number) {
+    x += this.desloc.x;
+    z += this.desloc.y;
     let s = 0;
     for (const [l, d, w, p] of ONDAS) s += (p / PESO_TOTAL) * Math.sin((x * Math.sin(d) + z * Math.cos(d)) * ((Math.PI * 2) / l) - this.t * w);
     return this.nivel + s * this.amplitudeAtual;
@@ -101,6 +108,8 @@ export class Oceano {
   /** Avança as ondas e traz a grade para perto de quem olha. */
   atualizar(dt: number, centro: THREE.Vector3) {
     this.t += dt;
+    this.desloc.addScaledVector(this.deriva, dt);
+    this.uniforms.uDesloc.value.copy(this.desloc);
     this.uniforms.uTempo.value = this.t;
     this.uniforms.uAmplitude.value = this.amplitudeAtual;
     this.malha.position.x = Math.round(centro.x / PASSO) * PASSO;

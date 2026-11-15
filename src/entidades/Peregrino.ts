@@ -356,6 +356,9 @@ export class Peregrino {
   /**
    * Leva um objeto no ombro (a pedra de São Damião) ou alguém nas costas (os enfermos da Bahia); `null` larga.
    */
+  /** Velocidade vinda de fora (m/s), que se desfaz sozinha: a onda que varre o convés do navio. */
+  readonly empurrao = new THREE.Vector3();
+
   carregar(obj: THREE.Object3D | null, lugar: 'ombro' | 'costas' = 'ombro') {
     if (this.carga) this.corpo.remove(this.carga);
     this.carga = obj;
@@ -459,6 +462,10 @@ export class Peregrino {
       vz *= 0.55;
     }
 
+    // um empurrão de fora (a onda que varre o convés): passa pela mesma física, e as paredes o param
+    vx += this.empurrao.x;
+    vz += this.empurrao.z;
+    this.empurrao.multiplyScalar(Math.max(0, 1 - dt * 2.2));
     this.velocidadeHoriz = Math.hypot(vx, vz);
 
     // movimento por eixo, com degrau de até 1 bloco. Nadando, sobe-se à margem que fique até 0,6 m acima da água.

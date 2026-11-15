@@ -105,7 +105,7 @@ export class Som {
   private ambiente: { tipo: string; para: () => void } | null = null;
 
   /** Som de fundo contínuo da área: a cripta (zumbido grave e vento) ou o deserto (vento em rajadas). */
-  ambienteDe(tipo: 'cripta' | 'deserto' | null) {
+  ambienteDe(tipo: 'cripta' | 'deserto' | 'tempestade' | null) {
     if (!this.ctx || !this.mestre) return;
     if ((this.ambiente?.tipo ?? null) === tipo) return;
     this.ambiente?.para();
@@ -117,7 +117,7 @@ export class Som {
     g.gain.exponentialRampToValueAtTime(0.5, ctx.currentTime + 2.5);
     g.connect(this.mestre);
     const fontes: AudioScheduledSourceNode[] = [];
-    const drones: [number, number][] = tipo === 'cripta' ? [[55, 0.05], [82.4, 0.025], [110.3, 0.012]] : [[98, 0.012], [147, 0.006]];
+    const drones: [number, number][] = tipo === 'cripta' ? [[55, 0.05], [82.4, 0.025], [110.3, 0.012]] : tipo === 'tempestade' ? [[41, 0.05], [61.7, 0.025]] : [[98, 0.012], [147, 0.006]];
     for (const [f, v] of drones) {
       const o = ctx.createOscillator();
       o.type = 'sine';
@@ -144,15 +144,15 @@ export class Som {
     vento.loop = true;
     const filtro = ctx.createBiquadFilter();
     filtro.type = 'bandpass';
-    filtro.frequency.value = tipo === 'cripta' ? 240 : 520;
-    filtro.Q.value = tipo === 'cripta' ? 0.8 : 0.6;
+    filtro.frequency.value = tipo === 'cripta' ? 240 : tipo === 'tempestade' ? 420 : 520;
+    filtro.Q.value = tipo === 'cripta' ? 0.8 : tipo === 'tempestade' ? 0.45 : 0.6;
     const vg = ctx.createGain();
-    vg.gain.value = tipo === 'cripta' ? 0.05 : 0.07;
-    if (tipo === 'deserto') {
+    vg.gain.value = tipo === 'cripta' ? 0.05 : tipo === 'tempestade' ? 0.16 : 0.07;
+    if (tipo === 'deserto' || tipo === 'tempestade') {
       const rajada = ctx.createOscillator();
-      rajada.frequency.value = 0.11;
+      rajada.frequency.value = tipo === 'tempestade' ? 0.19 : 0.11;
       const rp = ctx.createGain();
-      rp.gain.value = 0.045;
+      rp.gain.value = tipo === 'tempestade' ? 0.1 : 0.045;
       rajada.connect(rp).connect(vg.gain);
       const assobio = ctx.createOscillator();
       assobio.frequency.value = 0.05;
@@ -177,6 +177,11 @@ export class Som {
       },
     };
   }
+
+  /** O trovão: um estalo e o ronco longo e grave que rola depois. */
+  trovao() { this.ruido(0.35, 0.35, 1400); this.ruido(2.6, 0.6, 130); this.tom(46, 2.2, 'sawtooth', 0.07, 31); }
+  /** A onda que quebra no convés. */
+  vagalhao() { this.ruido(1.6, 0.5, 600); this.ruido(0.8, 0.3, 2400); }
 
   /** Voz de miragem: sopro com um tom baixo e desafinado. */
   sussurro() {

@@ -269,8 +269,11 @@ function cordame() {
   return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x4a3a28 }));
 }
 
-/** O navio inteiro. `aberta`: as velas soltas (no mar); recolhidas, no porto. O bote vem à parte (`bote`). */
-export function navioAlexandrino(aberta: boolean) {
+/**
+ * O navio inteiro. `aberta`: as velas soltas (no mar); recolhidas, no porto. O bote vem à parte (`bote`).
+ * `comCarga`: as ânforas, os sacos e as âncoras de enfeite (na tempestade, quem os põe é a área, que os lança ao mar).
+ */
+export function navioAlexandrino(aberta: boolean, comCarga = true) {
   const g = new THREE.Group();
   g.add(casco(), mastroEVela(aberta), artemao(aberta), cordame());
   for (const lado of [-1, 1]) {
@@ -299,7 +302,7 @@ export function navioAlexandrino(aberta: boolean) {
     a.rotation.y = 0.3 - i * 0.6;
     carga.add(a);
   }
-  g.add(carga);
+  if (comCarga) g.add(carga);
   g.traverse((o) => {
     if ((o as THREE.Mesh).isMesh) {
       o.castShadow = true;

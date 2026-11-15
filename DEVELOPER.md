@@ -262,6 +262,7 @@ os mantém (o save guarda o número do nível, não o nome).
 | Bahia: Cidade Baixa | `mundo/Bahia.ts` (`BahiaBaixa`) | Comércio, Mercado Modelo, Elevador Lacerda, Largo de Roma (convento e galinheiro), o Bonfim, os Alagados |
 | Bahia: Cidade Alta | `mundo/Bahia.ts` (`BahiaAlta`) | Praça Tomé de Sousa, Terreiro de Jesus, Largo do Cruzeiro (arena), ladeira e Largo do Pelourinho |
 | Creta: Bons Portos | `mundo/Creta.ts` | Mar da Tempestade, 1ª parte (em construção): costa sul de Creta em blocos, enseada com ilhotas, mar aberto com o `Oceano`; o cais com o navio de Alexandria atracado, a vila de Bons Portos, a estrada das colinas até Laseia (murada, com praça, fonte e pórtico), o farol e a cabana do pastor |
+| O Mar da Tempestade | `mundo/Tempestade.ts` | Mar da Tempestade, 2ª parte: o convés do navio de Alexandria no Euroaquilão, de noite e sob chuva, com mar alto, relâmpagos e ondas que varrem o convés (At 27,14-38) |
 
 **A natação** (`entidades/Peregrino.ts`)
 
@@ -311,7 +312,39 @@ os mantém (o save guarda o número do nível, não o nome).
      ou calar (`creta_conselho_manso`, `_ira`, `_calado`, para usar adiante). O desfecho é o de Atos: o centurião
      confia no piloto e no dono, e partem com o vento sul brando.
   3. O evento `conselho` marca `creta_conselho`; Paulo, Lucas e Aristarco passam para o convés, e a prancha
-     oferece "embarcar com Paulo" (`creta_embarcar`), que por enquanto avisa que a tempestade vem na próxima parte.
+     oferece "embarcar com Paulo" (`creta_embarcar`), e `Jogo.embarcar` leva à área `navio`.
+
+**O navio na tempestade** (Mar da Tempestade, At 27,14-38; `mundo/Tempestade.ts`, `dialogos/navio.ink`)
+
+- **A ilusão do mar**: o navio fica parado no mundo (`ORIGEM_NAVIO`, longe de tudo) e o mar passa por ele.
+  `Oceano.deriva` (m/s) acumula um deslocamento que o shader soma às ondas (`uDesloc`) e que `Oceano.altura`
+  repete, para a física e a natação baterem com o que se vê. A câmera joga e arfa com o mar
+  (`Tempestade.balancar(cam)`, chamado depois de `atualizarConversa`).
+- **O céu**: `Tempestade.escuridao` (0 a 1, por etapa) e `relampago` (o clarão que decai) entram no ramo
+  `noNavio` de `Jogo.aplicarAmbiente`, que mistura névoa, luz e céu. A chuva é um `LineSegments` de 1400 gotas
+  que segue o jogador. Som: `Som.ambienteDe('tempestade')` (drones graves e vento com rajadas), `trovao()` e
+  `vagalhao()`.
+- **As ondas no convés**: de 16 a 28 s, com aviso 2,2 s antes (`aoAvisarOnda`), uma onda quebra de um bordo
+  (`aoQuebrarOnda(lado)`) e empurra o peregrino por `Peregrino.empurrao`, uma velocidade de fora que se desfaz
+  sozinha e passa pela colisão normal (a borda falsa o segura). Agarrado ao mastro (até 2,4 m) não é empurrado.
+  Quem cai no mar é tirado da água depois de 1,6 s (`Jogo.atualizarNavio`). Nada disso corre durante conversa
+  ou transição (`Tempestade.pausa`).
+- **As etapas** (`EtapaNavio`, `etapaDoNavio(tem)` lê as flags em ordem), e `Tempestade.arrumar` põe cada um no
+  lugar quando `Jogo.navioArrumado` cai para `false`:
+  1. `bote`: puxar o bote que vem a reboque (`navio_bote`, At 27,16).
+  2. `cintar`: passar os três cabos por baixo do casco (`navio_cintado`, At 27,17).
+  3. `carga`: levar os cinco sacos de trigo (`CARGAS`) até a borda e lançá-los (`navio_carga`, At 27,18-19).
+  4. `brigas`: três pares de marinheiros brigam pelo medo. A resposta mansa apazigua; a ríspida (`navio_gritou`)
+     não resolve. Os três apaziguados marcam `navio_brigas`; é o primeiro contato com a Ira.
+  5. `anjo`: Paulo de pé no meio deles conta a visão do anjo (`navio_anjo`, At 27,21-26), tocado sozinho.
+  6. `sonda`: lançar a sonda duas vezes, 20 e 15 braças (`navio_sonda`, At 27,27-28).
+  7. `ancoras`: soltar as quatro âncoras da popa (`navio_ancoras`, At 27,29).
+  8. `fuga`: os marinheiros descem o bote para fugir; falar com Paulo leva ao aviso a Júlio e aos soldados que
+     cortam os cabos (`Tempestade.soltarBote`, `navio_fuga`, At 27,30-32).
+  9. `pao`: todos em roda do mastro; Paulo dá graças e parte o pão (`navio_pao`, At 27,33-38), que restaura a vida.
+  10. `amanhecer`: o fim por enquanto; o naufrágio e a Ira vêm na próxima parte.
+- Os nós que tocam sozinhos (`navio_anjo`, `navio_fuga_vista`, `navio_pao`) tocam uma vez cada
+  (`primeiraVez(no + '_tocou')`). Os eventos do roteiro chegam a `Jogo.eventoDoNavio`.
 
 **O jardim de Santo Agostinho e a porta estreita** (Vale; o dom do Temor de Deus)
 
