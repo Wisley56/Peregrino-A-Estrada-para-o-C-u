@@ -152,7 +152,8 @@ export class Terreno {
 /**
  * Malha de colunas de voxel (1 m) a partir de um mapa de alturas `tam`×`tam`, centrado na origem.
  * `corLado` recebe a profundidade abaixo do topo (0 = a primeira camada) e a cor do topo.
- * Paredes mais fundas que `profundidadeMax` ficam abertas embaixo (ninguém as vê).
+ * Paredes mais fundas que `profundidadeMax` ficam abertas embaixo (ninguém as vê); as da borda do mapa descem
+ * inteiras até o nível 0, porque de fora (do mar, de quem pulou do penhasco) se vê o paredão todo.
  */
 export function malhaDeColunas(
   tam: number,
@@ -223,8 +224,9 @@ function geometriaDeColunas(
       for (let k = 0; k < 4; k++) v[k] = [x + topo.v[k][0], a, z + topo.v[k][2]];
       b.quad(v, topo.n, cor, 1, ocluir(cheio, [i, a, j], 1, topo.v, ao));
       for (const f of laterais) {
-        const hv = i + f.n[0] < 0 || j + f.n[2] < 0 || i + f.n[0] >= tam || j + f.n[2] >= tam ? 0 : h(i + f.n[0], j + f.n[2]);
-        for (let y = Math.max(hv, a - profundidadeMax); y < a; y++) {
+        const fora = i + f.n[0] < 0 || j + f.n[2] < 0 || i + f.n[0] >= tam || j + f.n[2] >= tam;
+        const hv = fora ? 0 : h(i + f.n[0], j + f.n[2]);
+        for (let y = fora ? hv : Math.max(hv, a - profundidadeMax); y < a; y++) {
           cor.setHex(corLado(i, y, j, a - 1 - y, hexTopo));
           for (let k = 0; k < 4; k++) v[k] = [x + f.v[k][0], y + f.v[k][1], z + f.v[k][2]];
           b.quad(v, f.n, cor, f.sombra, ocluir(cheio, [i + f.n[0], y, j + f.n[2]], f.n[0] ? 0 : 2, f.v, ao));

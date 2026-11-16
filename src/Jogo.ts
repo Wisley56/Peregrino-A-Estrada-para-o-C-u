@@ -2918,7 +2918,9 @@ export class Jogo {
       this.camera.distancia += (alvo - this.camera.distancia) * Math.min(1, dt * 3);
     }
     const area = this.area;
-    const chao = area.alturaCamera ? (x: number, z: number) => area.alturaCamera!(x, z) : (x: number, z: number) => area.altura(x, z);
+    const solo = area.alturaCamera ? (x: number, z: number) => area.alturaCamera!(x, z) : (x: number, z: number) => area.altura(x, z);
+    // a superfície da água também segura a câmera: ela nunca mergulha (debaixo do mar se veria o terreno por baixo)
+    const chao = area.nivelAgua ? (x: number, z: number) => Math.max(solo(x, z), area.nivelAgua!(x, z) ?? -Infinity) : solo;
     const alturaCam = naCapela ? (x: number, z: number) => cap!.alturaCamera(x, z, chao) : noHospital ? (x: number, z: number) => hosp!.alturaCamera(x, z, chao) : chao;
     this.camera.atualizar(dt, this.peregrino.pos, alvoCam, alturaCam);
     if (this.comecou) this.atualizarConversa(dt, alturaCam);
