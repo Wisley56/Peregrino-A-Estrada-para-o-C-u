@@ -161,6 +161,50 @@ export function malhaDeColunas(
   corLado: (i: number, y: number, j: number, prof: number, topo: number) => number,
   profundidadeMax = 6,
 ) {
+  const m = new THREE.Mesh(geometriaDeColunas(tam, 0, tam, 0, tam, h, corTopo, corLado, profundidadeMax), new THREE.MeshLambertMaterial({ vertexColors: true }));
+  m.receiveShadow = true;
+  return m;
+}
+
+/**
+ * O mesmo terreno de `malhaDeColunas`, partido em blocos de `bloco`×`bloco` colunas (um grupo com uma malha por
+ * bloco, todas com o mesmo material). Para os mapas grandes: o renderizador só desenha os blocos que a câmera vê,
+ * e cada bloco tem a sua esfera envolvente. O grupo se posiciona como a malha única (centrado na origem).
+ */
+export function blocosDeColunas(
+  tam: number,
+  h: (i: number, j: number) => number,
+  corTopo: (i: number, j: number, h: number) => number,
+  corLado: (i: number, y: number, j: number, prof: number, topo: number) => number,
+  profundidadeMax = 6,
+  bloco = 48,
+) {
+  const grupo = new THREE.Group();
+  const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+  for (let i0 = 0; i0 < tam; i0 += bloco)
+    for (let j0 = 0; j0 < tam; j0 += bloco) {
+      const g = geometriaDeColunas(tam, i0, Math.min(tam, i0 + bloco), j0, Math.min(tam, j0 + bloco), h, corTopo, corLado, profundidadeMax);
+      g.computeBoundingSphere();
+      const m = new THREE.Mesh(g, material);
+      m.receiveShadow = true;
+      m.matrixAutoUpdate = false;
+      grupo.add(m);
+    }
+  return grupo;
+}
+
+/** As colunas do retângulo [i0, i1) × [j0, j1) de um mapa `tam`×`tam` (vizinhos de fora do retângulo contam na oclusão). */
+function geometriaDeColunas(
+  tam: number,
+  i0: number,
+  i1: number,
+  j0: number,
+  j1: number,
+  h: (i: number, j: number) => number,
+  corTopo: (i: number, j: number, h: number) => number,
+  corLado: (i: number, y: number, j: number, prof: number, topo: number) => number,
+  profundidadeMax: number,
+) {
   const meta = tam / 2;
   const b = new ConstrutorMalha();
   const cor = new THREE.Color();
@@ -170,8 +214,8 @@ export function malhaDeColunas(
   // um bloco existe na coluna (i, j) abaixo da altura dela; fora do mapa, só o chão (y < 0)
   const cheio = (i: number, y: number, j: number) => (i < 0 || j < 0 || i >= tam || j >= tam ? y < 0 : y < h(i, j));
   const ao = [0, 0, 0, 0];
-  for (let i = 0; i < tam; i++)
-    for (let j = 0; j < tam; j++) {
+  for (let i = i0; i < i1; i++)
+    for (let j = j0; j < j1; j++) {
       const a = h(i, j);
       const hexTopo = corTopo(i, j, a);
       const x = i - meta, z = j - meta;
@@ -187,7 +231,5 @@ export function malhaDeColunas(
         }
       }
     }
-  const m = new THREE.Mesh(b.geometria(), new THREE.MeshLambertMaterial({ vertexColors: true }));
-  m.receiveShadow = true;
-  return m;
+  return b.geometria();
 }

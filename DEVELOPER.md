@@ -37,7 +37,7 @@ Parâmetros de URL para testes:
 
 - `?idade=jovem|adulto|idoso` força a idade do peregrino (teste do envelhecimento).
 - `?teste` abre uma sessão de teste sem save, pulando o menu; `?teste=palacio` (ou `cripta`, `deserto`, `meiodia`,
-  `cidade`, `bahiabaixa`, `bahiaalta`) já começa na área. Só no modo dev.
+  `cidade`, `bahiabaixa`, `bahiaalta`, `creta`) já começa na área. Só no modo dev.
 
 O protótipo 2D anterior (Phaser) continua em `../jogo`, como referência de sistemas e de narrativa.
 
@@ -99,12 +99,12 @@ src/
              Humano (gente do povo montada a partir de um figurino)
   dialogos/  roteiros Ink (.ink): peregrino.ink inclui um arquivo por região
   dialogo/   Dialogos (executa o Ink), Falantes (quem fala e com que estilo), Retratos (rostos da caixa de diálogo)
-  mundo/     Area (interface comum), Terreno, Mundo (o Vale), Cripta, Deserto, PocoMeioDia, Cidade (a Cidade Dourada),
+  mundo/     Area (interface comum), Terreno, Oceano, Mundo (o Vale), Creta (com CretaModelos e NavioModelos), Cripta, Deserto, PocoMeioDia, Cidade (a Cidade Dourada),
              CidadeModelos (casas, palácio, São Damião, iscas), Capela (capela de região com interior, confessionário
              e CapelaRegional), Cenario (cruzeiro, céu, entrada da cripta, véu, lamparina)
   fauna/     Especies (fichas), Corpo (esqueletos do Veloren), Animal (comportamento), Fauna (povoamento por área)
   entidades/ Peregrino, Npc (base de quem conversa), Sombra, Guardiao (Mamom e a interface Chefe),
-             Acedia, Antao e Francisco (fichas de NPC com modelo próprio), Pomba
+             Acedia, Antao e Francisco (fichas de NPC com modelo próprio), Romanos, Companheiros e GenteDeCreta, Pomba
   core/      Aparencia (identidade e paletas), Camera, Entrada (teclado, mouse e controle), Controle (gamepad),
              Estado (save), Dons, Preferencias, Ruido, Som
   fx/        Efeitos (pós-processamento)
@@ -152,6 +152,14 @@ tools/verificar-build.mjs confere que o modo dev não foi para o build
   - Não custa nada no shader e fica sempre ligado.
 - **Terreno** (`Terreno.ts`): colunas de altura geradas por ruído. O AO usa `cheio(i, y, j)`
   (`y < altura(i, j)`; fora do mapa, só abaixo de 0).
+  - `malhaDeColunas` faz uma malha única (as áreas pequenas). `blocosDeColunas` faz o mesmo terreno partido em
+    blocos de 48 × 48 colunas, com material compartilhado e esfera envolvente própria: o renderizador descarta os
+    blocos fora da câmera. É o padrão das regiões grandes (cerca de 3× a Bahia). Em Creta (320 × 320 m), cerca de
+    60% dos triângulos do terreno ficam visíveis por quadro.
+- **Oceano** (`Oceano.ts`): uma grade de 640 m que segue o jogador (presa a passos de 4 m), com as ondas no vertex
+  shader (quatro senoides) e sombreamento facetado (`flatShading`). As cristas clareiam em espuma conforme a
+  amplitude. `Oceano.altura(x, z)` repete a conta em TypeScript, para quem nada boiar na onda certa. `intensidade`
+  vai de 0 (calmaria) a 1 (tempestade).
 - **Física das árvores**: troncos e raízes dos pinheiros grandes têm pegada sólida em células de 0,5 m.
 
 ## Render e gráficos
@@ -253,6 +261,175 @@ os mantém (o save guarda o número do nível, não o nome).
 | Palácio da Gula | `mundo/Banquete.ts` | Salão do Banquete; a Gula (`entidades/Gula.ts`), travessas como alvos, peso repartido com os pobres |
 | Bahia: Cidade Baixa | `mundo/Bahia.ts` (`BahiaBaixa`) | Comércio, Mercado Modelo, Elevador Lacerda, Largo de Roma (convento e galinheiro), o Bonfim, os Alagados |
 | Bahia: Cidade Alta | `mundo/Bahia.ts` (`BahiaAlta`) | Praça Tomé de Sousa, Terreiro de Jesus, Largo do Cruzeiro (arena), ladeira e Largo do Pelourinho |
+| Creta: Bons Portos | `mundo/Creta.ts` | Mar da Tempestade, 1ª parte (em construção): costa sul de Creta em blocos, enseada com ilhotas, mar aberto com o `Oceano`; o cais com o navio de Alexandria atracado, a vila de Bons Portos, a estrada das colinas até Laseia (murada, com praça, fonte e pórtico), o farol e a cabana do pastor |
+| O Mar da Tempestade | `mundo/Tempestade.ts` | Mar da Tempestade, 2ª parte: o convés do navio de Alexandria no Euroaquilão, de noite e sob chuva, com mar alto, relâmpagos e ondas que varrem o convés (At 27,14-38) |
+| O Naufrágio | `mundo/Naufragio.ts` | Mar da Tempestade, 3ª parte: o navio encalhado no banco de areia com a popa desfeita, a água rasa até a praia de Malta e a arena da Ira (`entidades/Ira.ts`) (At 27,39-44) |
+| Malta | `mundo/Malta.ts` | Mar da Tempestade, 4ª parte: a praia do fogo, a garriga com os gravetos, a estrada até a casa de campo de Públio (pátio com pórtico, quartos, o leito do pai), o povoado com o poço, o porto com o cais e o navio dos Dióscuros, e Melite murada (At 28,1-11) |
+
+**A natação** (`entidades/Peregrino.ts`)
+
+- A física da área diz onde há água: `Fisica.nivelAgua(x, z)` devolve a superfície com as ondas (ou `null`); sem
+  ela, vale `nivelMinimo`. A Bahia devolve o nível da baía (lá o fundo do vau deixa a água pela cintura).
+- Vadeando (o corpo abaixo da superfície), a velocidade cai para 55%. Onde a água passa de `PROFUNDIDADE_NADO`
+  (1,3 m), o peregrino nada (`nadando`): boia com a onda (uma mola amortecida puxa os pés para 1,3 m abaixo da
+  superfície parado e 0,95 m nadando), anda a 50%, não pula e não usa o cajado, que fica preso ao corpo.
+- Nadando, ele sobe na margem que fique até 0,6 m acima da água. Parado, fica de pé na água, pedalando e remando;
+  andando, deita em nado de peito. As duas poses se misturam por `nadoK`. Os sons são `respingo` ao cair na água
+  funda e `bracada` no ritmo do nado.
+- Não há afogamento nem parede invisível no mar: fora do mapa de Creta é mar aberto e se nada para onde quiser.
+  O lago do Vale também deixa nadar no meio.
+
+**Creta: Bons Portos e Laseia** (Mar da Tempestade, At 27,8-12)
+
+- Chega-se pelo saveiro da Bahia depois do Coração de Pedra (`bahia_coracao_vencido`): o nó `bahia_saveiro` oferece
+  Creta ou a Cidade Dourada. O roteiro marca a escolha com `~ evento("viajar_creta")` (ou `viajar_cidade`,
+  `viajar_bahia`), e `Jogo.fazerViagem` troca de área quando a conversa fecha. A primeira chegada (`creta_entrou`)
+  toca `creta_chegada`. O barco de pesca no fim da praia leva de volta à Bahia.
+- Todo o desenho fica em constantes no topo de `Creta.ts` (coordenadas locais; x para leste, +z para o mar):
+  `CAIS`, `BACIA`, `NAVIO`, `CASAS`, `ESTRADA`, `LASEIA`, `CASAS_LASEIA`, `FAROL`, `CABANA`. O chão (`gerar`) aplaina
+  as plataformas das casas e de Laseia, pinta a estrada de terra, draga a bacia e levanta o cais.
+- Os objetos de voxel vão para um `Juntador` (blocos de 40 m). As casas são física por `altura`: o terraço é um
+  piso com a mureta em volta, e a escada de fora é uma rampa de degraus de 0,25 m. Muralhas e muros são caixas;
+  árvores, postes e gente são círculos.
+- **O navio** (`mundo/NavioModelos.ts`): o cargueiro de trigo de Alexandria (30 × 8,5 m), com casco de olhos pintados,
+  pescoço de cisne na popa, cabine, escotilha, mastro e verga, artemão, cordame e os dois remos de governo.
+  `navioAlexandrino(aberta)` serve ao porto (vela recolhida) e à tempestade (vela aberta). Para a física,
+  `convesEm`, `meiaLarguraConves`, `bordaEm`, `MASTRO` e `CABINE`; `Creta.alturaNavio` faz do convés um chão, da
+  borda falsa uma parede (aberta onde chega a prancha) e da cabine um bloco. A borda tem só 0,75 m e o peregrino
+  sobe degraus de até 1,05 m, por isso as três áreas do navio somam `BORDA_PAREDE` (0,35 m) à altura física dela:
+  a borda vista continua baixa, mas não se passa por cima andando.
+- **A gente** (`Creta.npcs`, interações em `Jogo.interacoesDeCreta`): Júlio, o centurião, e os soldados
+  (`entidades/Romanos.ts`, modelo próprio: crista transversa, fáleras, grevas, vara de videira; pilo e escudo);
+  São Lucas e Santo Aristarco (`entidades/Companheiros.ts`, `montarApostolico`, que também servirá a São Paulo);
+  o piloto, o dono do navio, marinheiros, presos, o pescador, a mulher do forno, a gente de Laseia e o pastor
+  (`entidades/GenteDeCreta.ts`). Os diálogos estão em `dialogos/creta.ink`; a tripulação e o dono do navio já
+  mostram a impaciência que vira Ira na tempestade.
+- **São Paulo** (`PAULO` em `entidades/Companheiros.ts`): calvo na frente, com a ruga da testa, barba comprida
+  castanha, túnica clara e himácio vermelho-terra, descalço, espada na direita e livro na esquerda, auréola e a
+  corrente do preso no pulso (as opções `descalco`, `rugas` e `corrente` da `FichaApostolica`).
+- **A história em Creta** (At 27,9-13), guardada em flags, com cada um posto no lugar por `Creta.arrumar` ao entrar
+  na área e depois do conselho:
+  1. Paulo reza na casa da praia. Quem bate à porta (`creta_casa_paulo`) o faz sair; o encontro (`creta_paulo`)
+     marca `creta_paulo_conheceu` e o evento `paulo_ao_cais` o faz descer andando (`Creta.levarPauloAoCais`).
+  2. Ao chegar à prancha, `creta_paulo_no_cais`. Falar com ele abre o conselho (`creta_conselho`): o aviso de
+     Paulo (At 27,10), e o peregrino escolhe apoiá-lo com mansidão, responder ao dono do navio no mesmo tom (a Ira)
+     ou calar (`creta_conselho_manso`, `_ira`, `_calado`, para usar adiante). O desfecho é o de Atos: o centurião
+     confia no piloto e no dono, e partem com o vento sul brando.
+  3. O evento `conselho` marca `creta_conselho`; Paulo, Lucas e Aristarco passam para o convés, e a prancha
+     oferece "embarcar com Paulo" (`creta_embarcar`), e `Jogo.embarcar` leva à área `navio`.
+
+**O navio na tempestade** (Mar da Tempestade, At 27,14-38; `mundo/Tempestade.ts`, `dialogos/navio.ink`)
+
+- **A ilusão do mar**: o navio fica parado no mundo (`ORIGEM_NAVIO`, longe de tudo) e o mar passa por ele.
+  `Oceano.deriva` (m/s) acumula um deslocamento que o shader soma às ondas (`uDesloc`) e que `Oceano.altura`
+  repete, para a física e a natação baterem com o que se vê. A câmera joga e arfa com o mar
+  (`Tempestade.balancar(cam)`, chamado depois de `atualizarConversa`).
+- **O céu**: `Tempestade.escuridao` (0 a 1, por etapa) e `relampago` (o clarão que decai) entram no ramo
+  `noNavio` de `Jogo.aplicarAmbiente`, que mistura névoa, luz e céu. A chuva é um `LineSegments` de 1400 gotas
+  que segue o jogador (`mundo/Chuva.ts`, a mesma do naufrágio). Som: `Som.ambienteDe('tempestade')` (drones graves e vento com rajadas), `trovao()` e
+  `vagalhao()`.
+- **As ondas no convés**: de 16 a 28 s, com aviso 2,2 s antes (`aoAvisarOnda`), uma onda quebra de um bordo
+  (`aoQuebrarOnda(lado)`) e empurra o peregrino por `Peregrino.empurrao`, uma velocidade de fora que se desfaz
+  sozinha e passa pela colisão normal (a borda falsa o segura). Agarrado ao mastro (até 2,4 m) não é empurrado.
+  Quem cai no mar é tirado da água depois de 1,6 s (`Jogo.atualizarNavio`). Nada disso corre durante conversa
+  ou transição (`Tempestade.pausa`).
+- **As etapas** (`EtapaNavio`, `etapaDoNavio(tem)` lê as flags em ordem), e `Tempestade.arrumar` põe cada um no
+  lugar quando `Jogo.navioArrumado` cai para `false`:
+  1. `bote`: puxar o bote que vem a reboque (`navio_bote`, At 27,16).
+  2. `cintar`: passar os três cabos por baixo do casco (`navio_cintado`, At 27,17).
+  3. `carga`: levar os cinco sacos de trigo (`CARGAS`) até a borda e lançá-los (`navio_carga`, At 27,18-19).
+  4. `brigas`: três pares de marinheiros brigam pelo medo. A resposta mansa apazigua; a ríspida (`navio_gritou`)
+     não resolve. Os três apaziguados marcam `navio_brigas`; é o primeiro contato com a Ira.
+  5. `anjo`: Paulo de pé no meio deles conta a visão do anjo (`navio_anjo`, At 27,21-26), tocado sozinho.
+  6. `sonda`: lançar a sonda duas vezes, 20 e 15 braças (`navio_sonda`, At 27,27-28).
+  7. `ancoras`: soltar as quatro âncoras da popa (`navio_ancoras`, At 27,29).
+  8. `fuga`: os marinheiros descem o bote para fugir; falar com Paulo leva ao aviso a Júlio e aos soldados que
+     cortam os cabos (`Tempestade.soltarBote`, `navio_fuga`, At 27,30-32).
+  9. `pao`: todos em roda do mastro; Paulo dá graças e parte o pão (`navio_pao`, At 27,33-38), que restaura a vida.
+  10. `amanhecer`: com o pão partido, `Jogo.encalhar` marca `naufragio_encalhou` e leva à área `naufragio`.
+- Os nós que tocam sozinhos (`navio_anjo`, `navio_fuga_vista`, `navio_pao`) tocam uma vez cada
+  (`primeiraVez(no + '_tocou')`). Os eventos do roteiro chegam a `Jogo.eventoDoNavio`.
+
+**O naufrágio e a Ira** (Mar da Tempestade, At 27,39-44; `mundo/Naufragio.ts`, `entidades/Ira.ts`, `dialogos/naufragio.ink`)
+
+- **O lugar**: o navio fica encalhado (`NAVIO`, inclinado `INCLINACAO` e com a proa enterrada) num banco de areia
+  entre dois mares. A popa se desfaz (`POPA_QUEBRADA`) e solta tábuas que derivam (40 instâncias). A borda tem uma
+  brecha (`BRECHA`) por onde se desce à água. Entre o navio e a praia de Malta (`costa(x)`) ficam a água rasa da
+  arena (`ARENA`), baixios, um poço e uma ilhota. Todo o desenho está em constantes no topo do arquivo, em
+  coordenadas locais a partir de `ORIGEM_NAUFRAGIO`.
+- **As etapas** (`EtapaNaufragio`, lidas das flags), com `Naufragio.arrumar` pondo cada um no lugar:
+  1. `presos`: todos na proa. O encalhe (`naufragio_encalhe`, At 27,40-42) e a cena dos soldados que querem matar
+     os presos (`naufragio_presos`). O peregrino responde com mansidão, com raiva ou cala (`naufragio_presos_manso`,
+     `_ira`, `_calado`); Júlio os poupa por causa de Paulo, e todos se lançam ao mar (At 27,43-44).
+  2. `ira`: a gente vai para a praia e os náufragos derivam em tábuas. A luta começa quando o peregrino entra na
+     arena fora do navio (`naArena`).
+  3. `praia`: depois da vitória (`naufragio_ira_vencida`), todos em roda de Paulo na praia (`naufragio_praia`,
+     At 28,1). O mar se acalma e a chuva afina. Ao fechar a conversa, `Jogo.irParaMalta` leva à área `malta`; depois,
+     a praia tem também "F: subir ao fogo dos moradores".
+- **A brasa da ira** (`Jogo.brasa`, 0 a 100, barra "Brasa da ira" no HUD): sobe quando o peregrino bate na Ira
+  fora da hora (+8, a luz +5), quando é atingido (o `Impacto.brasa` de cada ataque) e quando a Ira o provoca sem
+  que ele esteja rezando. Esfria 2,5 por segundo sozinha e 22 rezando (R). Cheia, deixa o peregrino `irado` até
+  baixar de 50: cada golpe seu cura a Ira. A luta começa com +15 para cada vez que ele respondeu com raiva antes
+  (`creta_conselho_ira`, `navio_gritou`, `naufragio_presos_ira`).
+- **A Ira** (`Ira extends Sombra`, 60 de vida): uma tromba d'água com cara, braços de espuma e uma brasa no peito.
+  Ataques: `punho` (o mar sobe em punhos nas marcas, com empurrão), `vagalhao` (um anel que se pula),
+  `provocar` (sussurros que acendem a brasa, desarmados pela oração), `raios` (só na fase 2) e a `furia`.
+  A fúria são três punhos seguidos. Se o peregrino não revida, não é pego, não está irado e tem a brasa abaixo de
+  `BRASA_MANSA` (70), a Ira se cansa (Pr 15,1) e fica exposta 5 s (`TEMPO_CANSADA`), com a brasa acesa. Só então
+  o cajado e a luz a ferem. Revidar durante a fúria a cura. Na metade da vida ela cresce (fase 2, Ef 4,26), a
+  exposição acaba na hora e as fúrias vêm mais cedo.
+- **Efeitos**: as marcas e os punhos usam material aditivo claro, para que leiam no mundo ainda dessaturado.
+- **Ganchos no Jogo**: `atualizarNaufragio` (etapa, brasa e HUD), `acenderBrasa`, `lutaDaIraComecou`,
+  `iraVencida` (diálogo, praia e checkpoint), `sombraVencida` (+1 coração pela lista `CHEFOES`) e `morrer`
+  (`reiniciarLuta`, brasa zerada). No modo desenvolvedor, o chefão "A Ira" prepara as flags e leva à arena, e a
+  área "O Naufrágio" tem os pontos da proa, da arena e da praia. `?teste=naufragio` abre direto na área.
+
+**Malta e o dom do Conselho** (Mar da Tempestade, At 28,1-11; `mundo/Malta.ts`, `mundo/MaltaModelos.ts`,
+`entidades/GenteDeMalta.ts`, `dialogos/malta.ink`)
+
+- **O lugar**: a ilha em coordenadas locais a partir de `ORIGEM_MALTA`, com a terra em `z < costa(x)`. A baía do
+  naufrágio fica em x≈0 (o fogo em `FOGO`, os oito montes de gravetos em `GRAVETOS`), a casa de Públio em
+  `CASA_PUBLIO` (desenho em `VILLA`), o povoado em `CASAS` e `POCO_ALDEIA`, o porto em `CAIS`/`NAVIO` e Melite em
+  `MELITE`. As estradas (`ESTRADAS`) são polilinhas, e os NPCs que andam seguem por elas (`Malta.levar`, com
+  `espera` para saírem um depois do outro e o ponto `PATIO` para entrarem pela porta).
+- **As etapas** (`EtapaMalta`, lidas das flags por `etapaDeMalta`), com `Malta.arrumar` pondo cada um no lugar:
+  1. `fogo`: juntar os feixes (`malta_feixe_<i>`) e lançá-los ao fogo (`malta_lancou_1..5`). No quinto, `malta_fogo`.
+  2. `vibora`: a cena `malta_vibora` (At 28,3-6). Os eventos `vibora_lanca`, `vibora_prende` e `vibora_sacode`
+     animam a víbora na mão direita de Paulo (`Malta.cenaDaVibora`). O peregrino julga, corre ou espera
+     (`malta_vibora_julgou`, `_correu`, `_esperou`). `dom_conselho` dá o dom, e `vibora_fim` marca
+     `malta_vibora`. A cena põe o peregrino do outro lado do fogo, de frente para Paulo, para a roda não tapar a
+     víbora. Se o jogo for salvo no meio, falar com Paulo recomeça a cena.
+  3. `boatos`: o ancião, a mulher, o pescador e o rapaz tiraram cada um a sua conclusão da víbora. A resposta certa
+     marca `malta_boato_<id>` e o evento `boato`; no quarto, `malta_boatos`, e Públio desce (`malta_publio_chega`).
+  4. `publio`: `hospedar` marca `malta_publio` e leva Públio, o criado, Paulo e os companheiros pela estrada até
+     a casa (`Malta.subirParaACasa`).
+  5. `pai`: `rezar_pai` marca `malta_pai_rezar`. Segurar R a até 3,4 m do leito enche a barra "Rezando com Paulo"
+     (`Hud.mostrarOracao`) em 6 s, e ela baixa sozinha. Cheia, `Jogo.paiCurado` marca `malta_pai_curado` (+1 graça).
+  6. `enfermos`: a mulher do poço, o pescador da muleta, o velho cego de Melite e a mãe do menino (`ENFERMOS_MALTA`).
+     Convidados, vão à casa (`enfermo_<id>`, `malta_enfermo_<id>`, `Malta.mandarParaACasa`). Com os quatro no
+     pátio (`valorDialogo('malta_no_patio')`), falar com Paulo toca `malta_curas`, e o evento `curas` marca
+     `malta_curas` e `mar_restaurado` (+2 graças): a cor volta ao mar.
+  7. `honras`: Júlio espera no porto. `tres_meses` escurece a tela e leva ao cais (checkpoint e `malta_partida`).
+  8. `partida`: todos no cais com as provisões. A prancha (`malta_embarque`) diz que Roma é a próxima região.
+- **O clima** (`Malta.clima`): chuva até a víbora, nublado até as curas, e depois a luz de Creta.
+  `Jogo.aplicarAmbiente` roda de novo quando o clima muda (`climaDeMalta`).
+- **Viagens**: o barqueiro (`malta_barco`) leva à Bahia, a Creta e à Cidade Dourada, e o saveiro da Bahia leva a
+  Malta depois de `mar_restaurado`. O barqueiro fica fora da lista genérica de conversas, senão a conversa sem
+  viagem tomaria a vez.
+- **O Conselho** (`core/Dons.ts`):
+  - nível 1, discernir os caminhos: nas conversas, a escolha marcada mostra o fruto dela (`Hud.caixaFruto`). O
+    roteiro põe a tag dentro dos colchetes, `* [Texto #fruto: o fruto]`. `Dialogos.frutos` só a lê com
+    `nivel('conselho') >= 1`;
+  - nível 2, a rosa dos ventos: o minimapa marca o próximo passo com uma estrela azul (`Jogo.rumoDoCaminho`, para
+    Malta, o naufrágio, o navio e Creta);
+  - nível 3, prudência: o minimapa enxerga 60 m;
+  - níveis 4 e 5 (conselho ao irmão, luz para os passos) ficam travados até o Mundo Digital (`PELO_CARLO`, flag
+    `digital_conselho_aperfeicoado`).
+- **Deitados**: `deitar` põe o pai de Públio no leito por um grupo entre o NPC e o corpo, porque os gestos de
+  conversa mexem a cada quadro na raiz do corpo. `Npc.fixo` faz o NPC não virar o corpo para ninguém.
+- **Ganchos no Jogo**: `irParaMalta`, `atualizarMalta` (arrumação, `aposDialogo`, clima e oração), `paiCurado`,
+  `eventoDeMalta`, `interacoesDeMalta` e `cenaDaVibora`. No modo desenvolvedor, a área "Malta" tem os pontos da
+  praia, da casa de Públio, do povoado, do porto e de Melite. `?teste=malta` abre direto na área.
 
 **O jardim de Santo Agostinho e a porta estreita** (Vale; o dom do Temor de Deus)
 
@@ -654,7 +831,8 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
 - **`Criacao.ts`**: criação do personagem.
 - **`Hud.ts`**: corações inteiros e meios (o da Eucaristia em dourado), barras, mira, barra do chefão e a
   caixa de diálogo (retrato, texto que corre, escolhas numeradas).
-- **`Minimapa.ts`**: minimapa redondo que gira com a câmera.
+- **`Minimapa.ts`**: minimapa redondo que gira com a câmera. O parâmetro `conselho` (`alvo`, `raio`) desenha a
+  estrela azul do próximo passo (na borda, com a ponta para ele, se estiver longe) e muda o alcance.
 - **Mira livre** (`Jogo.atualizarMiraLivre`, `Hud.mostrarRetic`), inspirada no Veloren e no Minecraft:
   - a câmera olha 1,05 m acima da cabeça (`CameraTerceira.elevacaoMira`; 0,5 m na capela). O peregrino fica um
     pouco abaixo do centro e a mira fica livre por cima dele, como no Veloren;
@@ -696,7 +874,9 @@ Deserto e a Cidade Dourada, com Mamom, a Acídia e a Gula. Das Ruas da Bahia, j�
 Baixa e Cidade Alta), Irmã Dulce, a casa abandonada, a mecânica de carregar, os esquecidos, o comerciante e o galinheiro que vira
 enfermaria, o interior do Bonfim com a Sala dos Milagres, o Coração de Pedra e "a cor volta": o Hospital Irmã
 Dulce e a Piedade aperfeiçoada (níveis 4 e 5). A provação da Bahia está completa. No Vale, Santo Agostinho e a
-porta estreita fecham o Temor de Deus, e o peregrino envelhece com a história.
+porta estreita fecham o Temor de Deus, e o peregrino envelhece com a história. O Mar da Tempestade está completo:
+Creta, o navio no Euroaquilão, o naufrágio com a Ira e Malta, com o dom do Conselho (níveis 1 a 3) e a cor que
+volta ao mar.
 
 ### A base do jogo
 
@@ -713,7 +893,7 @@ porta estreita fecham o Temor de Deus, e o peregrino envelhece com a história.
    | Mundo Digital (bônus) | São Carlo Acutis | Usar a tecnologia para o bem | Conselho |
    | A Passagem (final) | Todos os santos | Travessia do rio de luz | — |
 
-   Os vícios que ainda não viraram chefão são a Soberba, a Inveja, a Ira e a Ilusão. Como há mais regiões do que
+   Os vícios que ainda não viraram chefão são a Soberba, a Inveja e a Ilusão (a Ira é o chefão do naufrágio). Como há mais regiões do que
    vícios, falta decidir o chefão de cada região.
 2. **Árvore de dons**: os níveis 1 a 5 de Conselho, Fortaleza, Entendimento e Sabedoria, as combinações de dons
    (por exemplo, Fortaleza + Piedade protege os NPCs) e o ajuste do equilíbrio dos dons que já existem.

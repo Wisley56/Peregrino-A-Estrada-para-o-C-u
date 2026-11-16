@@ -52,6 +52,8 @@ export class Npc {
   falando = false;
   /** Andando para algum lugar: o corpo segue o caminho, não o peregrino. */
   andando = false;
+  /** Não vira o corpo para ninguém (quem está deitado num leito). */
+  fixo = false;
   private t = Math.random() * 10;
   private rumoBase: number;
   private alturaPescoco: number;
@@ -144,7 +146,7 @@ export class Npc {
     const perto = dx * dx + dz * dz < ALCANCE_OLHAR * ALCANCE_OLHAR;
     const paraJogador = Math.atan2(dx, dz);
     // o corpo vira devagar; a cabeça vai na frente, até um limite
-    const alvoCorpo = this.andando ? this.rumoBase : this.falando ? paraJogador : perto ? this.rumoBase + angulo(paraJogador - this.rumoBase) * 0.5 : this.rumoBase;
+    const alvoCorpo = this.andando || this.fixo ? this.rumoBase : this.falando ? paraJogador : perto ? this.rumoBase + angulo(paraJogador - this.rumoBase) * 0.5 : this.rumoBase;
     this.raiz.rotation.y += angulo(alvoCorpo - this.raiz.rotation.y) * Math.min(1, dt * (this.falando ? 4 : 2));
     const cabeca = this.humano.cabeca;
     const alvoCabeca = perto ? THREE.MathUtils.clamp(angulo(paraJogador - this.raiz.rotation.y), -LIMITE_CABECA, LIMITE_CABECA) : Math.sin(this.t * 0.4) * 0.25;

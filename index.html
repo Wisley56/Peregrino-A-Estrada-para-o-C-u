@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Peregrino: A Estrada para o Céu</title>
+  <!-- a pomba do Espírito Santo no vitral; gerados por tools/gerar-icone.mjs -->
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+  <meta name="theme-color" content="#0d0b14" />
   <style>
     :root {
       --ouro: #f4d77a;
@@ -44,6 +49,14 @@
     #item.acesa { color: var(--ouro); border-color: var(--ouro); box-shadow: 0 0 12px rgba(244,215,122,0.45); }
     #dom { font-size: 13px; padding: 4px 10px; border-radius: 14px; background: rgba(0,0,0,0.4); border: 1px solid rgba(150,190,255,0.35); align-self: flex-start; display: none; color: #dbe8ff; }
     #peso { font-size: 13px; padding: 4px 10px; border-radius: 14px; background: rgba(40,24,0,0.5); border: 1px solid rgba(232,192,80,0.55); align-self: flex-start; display: none; color: #f4d77a; }
+    #brasa { display: none; }
+    #brasa .barra > div { background: linear-gradient(90deg, #6a2a1a, #d8501a, #ffb040); transition: width 0.2s; }
+    #brasa.irado .barra { border-color: #ff6a2a; box-shadow: 0 0 12px rgba(255,90,30,0.7); animation: brasa-pulso 0.6s infinite alternate; }
+    #brasa.irado .rotulo { color: #ffb08a; opacity: 1; }
+    #oracao { display: none; }
+    #oracao .barra > div { background: linear-gradient(90deg, #8a6a2a, #f4d77a, #fff6d0); transition: width 0.2s; }
+    #oracao .rotulo { color: #f4e6b0; opacity: 1; }
+    @keyframes brasa-pulso { from { box-shadow: 0 0 6px rgba(255,90,30,0.5); } to { box-shadow: 0 0 16px rgba(255,90,30,0.95); } }
     #dom.ativo { color: #fff; border-color: #9cc4ff; box-shadow: 0 0 14px rgba(140,190,255,0.6); }
     #sussurro { position: absolute; top: 34%; left: 50%; transform: translateX(-50%); width: min(640px, 90vw); text-align: center; font-size: 22px;
       font-style: italic; color: #e6d2ff; text-shadow: 0 0 12px rgba(120,60,180,0.9), 0 2px 4px #000; opacity: 0; transition: opacity 1.2s; letter-spacing: 0.02em; }
@@ -118,6 +131,11 @@
     #dialogo.inscricao { font-style: italic; color: #e9dfc8; border-color: rgba(233, 223, 200, 0.4); }
     #dialogo.vicio { color: #e6d2ff; border-color: rgba(170, 120, 230, 0.55); text-shadow: 0 0 10px rgba(150, 90, 220, 0.4); }
     #dialogo .escolhas { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+    /* o dom do Conselho: o fruto da resposta marcada, em azul, debaixo das escolhas */
+    #dialogo .fruto { display: none; margin-top: 8px; padding: 6px 12px; border-left: 3px solid #5b8def; color: #cfe0ff;
+      font-size: 15px; font-style: italic; background: rgba(91, 141, 239, 0.1); border-radius: 0 8px 8px 0; }
+    #dialogo .fruto.ativo { display: block; }
+    #dialogo .fruto b { font-style: normal; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.08em; color: #8fb4ff; margin-right: 6px; }
     #dialogo .escolhas button { all: unset; cursor: pointer; display: flex; gap: 10px; align-items: baseline; padding: 6px 12px;
       border-radius: 8px; border: 1px solid rgba(244, 215, 122, 0.18); background: rgba(255, 255, 255, 0.03); color: inherit;
       font: inherit; font-size: 17px; font-style: normal; }
@@ -481,6 +499,8 @@
       <div id="item"></div>
       <div id="dom"></div>
       <div id="peso"></div>
+      <div id="brasa"><div class="rotulo">Brasa da ira</div><div class="barra"><div></div></div></div>
+      <div id="oracao"><div class="rotulo">Oração</div><div class="barra"><div></div></div></div>
     </div>
     <div id="torpor"></div>
     <div id="mira"></div>
@@ -488,7 +508,7 @@
     <div id="aviso"></div>
     <div id="dica"></div>
     <div id="sussurro"></div>
-    <div id="dialogo"><img class="retrato" alt=""><div class="quem"></div><div class="texto"></div><div class="escolhas" style="display:none"></div><div class="seguir" data-controle="{A} / {Y}">F / Enter</div></div>
+    <div id="dialogo"><img class="retrato" alt=""><div class="quem"></div><div class="texto"></div><div class="escolhas" style="display:none"></div><div class="fruto"></div><div class="seguir" data-controle="{A} / {Y}">F / Enter</div></div>
   </div>
   <div id="retic-cruz"></div>
   <div id="retic"><i class="m"></i><i class="alcance"></i><i class="x"></i></div>

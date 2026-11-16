@@ -29,6 +29,11 @@ export interface Passo {
   pausa: number;
   /** Escolhas que aparecem depois desta fala. */
   escolhas: string[];
+  /**
+   * O fruto de cada escolha (tag `#fruto:` dentro dos colchetes da escolha no Ink), mostrado só a quem tem o dom do
+   * Conselho; `null` onde a escolha não tem fruto escrito.
+   */
+  frutos?: (string | null)[];
   /** Gestos pedidos com `#gesto:nome` (de quem fala, `quem` null) ou `#gesto:id=nome`. */
   gestos: { quem: string | null; gesto: Gesto }[];
   /** Enquadramento pedido com `#plano:geral|perto|ombro`. */
@@ -53,7 +58,7 @@ export class Dialogos {
 
   constructor(
     private palco: Palco,
-    ctx: ContextoDialogo,
+    private ctx: ContextoDialogo,
   ) {
     this.historia = new Story(roteiro);
     const h = this.historia;
@@ -130,13 +135,20 @@ export class Dialogos {
         texto: quem && m ? m[2] : linha,
         pausa: Number.isFinite(pausa) ? pausa : 0,
         escolhas: h.canContinue ? [] : h.currentChoices.map((c) => c.text),
+        frutos: h.canContinue ? [] : this.frutos(),
         gestos: this.gestosDas(tags),
         plano: planoDas(tags),
       };
     }
     // escolhas logo no começo de um nó, sem fala antes delas
-    if (h.currentChoices.length) return { id: null, falante: null, texto: '', pausa: 0, escolhas: h.currentChoices.map((c) => c.text), gestos: [] };
+    if (h.currentChoices.length) return { id: null, falante: null, texto: '', pausa: 0, escolhas: h.currentChoices.map((c) => c.text), frutos: this.frutos(), gestos: [] };
     return null;
+  }
+
+  /** Os frutos das escolhas abertas (vazio sem o dom do Conselho). */
+  private frutos() {
+    if (this.ctx.nivel('conselho') < 1) return [];
+    return this.historia.currentChoices.map((c) => c.tags?.find((t) => t.startsWith('fruto:'))?.slice(6).trim() || null);
   }
 
   private gestosDas(tags: string[]) {

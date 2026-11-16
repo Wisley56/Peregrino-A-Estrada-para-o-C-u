@@ -53,7 +53,7 @@ function ler(chave: string): DadosSalvos | null {
 }
 
 /** Sombras-chefão: cada uma vencida dá um coração a mais. */
-export const CHEFOES = ['cripta_guardiao', 'meiodia_acedia', 'palacio_gula', 'bahiaalta_coracao'];
+export const CHEFOES = ['cripta_guardiao', 'meiodia_acedia', 'palacio_gula', 'bahiaalta_coracao', 'naufragio_ira'];
 
 /** Estado do peregrino e do mundo. O que importa entre sessões vai para o espaço de jogo atual. */
 export class Estado {

@@ -29,6 +29,7 @@ export class Hud implements Palco {
   private caixaTexto = $('#dialogo .texto');
   private caixaEscolhas = $('#dialogo .escolhas');
   private caixaSeguir = $('#dialogo .seguir');
+  private caixaFruto = $('#dialogo .fruto');
   private veu = $('#veu');
 
   /** A conversa em andamento: devolve a próxima fala (ou null no fim). */
@@ -111,6 +112,30 @@ export class Hud implements Palco {
   mostrarPeso(texto: string | null) {
     this.peso.style.display = texto ? 'block' : 'none';
     if (texto && this.peso.textContent !== texto) this.peso.textContent = texto;
+  }
+  private brasa = $('#brasa');
+  private brasaBarra = $('#brasa .barra > div');
+  private brasaRotulo = $('#brasa .rotulo');
+
+  /** A brasa da ira (0 a 1) na luta contra a Ira; `null` esconde. Irado: a barra pulsa em vermelho. */
+  mostrarBrasa(k: number | null, irado = false) {
+    this.brasa.style.display = k === null ? 'none' : 'block';
+    if (k === null) return;
+    this.brasaBarra.style.width = `${Math.round(Math.max(0, Math.min(1, k)) * 100)}%`;
+    this.brasa.classList.toggle('irado', irado);
+    const r = irado ? 'Irado: reze (R) para esfriar' : 'Brasa da ira';
+    if (this.brasaRotulo.textContent !== r) this.brasaRotulo.textContent = r;
+  }
+  private oracao = $('#oracao');
+  private oracaoBarra = $('#oracao .barra > div');
+  private oracaoRotulo = $('#oracao .rotulo');
+
+  /** Uma oração que se faz segurando R (0 a 1), com o rótulo dela; `null` esconde. */
+  mostrarOracao(k: number | null, rotulo = 'Oração') {
+    this.oracao.style.display = k === null ? 'none' : 'block';
+    if (k === null) return;
+    this.oracaoBarra.style.width = `${Math.round(Math.max(0, Math.min(1, k)) * 100)}%`;
+    if (this.oracaoRotulo.textContent !== rotulo) this.oracaoRotulo.textContent = rotulo;
   }
   private rotuloCor = $('#rotulo-cor');
   private torporEl = $('#torpor');
@@ -311,10 +336,15 @@ export class Hud implements Palco {
 
   private marcarEscolha() {
     this.caixaEscolhas.querySelectorAll('button').forEach((b, i) => b.classList.toggle('sel', i === this.escolhaSel));
+    // o Conselho: o fruto da resposta marcada
+    const fruto = this.atual?.frutos?.[this.escolhaSel] ?? null;
+    this.caixaFruto.classList.toggle('ativo', !!fruto);
+    if (fruto) this.caixaFruto.innerHTML = `<b>Conselho</b>${this.rotular(fruto).replace(/</g, '&lt;')}`;
   }
 
   private esconderEscolhas() {
     this.escolhasVisiveis = false;
+    this.caixaFruto.classList.remove('ativo');
     this.caixaEscolhas.innerHTML = '';
     this.caixaEscolhas.style.display = 'none';
     this.caixaSeguir.style.display = '';

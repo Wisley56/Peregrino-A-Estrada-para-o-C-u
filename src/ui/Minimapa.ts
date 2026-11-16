@@ -22,7 +22,7 @@ export interface Marca {
 }
 
 const PX = 2; // pixels da imagem base por metro
-const RAIO_VISTA = 34; // metros do centro até a borda do medalhão
+const RAIO_VISTA = 34; // metros do centro até a borda do medalhão (a Prudência, Conselho 3, alarga para 60)
 
 export class Minimapa {
   private canvas: HTMLCanvasElement;
@@ -80,8 +80,10 @@ export class Minimapa {
   /**
    * @param guinada ângulo da câmera (a mesma convenção de `CameraTerceira.guinada`)
    * @param rumo para onde o peregrino está virado
+   * @param conselho o dom do Conselho: o próximo passo do caminho (a rosa dos ventos) e o raio da vista
    */
-  desenhar(px: number, pz: number, guinada: number, rumo: number, marcas: Marca[]) {
+  desenhar(px: number, pz: number, guinada: number, rumo: number, marcas: Marca[], conselho: { alvo?: { x: number; z: number } | null; raio?: number } = {}) {
+    const RAIO = conselho.raio ?? RAIO_VISTA;
     const b = this.atual;
     if (!b) return;
     const css = this.canvas.clientWidth || 160;
@@ -92,7 +94,7 @@ export class Minimapa {
     }
     const c = this.ctx;
     const r = tam / 2;
-    const escala = r / RAIO_VISTA; // pixels de tela por metro
+    const escala = r / RAIO; // pixels de tela por metro
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, tam, tam);
     c.save();
@@ -113,7 +115,7 @@ export class Minimapa {
     // marcas (desenhadas em pixels, sem girar o formato)
     for (const m of marcas) {
       const dx = m.x - px, dz = m.z - pz;
-      if (dx * dx + dz * dz > (RAIO_VISTA + 4) ** 2) continue;
+      if (dx * dx + dz * dz > (RAIO + 4) ** 2) continue;
       c.save();
       c.translate(m.x, m.z);
       c.rotate(-guinada);
@@ -122,6 +124,34 @@ export class Minimapa {
       c.restore();
     }
     c.restore();
+
+    // a rosa dos ventos do Conselho: a estrela azul no próximo passo, ou na borda, apontando para ele
+    if (conselho.alvo) {
+      const dx = conselho.alvo.x - px, dz = conselho.alvo.z - pz;
+      const d = Math.hypot(dx, dz);
+      // o mundo gira por (guinada): (dx, dz) vai para a tela como (dx cos g - dz sin g, dx sin g + dz cos g)
+      const sx = dx * Math.cos(guinada) - dz * Math.sin(guinada), sy = dx * Math.sin(guinada) + dz * Math.cos(guinada);
+      const borda = r - 14 * dpr;
+      const k = d * escala > borda ? borda / (d * escala) : 1;
+      const ex = r + sx * escala * k, ey = r + sy * escala * k;
+      c.save();
+      c.translate(ex, ey);
+      if (k < 1) c.rotate(Math.atan2(sy, sx) + Math.PI / 2);
+      const pulso = 1 + Math.sin(performance.now() / 260) * 0.12;
+      c.scale(pulso, pulso);
+      c.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 - Math.PI / 2, raio = (i % 2 ? 2.4 : k < 1 && i === 0 ? 7.5 : 5.5) * dpr;
+        c.lineTo(Math.cos(a) * raio, Math.sin(a) * raio);
+      }
+      c.closePath();
+      c.fillStyle = '#5b8def';
+      c.strokeStyle = '#eaf2ff';
+      c.lineWidth = 1.3 * dpr;
+      c.fill();
+      c.stroke();
+      c.restore();
+    }
 
     // o peregrino: seta no centro, apontando para o rumo dele em relação à câmera
     c.save();

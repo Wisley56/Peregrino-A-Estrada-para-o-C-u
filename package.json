@@ -10,7 +10,8 @@
     "build": "tsc --noEmit && vite build && node tools/verificar-build.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "fauna": "node tools/fauna-veloren.mjs"
+    "fauna": "node tools/fauna-veloren.mjs",
+    "icone": "node tools/gerar-icone.mjs"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

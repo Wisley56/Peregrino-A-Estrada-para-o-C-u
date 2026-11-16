@@ -36,5 +36,9 @@ INCLUDE meiodia.ink
 INCLUDE cidade.ink
 INCLUDE palacio.ink
 INCLUDE bahia.ink
+INCLUDE creta.ink
+INCLUDE navio.ink
+INCLUDE naufragio.ink
+INCLUDE malta.ink
 
 -> END
