@@ -21,12 +21,13 @@ import {
 import { BORDA_PAREDE, CABINE, MASTRO, MEIO_COMPRIMENTO, anfora, bordaEm, convesEm, meiaLarguraConves, navioAlexandrino, sacoDeTrigo } from './NavioModelos';
 import { Oceano } from './Oceano';
 import { blocosDeColunas } from './Terreno';
+import { NIVEL_MAR, ORIGENS } from './aberto/Geografia';
 
 /** Canto de Malta no mundo (longe das outras áreas). */
-export const ORIGEM_MALTA = new THREE.Vector3(4000, 0, 0);
+export const ORIGEM_MALTA = ORIGENS.malta;
 const TAM = 320;
 const META = TAM / 2;
-const NIVEL = 8;
+const NIVEL = NIVEL_MAR;
 const FUNDO_ABERTO = NIVEL - 9;
 
 const suave = (a: number, b: number, x: number) => {
@@ -205,7 +206,7 @@ export class Malta implements Area {
     for (let i = 0; i < TAM; i++)
       for (let j = 0; j < TAM; j++) {
         const [h, t] = this.gerar(i - META + 0.5, j - META + 0.5);
-        this.alturas[i * TAM + j] = Math.max(0, Math.round(h));
+        this.alturas[i * TAM + j] = Math.round(h);
         this.tipo[i * TAM + j] = t;
       }
     const terreno = blocosDeColunas(TAM, (i, j) => this.alturas[i * TAM + j], (i, j, h) => this.corTopo(i, j, h),

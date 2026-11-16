@@ -6,6 +6,7 @@ import { Guardiao } from '../entidades/Guardiao';
 import { Alvo, Area } from './Area';
 import { lamparinaModelo } from './Cenario';
 import type { FonteMapa } from '../ui/Minimapa';
+import { ORIGENS } from './aberto/Geografia';
 
 /**
  * Cripta dos Primeiros Peregrinos (primeira "dungeon").
@@ -20,7 +21,7 @@ import type { FonteMapa } from '../ui/Minimapa';
  *                         Entrada (escada para a capela)
  */
 const W = 32, H = 40;
-export const ORIGEM = new THREE.Vector3(400, 0, 400);
+export const ORIGEM = ORIGENS.cripta;
 const PAREDE = 4;
 const PEDESTAL = 1.2;
 const VOX = 0.5;

@@ -17,6 +17,9 @@ import { Criacao } from './ui/Criacao';
 import { Mundo } from './mundo/Mundo';
 import { Cripta } from './mundo/Cripta';
 import { Alvo, Area, IdArea } from './mundo/Area';
+import { ORIGENS } from './mundo/aberto/Geografia';
+import { pintarMapa } from './mundo/aberto/MapaDoTerreno';
+import { Carimbo, TerrenoMundo } from './mundo/aberto/TerrenoMundo';
 import { SUJEIRAS } from './mundo/Hospital';
 import { Deserto, TOTAL_SOMBRAS_DESERTO } from './mundo/Deserto';
 import { PocoMeioDia } from './mundo/PocoMeioDia';
@@ -221,6 +224,12 @@ export class Jogo {
   private areaDaCor: unknown = null;
   /** Segundos que ainda restam do dom da Ciência ligado. */
   private tempoCiencia = 0;
+  /** O chão do mundo inteiro (as regiões e a terra entre elas). */
+  private terrenoDoMundo: TerrenoMundo | null = null;
+  get terrenoMundo() {
+    return (this.terrenoDoMundo ??= this.criarTerrenoMundo());
+  }
+
   readonly deserto = new Deserto({
     sussurro: (t) => this.aoSussurro(t),
     miragemDesfeita: (porCiencia) => this.aoDesfazerMiragem(porCiencia),
@@ -398,6 +407,28 @@ export class Jogo {
   }
 
   /** (Re)cria a cripta a partir do progresso atual. */
+  /**
+   * O chão do mundo inteiro: as regiões ao ar livre carimbadas no terreno procedural. A Cidade Alta fica a leste da
+   * beira da escarpa e a Baixa a oeste dela (as duas dividem o mesmo pedaço do mapa).
+   */
+  private criarTerrenoMundo() {
+    const carimbo = (a: Area, faixa: number, corte: { xMin?: number; xMax?: number } = {}): Carimbo => {
+      const f = a.fonteMapa();
+      return {
+        id: a.id, faixa,
+        x0: Math.max(f.x0, corte.xMin ?? -Infinity), z0: f.z0, x1: Math.min(f.x0 + f.largura, corte.xMax ?? Infinity), z1: f.z0 + f.profundidade,
+        altura: (x, z) => a.altura(x, z),
+        cor: (x, z) => f.cor(x, z),
+      };
+    };
+    const beira = ORIGENS.bahiaalta.x - 44;
+    return new TerrenoMundo([
+      carimbo(this.mundo, 90), carimbo(this.deserto, 90), carimbo(this.cidade, 90),
+      carimbo(this.bahiaAlta, 80, { xMin: beira }), carimbo(this.bahiaBaixa, 80, { xMax: beira }),
+      carimbo(this.creta, 120), carimbo(this.naufragio, 100), carimbo(this.malta, 120),
+    ]);
+  }
+
   private montarCripta() {
     if (this.cripta) this.cena.remove(this.cripta.grupo);
     this.cripta = new Cripta(this.estado.sombrasVencidas, this.estado.flags, {
@@ -3943,6 +3974,7 @@ export class Jogo {
         };
       },
       irPara: (area, pos, rumo) => this.irPara(area, pos, rumo),
+      mapaDoMundo: (x0, z0, x1, z1, passo) => pintarMapa(this.terrenoMundo, x0, z0, x1, z1, passo),
       recarregarProgresso: () => {
         this.reconstruirMundo();
         this.aplicarAmbiente();

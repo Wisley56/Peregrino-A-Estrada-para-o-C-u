@@ -18,6 +18,7 @@ import {
   barraca, casa, casebre, cipreste, fonte, isca, oliveira, palacio, pilhaPedras, saoDamiao, tocaLobo,
   type Frente, type TipoIsca,
 } from './CidadeModelos';
+import { ORIGENS } from './aberto/Geografia';
 
 /**
  * A Cidade Dourada (terceira região): uma cidade de colina da Úmbria, cercada de muralha, como Assis.
@@ -31,7 +32,7 @@ import {
 
 const TAM = 160;
 const META = TAM / 2;
-export const ORIGEM_CIDADE = new THREE.Vector3(500, 0, 0);
+export const ORIGEM_CIDADE = ORIGENS.cidade;
 /** Altura do chão dentro dos muros. */
 const CHAO = 14;
 /** Retângulo de dentro dos muros (local). */

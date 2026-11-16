@@ -153,7 +153,8 @@ export class Terreno {
  * Malha de colunas de voxel (1 m) a partir de um mapa de alturas `tam`×`tam`, centrado na origem.
  * `corLado` recebe a profundidade abaixo do topo (0 = a primeira camada) e a cor do topo.
  * Paredes mais fundas que `profundidadeMax` ficam abertas embaixo (ninguém as vê); as da borda do mapa descem
- * inteiras até o nível 0, porque de fora (do mar, de quem pulou do penhasco) se vê o paredão todo.
+ * inteiras até `FUNDO_BORDA` (abaixo do fundo do mar), porque de fora (do mar, de quem pulou do penhasco) se vê o
+ * paredão todo.
  */
 export function malhaDeColunas(
   tam: number,
@@ -194,6 +195,9 @@ export function blocosDeColunas(
   return grupo;
 }
 
+/** Até onde descem as paredes da borda de um mapa (m): abaixo do fundo do mar aberto. */
+const FUNDO_BORDA = -8;
+
 /** As colunas do retângulo [i0, i1) × [j0, j1) de um mapa `tam`×`tam` (vizinhos de fora do retângulo contam na oclusão). */
 function geometriaDeColunas(
   tam: number,
@@ -212,8 +216,8 @@ function geometriaDeColunas(
   const v: [number, number, number][] = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
   const laterais = FACES.filter((f) => f.n[1] === 0);
   const topo = FACES.find((f) => f.n[1] === 1)!;
-  // um bloco existe na coluna (i, j) abaixo da altura dela; fora do mapa, só o chão (y < 0)
-  const cheio = (i: number, y: number, j: number) => (i < 0 || j < 0 || i >= tam || j >= tam ? y < 0 : y < h(i, j));
+  // um bloco existe na coluna (i, j) abaixo da altura dela; fora do mapa, só o fundo
+  const cheio = (i: number, y: number, j: number) => (i < 0 || j < 0 || i >= tam || j >= tam ? y < FUNDO_BORDA : y < h(i, j));
   const ao = [0, 0, 0, 0];
   for (let i = i0; i < i1; i++)
     for (let j = j0; j < j1; j++) {
@@ -225,7 +229,7 @@ function geometriaDeColunas(
       b.quad(v, topo.n, cor, 1, ocluir(cheio, [i, a, j], 1, topo.v, ao));
       for (const f of laterais) {
         const fora = i + f.n[0] < 0 || j + f.n[2] < 0 || i + f.n[0] >= tam || j + f.n[2] >= tam;
-        const hv = fora ? 0 : h(i + f.n[0], j + f.n[2]);
+        const hv = fora ? FUNDO_BORDA : h(i + f.n[0], j + f.n[2]);
         for (let y = fora ? hv : Math.max(hv, a - profundidadeMax); y < a; y++) {
           cor.setHex(corLado(i, y, j, a - 1 - y, hexTopo));
           for (let k = 0; k < 4; k++) v[k] = [x + f.v[k][0], y + f.v[k][1], z + f.v[k][2]];

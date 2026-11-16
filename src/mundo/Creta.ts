@@ -17,14 +17,14 @@ import {
 import { BORDA_PAREDE, CABINE, MASTRO, MEIO_COMPRIMENTO, anfora, bote, bordaEm, convesEm, meiaLarguraConves, navioAlexandrino, sacoDeTrigo } from './NavioModelos';
 import { Oceano } from './Oceano';
 import { blocosDeColunas } from './Terreno';
+import { NIVEL_MAR, ORIGENS } from './aberto/Geografia';
 
 /** Canto do mapa de Creta no mundo (longe das outras áreas). */
-export const ORIGEM_CRETA = new THREE.Vector3(1600, 0, 0);
+export const ORIGEM_CRETA = ORIGENS.creta;
 /** Colunas de 1 m de cada lado. */
 const TAM = 320;
 const META = TAM / 2;
-/** O nível do mar (m). Abaixo dele, o fundo; a terra começa logo acima. */
-export const NIVEL_MAR = 8;
+export { NIVEL_MAR };
 /** Fundo do mar aberto, fora do mapa (m): fundo demais para se ficar de pé; nada-se para onde quiser. */
 const FUNDO_ABERTO = NIVEL_MAR - 8;
 
@@ -154,7 +154,7 @@ export class Creta implements Area {
     for (let i = 0; i < TAM; i++)
       for (let j = 0; j < TAM; j++) {
         const [h, t] = this.gerar(i - META + 0.5, j - META + 0.5);
-        this.alturas[i * TAM + j] = Math.max(0, Math.round(h));
+        this.alturas[i * TAM + j] = Math.round(h);
         this.tipo[i * TAM + j] = t;
       }
     const terreno = blocosDeColunas(TAM, (i, j) => this.alturas[i * TAM + j], (i, j, h) => this.corTopo(i, j, h),

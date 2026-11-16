@@ -15,13 +15,14 @@ import { Chuva } from './Chuva';
 import { BORDA_PAREDE, CABINE, MASTRO, MEIO_COMPRIMENTO, bordaEm, convesEm, meiaLarguraConves, navioAlexandrino } from './NavioModelos';
 import { Oceano } from './Oceano';
 import { blocosDeColunas } from './Terreno';
+import { NIVEL_MAR, ORIGENS } from './aberto/Geografia';
 
 /** Canto da enseada no mundo (longe das outras áreas). */
-export const ORIGEM_NAUFRAGIO = new THREE.Vector3(3200, 0, 0);
+export const ORIGEM_NAUFRAGIO = ORIGENS.naufragio;
 export const ID_IRA = 'naufragio_ira';
 const TAM = 200;
 const META = TAM / 2;
-const NIVEL = 8;
+const NIVEL = NIVEL_MAR;
 const FUNDO_ABERTO = NIVEL - 9;
 
 const suave = (a: number, b: number, x: number) => {

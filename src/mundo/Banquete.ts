@@ -7,6 +7,7 @@ import { Alvo, Area } from './Area';
 import { malhaDeColunas } from './Terreno';
 import type { FonteMapa } from '../ui/Minimapa';
 import { escurecer } from './PocoMeioDia';
+import { ORIGENS } from './aberto/Geografia';
 
 /**
  * O Salão do Banquete, dentro do palácio da Cidade Dourada: a arena da Gula. É uma área separada.
@@ -17,7 +18,7 @@ import { escurecer } from './PocoMeioDia';
 
 const TAM = 64;
 const META = TAM / 2;
-export const ORIGEM_BANQUETE = new THREE.Vector3(500, 0, -330);
+export const ORIGEM_BANQUETE = ORIGENS.palacio;
 const CHAO = 4;
 /** O salão (coordenadas locais). */
 const SALAO = { x0: -16, x1: 16, z0: -14, z1: 14 };

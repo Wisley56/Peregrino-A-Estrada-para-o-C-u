@@ -14,6 +14,7 @@ import type { FonteMapa } from '../ui/Minimapa';
 import { escurecer } from './PocoMeioDia';
 import { CapelaRegional, type EstiloCapela } from './Capela';
 import type { DefNpc } from '../entidades/Npc';
+import { ORIGENS } from './aberto/Geografia';
 
 /**
  * O Deserto das Vozes (segunda região). Fica longe do Vale (em ORIGEM) e é uma área separada,
@@ -24,7 +25,7 @@ import type { DefNpc } from '../entidades/Npc';
 
 const TAM = 160;
 const META = TAM / 2;
-export const ORIGEM_DESERTO = new THREE.Vector3(-500, 0, 0);
+export const ORIGEM_DESERTO = ORIGENS.deserto;
 /** Sombras do deserto que devolvem a cor (4 escondidas nas miragens + 2 à vista). */
 export const TOTAL_SOMBRAS_DESERTO = 6;
 

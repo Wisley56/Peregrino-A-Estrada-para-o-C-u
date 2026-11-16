@@ -132,6 +132,9 @@ tools/verificar-build.mjs confere que o modo dev não foi para o build
 - `coracoesMax` é calculado: 5, mais 1 por chefão vencido (lista `CHEFOES`).
 - `energiaMax` é calculada: 100, ou 130 com o Temor de Deus no nível 5.
 - Migração: um save com chefão vencido e sem a flag `graca_grande_<id>` recebe a diferença da graça grande.
+- `versao`: 2 desde o mapa único. Um save sem `versao` (a 1) tem o checkpoint no lugar antigo da área: ao carregar,
+  `pontoDaV1` (`Geografia.ts`) o traz para o lugar novo, e uma cópia do save original fica em
+  `peregrino3d.slot.<n>.v1`.
 
 **Preferências** (`src/core/Preferencias.ts`) valem para todos os saves e ficam em `peregrino-preferencias`:
 `{ sensibilidade, mira, graficos, sensibilidadeControle, inverterY, vibracao }`. Os valores lidos são validados; o que vier inválido volta ao padrão.
@@ -611,6 +614,31 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
   palafitas dos Alagados, os varais de roupa e os vasos de flor (`enfeitesDaPalafita`). O que só aparece depois
   da cor fica em `MapaDaBahia.depoisDaCor`, e as caixas que vêm com ele em `caixasDaCor` (desligadas antes, com
   `topo = -PAREDE`); as duas listas são acertadas em `reiniciar`.
+
+## Mundo aberto (reforma em andamento)
+
+O jogo está passando de áreas isoladas para um mundo único e contínuo. O plano tem oito fases; estão feitas a 0
+(bordas) e a 1 (geografia e terreno global). Enquanto as fases seguintes não chegam, **o jogo ainda troca de área
+como antes** (`Jogo.trocarArea`); o que mudou foi o lugar de cada área e o nível do mar.
+
+- **Geografia** (`src/mundo/aberto/Geografia.ts`): a tabela `ORIGENS` diz onde fica cada área no mapa único (+x é
+  o leste, +z é o sul). As constantes `ORIGEM_*` de cada área vêm dela. O Vale fica na origem; o Deserto a oeste; a
+  Cidade Dourada ao sul do Deserto; a Bahia na baía, mais ao sul e a leste; Creta, o naufrágio e Malta são ilhas no
+  mar do sul. As regiões vizinhas ficam a mais de 1 km uma da outra. Os interiores e as cenas à parte (cripta, Poço
+  do Meio-Dia, palácio, o navio na tempestade) ficam numa faixa distante (`z = -9000`) e não têm lugar no mapa.
+- **Nível do mar**: `NIVEL_MAR = 2`, um só para o mundo. Creta, o naufrágio e Malta desceram 6 m (o mar delas era
+  no nível 8) e a baía da Bahia desceu de 2,6 para 2. O navio na tempestade continua no nível 8 (é uma cena à parte).
+  O fundo do mar pode ter altura negativa.
+- **Terreno global** (`src/mundo/aberto/TerrenoMundo.ts`): `altura(x, z)` e `cor(x, z)` para qualquer ponto do
+  mundo. Cada região ao ar livre é um **carimbo**: dentro do retângulo dela vale o chão feito à mão; numa faixa em
+  volta (80 a 120 m) ele se desfaz no terreno procedural. O procedural usa simplex (`Ruido.simplex`,
+  `fbmSimplex`, `cristas`): a terra firme é a vizinhança da `ESPINHA` (trechos entre as regiões), com a costa
+  recortada por ruído; os `BIOMAS` dão as cores da terra de ligação conforme a região mais próxima. Ainda não é
+  desenhado nem pisado no jogo: isso vem com os chunks (fase 2).
+- **Mapa do terreno** (`src/mundo/aberto/MapaDoTerreno.ts`): `pintarMapa` desenha o chão do mundo visto de cima
+  num canvas (será a base do mapa-múndi). No modo dev: `jogo.ganchosDev().mapaDoMundo(x0, z0, x1, z1, passo)`.
+- **Bordas**: as paredes da borda de um mapa descem até `FUNDO_BORDA` (`Terreno.ts`), a superfície da água
+  segura a câmera (ela não mergulha) e o `Oceano` desenha os dois lados.
 
 ## Diálogos
 

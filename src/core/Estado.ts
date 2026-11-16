@@ -1,5 +1,6 @@
 import { Identidade, normalizar } from './Aparencia';
 import { AREAS, IdArea } from '../mundo/Area';
+import { pontoDaV1 } from '../mundo/aberto/Geografia';
 import { CUSTO_NIVEL, DONS, IdDom, domPorId } from './Dons';
 
 const areaValida = (a: unknown): IdArea => (AREAS.includes(a as IdArea) ? (a as IdArea) : 'vale');
@@ -8,9 +9,17 @@ const areaValida = (a: unknown): IdArea => (AREAS.includes(a as IdArea) ? (a as 
 const CHAVE_ANTIGA = 'peregrino3d.save.v1';
 const CHAVE_SLOT = (n: number) => `peregrino3d.slot.${n}`;
 const CHAVE_ULTIMO = 'peregrino3d.ultimoSlot';
+/** Cópia de um espaço de jogo de antes do mapa único (versão 1), guardada na hora de trazê-lo para o mundo novo. */
+const CHAVE_COPIA_V1 = (n: number) => `peregrino3d.slot.${n}.v1`;
+/**
+ * Versão do formato do save. 1 (ou ausente): cada área num canto do mundo, com o mar de Creta e Malta no nível 8.
+ * 2: o mapa único (as áreas têm lugar certo e o mar tem um nível só).
+ */
+const VERSAO = 2;
 export const TOTAL_SLOTS = 3;
 
 export interface DadosSalvos {
+  versao?: number;
   checkpoint: [number, number, number];
   checkpointArea?: IdArea;
   cor: number;
@@ -154,8 +163,17 @@ export class Estado {
     this.slot = slot;
     const d = ler(CHAVE_SLOT(slot));
     if (!d || !d.identidade) return false; // sem peregrino criado: é um jogo novo
-    this.checkpoint = d.checkpoint;
     this.checkpointArea = areaValida(d.checkpointArea);
+    this.checkpoint = d.checkpoint;
+    if ((d.versao ?? 1) < 2) {
+      // save de antes do mapa único: guarda uma cópia e traz o ponto de retorno para o lugar novo da área
+      try {
+        if (!localStorage.getItem(CHAVE_COPIA_V1(slot))) localStorage.setItem(CHAVE_COPIA_V1(slot), JSON.stringify(d));
+      } catch {
+        /* sem armazenamento */
+      }
+      this.checkpoint = pontoDaV1(this.checkpointArea, d.checkpoint);
+    }
     this.cor = d.cor;
     this.gracas = d.gracas;
     this.sombrasVencidas = new Set(d.sombrasVencidas);
@@ -198,6 +216,7 @@ export class Estado {
   salvar() {
     if (this.slot === null || this.semSalvar) return;
     const d: DadosSalvos = {
+      versao: VERSAO,
       checkpoint: this.checkpoint,
       checkpointArea: this.checkpointArea,
       cor: this.cor,

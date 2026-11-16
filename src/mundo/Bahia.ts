@@ -23,6 +23,7 @@ import {
   conventoSantoAntonio, cruzeiroDePedra, elevadorLacerda, gradilDeFitas, igreja, mercadoModelo,
   mesaComGuardaSol, palafita, palmeiraImperial, pinguela, poste, saveiro, silhueta, type Frente,
 } from './BahiaModelos';
+import { NIVEL_MAR, ORIGENS } from './aberto/Geografia';
 
 /**
  * As Ruas da Bahia (quarta região, de Santa Dulce dos Pobres): uma Salvador sem data exata, com o clima dos
@@ -39,8 +40,8 @@ import {
  * Coordenadas locais em metros; +z é o sul. Ver docs/regioes/01-ruas-da-bahia.md.
  */
 
-/** A superfície da baía. */
-export const AGUA_BAHIA = 2.6;
+/** A superfície da baía: é o mar, no mesmo nível do resto do mundo. */
+export const AGUA_BAHIA = NIVEL_MAR;
 /** O chão da Cidade Baixa e o da Cidade Alta (o alto da escarpa). */
 const CHAO = 4;
 const PLANALTO = 30;
@@ -400,7 +401,7 @@ abstract class MapaDaBahia implements Area {
 
 // ═════════════════════════════ Cidade Baixa ═════════════════════════════
 
-export const ORIGEM_BAHIA_BAIXA = new THREE.Vector3(0, 0, 700);
+export const ORIGEM_BAHIA_BAIXA = ORIGENS.bahiabaixa;
 
 /** Ruas (paralelepípedo) da Cidade Baixa. */
 const RUAS_BAIXA: Ret[] = [
@@ -1027,7 +1028,7 @@ function girar(f: Frente, x0: number, z0: number, x1: number, z1: number): [numb
 
 // ═════════════════════════════ Cidade Alta ═════════════════════════════
 
-export const ORIGEM_BAHIA_ALTA = new THREE.Vector3(0, 0, 1000);
+export const ORIGEM_BAHIA_ALTA = ORIGENS.bahiaalta;
 
 const BEIRA = -44; // a beira da escarpa, a oeste
 const PRACA_TOME: Ret = [-44, 12, 18, 28];
