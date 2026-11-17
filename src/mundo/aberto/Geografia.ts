@@ -50,7 +50,9 @@ export const ORIGENS: Record<IdOrigem, THREE.Vector3> = {
   bahiaalta: v(BAHIA_BAIXA.x + ELEVADOR_BAIXA.x - ELEVADOR_ALTA.x, BAHIA_BAIXA.z + ELEVADOR_BAIXA.z - ELEVADOR_ALTA.z),
   creta: v(-400, 4000),
   malta: v(1600, 4600),
-  naufragio: v(1180, 4640),
+  // a enseada do naufrágio, a oeste de Malta: a praia dela na mesma linha da praia de Malta, um estreito de 24 m
+  // entre o promontório leste da enseada e a ponta oeste da ilha
+  naufragio: v(1316, 4696),
   cripta: v(0, Z_INTERIORES),
   meiodia: v(-1000, Z_INTERIORES),
   palacio: v(1000, Z_INTERIORES),

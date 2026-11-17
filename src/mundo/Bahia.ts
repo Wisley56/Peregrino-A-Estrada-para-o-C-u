@@ -21,7 +21,7 @@ import { escurecer } from './PocoMeioDia';
 import {
   CORES_CASARIO, CATEDRAL, IGREJA_BONFIM, IGREJA_ROSARIO, IGREJA_SAO_FRANCISCO, Juntador, ROT, armazem, canoa, casaAbandonada, mantimentos, casario, chafariz, coqueiro, esteira, muroDeFitas,
   conventoSantoAntonio, cruzeiroDePedra, elevadorLacerda, gradilDeFitas, igreja, mercadoModelo,
-  mesaComGuardaSol, palafita, palmeiraImperial, pinguela, poste, saveiro, silhueta, type Frente,
+  mesaComGuardaSol, palafita, palmeiraImperial, pinguela, poste, saveiro, type Frente,
 } from './BahiaModelos';
 import { NIVEL_MAR, ORIGENS } from './aberto/Geografia';
 
@@ -92,6 +92,12 @@ abstract class MapaDaBahia implements Area {
   /** Os enfermos caídos nesta área, onde estão (o ponto da interação) e o corpo deitado. */
   readonly enfermos = new Map<string, { def: DefEnfermo; pos: THREE.Vector3; corpo: THREE.Object3D }>();
 
+  /**
+   * O pedaço do mapa que é desta área (x, z locais). As duas Bahias são um lugar só no mundo aberto: a Alta começa
+   * na beira da escarpa; a Baixa desenha tudo menos o que fica debaixo da Alta.
+   */
+  protected desenha: (x: number, z: number) => boolean = () => true;
+
   constructor(protected readonly tam: number, readonly origem: THREE.Vector3) {
     this.meta = tam / 2;
     this.alturas = new Int16Array(tam * tam);
@@ -109,7 +115,7 @@ abstract class MapaDaBahia implements Area {
         this.tipo[i * this.tam + j] = t;
       }
     const terreno = malhaDeColunas(this.tam, (i, j) => this.alturas[i * this.tam + j], (i, j, h) => this.corTopo(i, j, h),
-      (i, y, j, prof, topo) => this.corLado(i, y, j, prof, topo), 40);
+      (i, y, j, prof, topo) => this.corLado(i, y, j, prof, topo), 40, (i, j) => this.desenha(i - this.meta, j - this.meta));
     terreno.position.copy(this.origem);
     this.grupo.add(terreno);
     // a baía: um plano grande até o horizonte (fica escondido sob a terra)
@@ -124,8 +130,10 @@ abstract class MapaDaBahia implements Area {
 
   /** No mundo aberto, o plano da baía só aparece com o peregrino na cidade: de fora, vê-se o mar do mundo. */
   private agua: THREE.Mesh | null = null;
+  /** A baía é uma só, a da Cidade Baixa: a Cidade Alta não põe a sua (as duas se sobreporiam). */
+  protected temBaia = true;
   presente(sim: boolean) {
-    if (this.agua) this.agua.visible = sim;
+    if (this.agua) this.agua.visible = sim && this.temBaia;
   }
 
   // ───────────── ajudantes (coordenadas locais) ─────────────
@@ -425,6 +433,16 @@ const MERCADO: Ret = [-38, 26, 14, 16];
 const RAMPA: Ret = [-48, 46, 6, 10];
 const LARGO_ROMA: Ret = [0, -40, 30, 20];
 const ELEVADOR_BAIXA = new THREE.Vector2(56, 26);
+/** A beira da escarpa (x local da Baixa): daqui para o leste o chão é da Cidade Alta. */
+const BEIRA_BAIXA = 64;
+/**
+ * A Ladeira da Montanha: sobe a pé da Cidade Baixa à Alta, ao sul do elevador, em degraus de até 1 m, colada na
+ * escarpa. Embaixo (z = 78) começa na rua junto à escarpa; em cima, um patamar (z de 36 a 40) dá na Praça Tomé de
+ * Sousa, onde a balaustrada tem a abertura dela.
+ */
+const LADEIRA_MONTANHA: Ret = [57, 36, BEIRA_BAIXA - 57, 42];
+const PATAMAR_MONTANHA = 40;
+const alturaMontanha = (z: number) => Math.round(PLANALTO - Math.max(0, z - PATAMAR_MONTANHA) * ((PLANALTO - CHAO) / (LADEIRA_MONTANHA[1] + LADEIRA_MONTANHA[3] - PATAMAR_MONTANHA)));
 const COLINA: Ret = [32, -88, 26, 38];
 const ADRO_BONFIM: Ret = [32, -58, 26, 8];
 const ESCADARIA_BONFIM: Ret = [38, -50, 14, 8];
@@ -592,6 +610,9 @@ export class BahiaBaixa extends MapaDaBahia {
 
   constructor() {
     super(176, ORIGEM_BAHIA_BAIXA);
+    // a Cidade Alta (128 m de lado, centrada na mesma linha) cobre a escarpa da beira para o leste; ao norte e ao
+    // sul dela a escarpa continua sendo desta
+    this.desenha = (x, z) => x < BEIRA_BAIXA || z < -64 || z >= 64;
     this.montarTerreno();
 
     this.chegada = this.w(-40, 51);
@@ -627,8 +648,6 @@ export class BahiaBaixa extends MapaDaBahia {
     this.por(elevadorLacerda(PLANALTO - CHAO, 5), ELEVADOR_BAIXA.x, ELEVADOR_BAIXA.y, 0, CHAO);
     this.caixaLocal(ELEVADOR_BAIXA.x - 6, ELEVADOR_BAIXA.y - 5, 12, 10);
     this.predios.push({ ret: [ELEVADOR_BAIXA.x - 6, ELEVADOR_BAIXA.y - 5, 12, 10], cor: 0xf2ecdf });
-    // a Cidade Alta vista de baixo, no alto da escarpa
-    for (let k = 0; k < 4; k++) this.por(silhueta(70 + k, 40, 10, 12), 64, -46 + k * 44, Math.PI / 2, PLANALTO);
 
     // o Convento de Santo Antônio e o galinheiro, no Largo de Roma
     this.por(conventoSantoAntonio(), CONVENTO.x, CONVENTO.y, -Math.PI / 2);
@@ -983,6 +1002,8 @@ export class BahiaBaixa extends MapaDaBahia {
   }
 
   protected gerarChao(x: number, z: number): [number, T] {
+    // a Ladeira da Montanha, em degraus, encostada na escarpa: sobe do sul da rua até o alto, junto à Praça Tomé de Sousa
+    if (dentro(x, z, LADEIRA_MONTANHA)) return [alturaMontanha(z), T.Rua];
     // a escarpa e o alto dela, a leste
     if (x >= 62) return [PLANALTO, T.Escarpa];
     // o morro ao sul, fechando a cidade
@@ -1050,6 +1071,8 @@ const BECO: Ret = [2, -62, 4, 6];
 const CRUZEIRO = new THREE.Vector2(30, 24);
 const CHAFARIZ = new THREE.Vector2(4, 23);
 const ELEVADOR_ALTA = new THREE.Vector2(-52, 26);
+/** Onde o patamar da Ladeira da Montanha (da Cidade Baixa) encosta na praça: z local de cá (a mesma linha de lá). */
+const LADEIRA_MONTANHA_Z = [36, 40] as const;
 
 /** A altura da ladeira do Pelourinho: desce do Terreiro (z = 6) até o largo (z = -36). */
 const alturaLadeira = (lz: number) => {
@@ -1086,7 +1109,10 @@ export class BahiaAlta extends MapaDaBahia {
 
   constructor(eventosLargo: EventosLargo) {
     super(128, ORIGEM_BAHIA_ALTA);
+    this.desenha = (x) => x >= BEIRA;
+    this.temBaia = false;
     this.montarTerreno();
+    this.presente(false);
     this.pisoLocal(LADEIRA[0], LADEIRA[1], LADEIRA[2], LADEIRA[3], (_x, lz) => alturaLadeira(lz));
 
     this.chegada = this.w(BEIRA + 5, ELEVADOR_ALTA.y);
@@ -1168,25 +1194,25 @@ export class BahiaAlta extends MapaDaBahia {
     this.fila([[-6, 10], [14, 10], [14, 36], [-6, 36]], 5, 1.0, true, 3);
     this.fila([[BECO[0] + 0.8, BECO[1] + BECO[3] - 0.4], [BECO[0] + 2, BECO[1] + BECO[3] - 0.4], [BECO[0] + 3.2, BECO[1] + BECO[3] - 0.4]], 3, 0, false, 4);
 
-    // o Elevador Lacerda: sobe da Cidade Baixa até a beira da praça; uma balaustrada fecha a escarpa
-    this.por(elevadorLacerda(PLANALTO - CHAO, 5), ELEVADOR_ALTA.x, ELEVADOR_ALTA.y, 0, CHAO);
-    this.caixaLocal(BEIRA - 0.6, -this.meta, 0.6, this.tam);
+    // o Elevador Lacerda (o da Cidade Baixa, que sobe até aqui) chega à beira da praça; uma balaustrada fecha a
+    // escarpa, com a abertura do elevador e a do patamar da Ladeira da Montanha
+    const abertura = (z: number) => z >= LADEIRA_MONTANHA_Z[0] && z < LADEIRA_MONTANHA_Z[1];
+    this.caixaLocal(BEIRA - 0.6, PRACA_TOME[1], 0.6, LADEIRA_MONTANHA_Z[0] - PRACA_TOME[1]);
     const bal = new Modelo();
     for (let z = 0; z < PRACA_TOME[3] * 4; z++) {
-      if (Math.abs(PRACA_TOME[1] + z / 4 - ELEVADOR_ALTA.y) < 1.6) continue;
+      if (Math.abs(PRACA_TOME[1] + z / 4 - ELEVADOR_ALTA.y) < 1.6 || abertura(PRACA_TOME[1] + z / 4)) continue;
       bal.ponto(0, 3, z, 0xf2eee4).ponto(0, 0, z, 0xf2eee4);
       if (z % 2 === 0) bal.caixa(0, 1, z, 1, 2, 1, 0xe8e2d6);
     }
     this.por(bal.malha(0.25, [0, 0, 0]), BEIRA - 0.25, PRACA_TOME[1], 0, PLANALTO);
-    // a Cidade Baixa lá embaixo, e o porto
-    for (const [k, z0, comp] of [[0, -64, 40], [1, -22, 32], [2, 40, 24]]) this.por(silhueta(90 + k, comp, 14, 10), BEIRA - 2, z0, -Math.PI / 2, CHAO);
 
     this.juntar();
   }
 
   protected gerarChao(x: number, z: number): [number, T] {
-    if (x < BEIRA - 2) return [CHAO, T.Baixa];
-    if (x < BEIRA) return [PLANALTO, T.Escarpa];
+    // a oeste da beira o chão é da Cidade Baixa (não se desenha daqui); fica embaixo para a parede da escarpa descer
+    // inteira, até a rua ou até a Ladeira da Montanha encostada nela
+    if (x < BEIRA) return [CHAO, T.Baixa];
     if (dentro(x, z, PRACA_TOME) || dentro(x, z, TERREIRO)) return [PLANALTO, T.Praca];
     if (dentro(x, z, RUA_MISERICORDIA) || dentro(x, z, LARGO_CRUZEIRO)) return [PLANALTO, T.Rua];
     if (dentro(x, z, LADEIRA)) return [Math.floor(alturaLadeira(z)) - 1, T.Rua];
@@ -1209,7 +1235,13 @@ export class BahiaAlta extends MapaDaBahia {
 
   override atualizar(dt: number, jogador: THREE.Vector3) {
     super.atualizar(dt, jogador);
-    this.largo.atualizar(dt, jogador);
+    if (!this.dormindo) this.largo.atualizar(dt, jogador);
+  }
+
+  /** A história da Bahia ainda não chegou: o Coração de Pedra não acorda. */
+  private dormindo = false;
+  dormir(sim: boolean) {
+    this.dormindo = sim;
   }
 
   /** Gatos nos telhados baixos e um cão no Terreiro. */

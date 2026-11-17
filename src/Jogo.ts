@@ -300,9 +300,11 @@ export class Jogo {
   private reverRegiao(dt: number) {
     if (!this.aberto || this.transitando) return;
     const p = this.peregrino.pos, t = this.terrenoMundo;
+    // a primeira região da lista que tem o ponto manda (a Cidade Alta vem antes da Baixa, que a abraça); a atual
+    // segura até 3 m fora dela, as outras só tomam 3 m para dentro
     const atual = t.carimboDe(this.area.id);
-    if (!atual || t.distancia(atual, p.x, p.z) > 3) {
-      const c = t.carimbos.find((k) => t.distancia(k, p.x, p.z) < (atual ? 0 : -3));
+    const c = t.carimbos.find((k) => t.distancia(k, p.x, p.z) < (k === atual ? 3 : -3)) ?? null;
+    if (c !== atual && (c || !atual || t.distancia(atual, p.x, p.z) > 3)) {
       const nova = c ? this.areaPorId(c.id) : this.ermo;
       if (nova !== this.area) this.entrarEm(nova);
     }
@@ -321,6 +323,136 @@ export class Jogo {
     this.mistura = { de, para: this.fotoDoAmbiente(), t: 0 };
     this.porAmbiente(de, de, 0);
     this.semSaltoDeCor = true;
+    if (!this.regioesAbertas().includes(nova)) return;
+    if (this.acordada(nova.id)) this.chegouAndando(nova);
+    else this.hud.anunciar(`${NOMES_AREA[nova.id]}: a história daqui ainda dorme. Ela espera a hora dela.`, 3.4);
+  }
+
+  /**
+   * A história de uma região ao ar livre já chegou lá? Vai-se a qualquer lugar a qualquer hora (a pé, a nado), mas
+   * a região alcançada antes do capítulo dela fica **adormecida**: sem cor, sem santos, sem chefão e sem cenas, até
+   * a hora dela. As condições são as que antes abriam a passagem com F para ela.
+   */
+  private acordada(id: IdArea) {
+    const f = this.estado.flags;
+    switch (id) {
+      case 'deserto': return this.mundo.veuAberto || f.has('deserto_entrou');
+      case 'cidade': return f.has('meiodia_vencido');
+      case 'bahiabaixa': case 'bahiaalta': return this.estado.sombrasVencidas.has('palacio_gula');
+      case 'creta': return f.has('bahia_coracao_vencido');
+      case 'naufragio': return f.has('naufragio_encalhou');
+      case 'malta': return f.has('naufragio_ira_vencida');
+      default: return true;
+    }
+  }
+
+  /** A área atual é uma região adormecida. */
+  private get dormente() {
+    return this.area !== this.ermoDoMundo && this.regioesAbertas().includes(this.area) && !this.acordada(this.area.id);
+  }
+
+  /** Quais regiões dormiam da última vez que se olhou (para só mexer no que mudou). */
+  private readonly sono = new Map<IdArea, boolean>();
+  /** Os santos escondidos de cada região adormecida, e se estavam visíveis antes. */
+  private readonly santosEscondidos = new Map<IdArea, Map<Npc, boolean>>();
+
+  /**
+   * Põe para dormir (ou acorda) cada região conforme a história: a região sabe o que não pode começar sozinha; os
+   * santos dela (os de modelo próprio, com a iconografia) somem até a hora deles.
+   */
+  private revisarSono() {
+    const t = this.terrenoMundo;
+    for (const a of this.regioesAbertas()) {
+      const dorme = !this.acordada(a.id);
+      const c = t.carimboDe(a.id);
+      // enquanto dorme, um santo que a própria região tornar a mostrar (ao se rearrumar) volta a sumir
+      const esconder = (vistos: Map<Npc, boolean>) => {
+        for (const n of Npc.lista)
+          if (typeof n.def.visual === 'function' && n.raiz.visible && c && t.distancia(c, n.pos.x, n.pos.z) <= 0) {
+            vistos.set(n, true);
+            n.raiz.visible = false;
+          }
+      };
+      if (this.sono.get(a.id) === dorme) {
+        if (dorme) esconder(this.santosEscondidos.get(a.id) ?? new Map());
+        continue;
+      }
+      this.sono.set(a.id, dorme);
+      if (dorme) {
+        const vistos = new Map<Npc, boolean>();
+        esconder(vistos);
+        this.santosEscondidos.set(a.id, vistos);
+        a.dormir?.(true);
+      } else {
+        for (const [n, v] of this.santosEscondidos.get(a.id) ?? []) n.raiz.visible = v;
+        this.santosEscondidos.delete(a.id);
+        a.dormir?.(false);
+      }
+      // o tempo de lá muda com o sono (o naufrágio: a enseada calma ou a tempestade)
+      if (a === this.area) this.aplicarAmbiente();
+    }
+  }
+
+  /**
+   * Chegou a pé (ou a nado) a uma região acordada: o que a passagem com F fazia na chegada. Na primeira vez, a fala
+   * de chegada, e o lugar de chegada da região passa a ser o checkpoint.
+   */
+  private chegouAndando(a: Area) {
+    const chegou = (flag: string, no: string) => {
+      if (!this.primeiraVez(flag)) return;
+      this.guardarChegada(a);
+      this.dialogos.tocar(no);
+    };
+    if (a === this.deserto) chegou('deserto_entrou', 'deserto_chegada');
+    else if (a === this.cidade) chegou('cidade_entrou', 'cidade_chegada');
+    else if (a === this.creta) chegou('creta_entrou', 'creta_chegada');
+    else if (a === this.malta) {
+      this.maltaArrumada = false;
+      chegou('malta_entrou', 'malta_chegada');
+    } else if (a === this.bahiaBaixa || a === this.bahiaAlta) {
+      const fala = () => (a === this.bahiaBaixa ? chegou('bahia_entrou', 'bahia_chegada') : chegou('bahia_alta_entrou', 'bahia_alta_chegada'));
+      if (this.estado.flags.has('peregrino_adulto')) return fala();
+      // a viagem até a Bahia é longa: o peregrino chega adulto (os anos passam num escuro breve)
+      this.estado.flags.add('peregrino_adulto');
+      this.transitando = true;
+      this.hud.escurecer(true);
+      setTimeout(() => {
+        if (this.idadeDaHistoria() !== this.idadeVestida) this.vestirPeregrino();
+        this.hud.escurecer(false);
+        this.transitando = false;
+        this.hud.anunciar('Os anos passaram pelo caminho…', 2.6);
+        fala();
+      }, 900);
+    }
+  }
+
+  /** O lugar de chegada de uma região passa a ser o checkpoint (o peregrino volta para lá se cair). */
+  private guardarChegada(a: Area) {
+    const c = (a as Area & { chegada?: THREE.Vector3 }).chegada;
+    if (!c) return;
+    this.estado.checkpoint = [c.x, a.altura(c.x, c.z), c.z];
+    this.estado.checkpointArea = a.id;
+    this.estado.salvar();
+  }
+
+  /** Numa região adormecida, a gente só cumprimenta: a conversa dela é para a hora dela. */
+  private interacaoDormente(): Interacao | null {
+    const p = this.peregrino.pos;
+    let perto: Npc | null = null, dm = 2.2;
+    for (const n of Npc.lista) {
+      if (!n.visivel) continue;
+      const d = Math.hypot(n.pos.x - p.x, n.pos.z - p.z);
+      if (d < dm) {
+        dm = d;
+        perto = n;
+      }
+    }
+    const n = perto;
+    if (!n) return null;
+    return {
+      pos: () => n.pos, raio: 2.2, rotulo: 'F: cumprimentar',
+      agir: () => this.hud.anunciar('Um aceno, e cada um segue o seu caminho. A história daqui ainda espera a hora dela.', 3),
+    };
   }
 
   private semSaltoDeCor = false;
@@ -367,15 +499,14 @@ export class Jogo {
     const ab = this.aberto;
     const p = this.peregrino.pos, t = this.terrenoMundo;
     const alcance = Math.max(400, (this.mistura?.para.longe ?? (this.cena.fog as THREE.Fog).far) + 80);
-    const noErmo = this.area === this.ermoDoMundo;
     for (const a of this.regioesAbertas()) {
       const c = t.carimboDe(a.id);
       const perto = ab && !!c && t.distancia(c, p.x, p.z) < alcance;
-      // as duas metades da Bahia ainda ocupam o mesmo pedaço do mapa: só se vê a em que se está (do ermo, a Baixa)
-      const bahia = a === this.bahiaAlta || a === this.bahiaBaixa;
-      a.grupo.visible = a === this.area || (perto && (!bahia || (noErmo && a === this.bahiaBaixa)));
-      a.presente?.(a === this.area);
+      a.grupo.visible = a === this.area || perto;
+      // a baía é a da Cidade Baixa, e é ela que se vê também do alto da escarpa
+      a.presente?.(a === this.area || (a === this.bahiaBaixa && this.area === this.bahiaAlta));
     }
+    this.revisarSono();
     this.ermo.grupo.visible = ab;
     const marProprio = this.area === this.creta || this.area === this.naufragio || this.area === this.malta || this.area === this.bahiaBaixa || this.area === this.bahiaAlta;
     this.ermo.mostrarMar(ab && !marProprio);
@@ -575,7 +706,9 @@ export class Jogo {
     const beira = ORIGENS.bahiaalta.x - 44;
     return new TerrenoMundo([
       carimbo(this.mundo, 90), carimbo(this.deserto, 90), carimbo(this.cidade, 90),
-      carimbo(this.bahiaAlta, 80, { xMin: beira }), carimbo(this.bahiaBaixa, 80, { xMax: beira }),
+      // a Alta vem antes: onde as duas se sobrepõem (da beira para o leste) ela manda; ao norte e ao sul dela, a
+      // escarpa continua sendo da Baixa
+      carimbo(this.bahiaAlta, 80, { xMin: beira }), carimbo(this.bahiaBaixa, 80),
       carimbo(this.creta, 120), carimbo(this.naufragio, 100), carimbo(this.malta, 120),
     ]);
   }
@@ -599,7 +732,11 @@ export class Jogo {
   private posicionarNoCheckpoint() {
     this.area = this.areaPorId(this.estado.checkpointArea);
     this.aplicarAmbiente();
-    const [x, y, z] = this.estado.checkpoint;
+    let [x, y, z] = this.estado.checkpoint;
+    // um checkpoint fora da própria região (as regiões mudaram de lugar no mapa): volta à chegada dela
+    const c = this.regioesAbertas().includes(this.area) ? this.terrenoMundo.carimboDe(this.area.id) : null;
+    const chegada = (this.area as Area & { chegada?: THREE.Vector3 }).chegada;
+    if (c && chegada && this.terrenoMundo.distancia(c, x, z) > 0) [x, y, z] = [chegada.x, this.area.altura(chegada.x, chegada.z), chegada.z];
     this.peregrino.teleportar(x, y, z);
     this.peregrino.rumo = Math.PI; // olhando para o norte
     this.camera.reposicionar();
@@ -775,7 +912,7 @@ export class Jogo {
       this.sol.intensity = 2.6;
       ceu.topo.value.setHex(0x3a82d8);
       ceu.horizonte.value.setHex(0xe6eef2);
-    } else if (noNavio || noNaufragio) {
+    } else if (noNavio || (noNaufragio && !this.dormente)) {
       // a tempestade: céu de chumbo, chuva que fecha o horizonte, e a noite de catorze dias; o relâmpago clareia tudo
       const k = noNavio ? this.navio : this.naufragio;
       const e = k.escuridao, r = k.relampago;
@@ -789,7 +926,7 @@ export class Jogo {
       this.sol.intensity = 0.7 - e * 0.55;
       ceu.topo.value.setHex(0x3a424a).lerp(new THREE.Color(0x05080c), e).lerp(new THREE.Color(0xc0c8d8), r * 0.5);
       ceu.horizonte.value.setHex(0x6a747c).lerp(new THREE.Color(0x141a20), e).lerp(new THREE.Color(0xd8e0ea), r * 0.5);
-    } else if (emMalta && this.malta.clima < 2) {
+    } else if (emMalta && this.malta.clima < 2 && !this.dormente) {
       // Malta antes da cor: a garoa fria da praia (o fogo e a víbora), depois o céu nublado dos três dias com Públio
       const chuva = this.malta.clima === 0;
       fog.color.setHex(chuva ? 0x7a848a : 0xaab4b8);
@@ -802,8 +939,8 @@ export class Jogo {
       this.sol.intensity = chuva ? 0.55 : 1.3;
       ceu.topo.value.setHex(chuva ? 0x4a545c : 0x7a8a98);
       ceu.horizonte.value.setHex(chuva ? 0x7a848a : 0xb8c4c8);
-    } else if (emCreta || emMalta) {
-      // o fim do verão no Mediterrâneo: luz clara e seca, mar de um azul fundo, e o horizonte longe
+    } else if (emCreta || emMalta || noNaufragio) {
+      // o fim do verão no Mediterrâneo (e a enseada do naufrágio e Malta antes da hora delas, sem tempestade): luz clara e seca, mar de um azul fundo, e o horizonte longe
       fog.color.setHex(0xd9e6ec);
       fog.near = 90;
       fog.far = 300;
@@ -1173,16 +1310,6 @@ export class Jogo {
             this.dialogos.tocar('vale_nevoa');
         },
       },
-      {
-        pos: () => m.fimPassagem,
-        raio: 2.4,
-        ativa: () => m.veuAberto,
-        rotulo: 'F: seguir para o Deserto das Vozes',
-        agir: () =>
-          this.trocarArea(d, d.chegada, -Math.PI / 2, () => {
-            if (this.primeiraVez('deserto_entrou')) this.dialogos.tocar('deserto_chegada');
-          }),
-      },
     ];
     this.interacoes.cripta = [
       {
@@ -1207,12 +1334,6 @@ export class Jogo {
     ];
     this.interacoes.deserto = [
       {
-        pos: () => d.saida,
-        raio: 2.6,
-        rotulo: 'F: voltar ao Vale',
-        agir: () => this.trocarArea(m, m.fimPassagem.clone().add(new THREE.Vector3(3, 0, 0)), Math.PI / 2),
-      },
-      {
         pos: () => d.poco,
         raio: 2.6,
         rotulo: 'F: descansar junto ao poço',
@@ -1230,20 +1351,6 @@ export class Jogo {
         },
       },
       this.falarCom(d.antao),
-      {
-        pos: () => d.estradaSul,
-        raio: 2.8,
-        rotulo: () => (this.estado.flags.has('meiodia_vencido') ? 'F: seguir para a Cidade Dourada' : 'F: examinar a estrada velha'),
-        agir: () => {
-          if (!this.estado.flags.has('meiodia_vencido')) {
-            this.dialogos.tocar('deserto_estrada_fechada');
-            return;
-          }
-          this.trocarArea(this.cidade, this.cidade.chegada, Math.PI, () => {
-            if (this.primeiraVez('cidade_entrou')) this.dialogos.tocar('cidade_chegada');
-          });
-        },
-      },
       {
         pos: () => d.fogo,
         raio: 2.4,
@@ -1455,7 +1562,7 @@ export class Jogo {
     // o comerciante, depois de entregar a doação, volta para a loja quando o peregrino já não o vê
     if (f.has('bahia_comerciante_doou') && b.comercianteNoConvento && (this.area !== b || b.comerciante.pos.distanceTo(this.peregrino.pos) > 25))
       b.colocarComerciante('loja');
-    if (this.area !== b || this.hud.dialogoAberto || this.dialogos.ocupado || this.transitando) return;
+    if (this.area !== b || this.hud.dialogoAberto || this.dialogos.ocupado || this.transitando || this.dormente) return;
     // depois da resposta mansa, ele espera à porta do convento com a doação e fala assim que o peregrino chega
     if (f.has('bahia_comerciante_manso') && !f.has('bahia_comerciante_doou') && b.comercianteNoConvento && b.comerciante.pos.distanceTo(this.peregrino.pos) < 6.5) {
       this.falarCom(b.comerciante).agir();
@@ -2263,28 +2370,6 @@ export class Jogo {
     const c = this.cidade;
     const f = (x: string) => this.estado.flags.has(x);
     return [
-      {
-        pos: () => c.saida,
-        raio: 2.6,
-        rotulo: 'F: voltar ao Deserto das Vozes',
-        agir: () => this.trocarArea(this.deserto, this.deserto.estradaSul.clone().add(new THREE.Vector3(0, 0, -3)), Math.PI),
-      },
-      {
-        pos: () => c.estradaDoMar,
-        raio: 2.6,
-        rotulo: () => (this.estado.sombrasVencidas.has('palacio_gula') ? 'F: seguir viagem para a Bahia' : 'F: examinar a estrada do mar'),
-        agir: () => {
-          if (!this.estado.sombrasVencidas.has('palacio_gula')) {
-            this.dialogos.tocar('cidade_estrada_mar');
-            return;
-          }
-          // a viagem por mar é longa: o peregrino chega à Bahia adulto
-          this.estado.flags.add('peregrino_adulto');
-          this.trocarArea(this.bahiaBaixa, this.bahiaBaixa.chegada, Math.PI / 2, () => {
-            if (this.primeiraVez('bahia_entrou')) this.dialogos.tocar('bahia_chegada');
-          });
-        },
-      },
       { pos: () => c.cruzeiro, raio: 2.6, rotulo: 'F: contemplar o cruzeiro', agir: () => this.dialogos.tocar('cidade_cruzeiro') },
       {
         pos: () => c.fonte,
@@ -2401,7 +2486,7 @@ export class Jogo {
     this.hud.mostrarPeso(
       this.pesoBanquete > 0 ? `⚖ Banquete da Gula · peso ${peso}` : peso > 0 ? `⚖ Ouro da Gula · peso ${peso}` : this.nasCostas ? `⚖ ${this.nasCostas === 'menino' ? 'O menino' : enfermo(this.nasCostas)?.nome} nas costas` : this.peregrino.carregando ? '⚖ Pedra para São Damião' : null,
     );
-    if (this.area !== this.cidade || this.hud.dialogoAberto) return;
+    if (this.area !== this.cidade || this.hud.dialogoAberto || this.dormente) return;
     const f = this.estado.flags;
     if (this.cidade.estadoLobo === 'cidade' && f.has('cidade_lobo') && !f.has('cidade_lobo_praca')) this.dialogos.tocar('lobo_cidade');
     else if (f.has('dom_piedade') && this.cidade.dentroDosMuros(this.peregrino.pos) && this.primeiraVez('cidade_dica_pobres')) this.dialogos.tocar('cidade_dica_pobres');
@@ -2615,13 +2700,6 @@ export class Jogo {
     k.aoTrovejar = () => this.som.trovao();
     return [
       ...k.npcs.map((n): Interacao => ({ ...this.falarCom(n), ativa: () => n.raiz.visible && !k.lutando })),
-      {
-        pos: () => k.praia,
-        raio: 3,
-        ativa: () => this.estado.flags.has('naufragio_ira_vencida'),
-        rotulo: 'F: subir ao fogo dos moradores',
-        agir: () => this.irParaMalta(),
-      },
     ];
   }
 
@@ -2884,12 +2962,6 @@ export class Jogo {
         rotulo: 'F: embarcar no navio dos Dióscuros',
         agir: () => this.dialogos.tocar('malta_embarque'),
       },
-      {
-        pos: () => k.voltaEnseada,
-        raio: 3,
-        rotulo: 'F: descer à enseada do naufrágio',
-        agir: () => this.trocarArea(this.naufragio, this.naufragio.praia.clone().add(new THREE.Vector3(0, 0, 2)), Math.PI, () => (this.naufragioArrumado = false)),
-      },
     ];
   }
 
@@ -3086,10 +3158,11 @@ export class Jogo {
     const cap = this.area.capela;
     const naCapela = !!cap && cap.dentro(this.peregrino.pos);
     // a primeira vez na capela do deserto, o Espírito conta de quem ela é
-    if (naCapela && this.area === this.deserto && this.comecou && !this.hud.dialogoAberto && this.primeiraVez('deserto_capela'))
+    const historia = !this.dormente;
+    if (naCapela && historia && this.area === this.deserto && this.comecou && !this.hud.dialogoAberto && this.primeiraVez('deserto_capela'))
       this.dialogos.tocar('deserto_capela');
     // no Bonfim: a primeira vez na nave e a primeira vez na Sala dos Milagres
-    if (naCapela && this.area === this.bahiaBaixa && this.comecou && !this.hud.dialogoAberto) {
+    if (naCapela && historia && this.area === this.bahiaBaixa && this.comecou && !this.hud.dialogoAberto) {
       if (this.primeiraVez('bahia_bonfim_entrou')) this.dialogos.tocar('bahia_bonfim_entrada');
       else if (this.bahiaBaixa.capela.naSala(this.peregrino.pos) && this.primeiraVez('bahia_sala_milagres')) this.dialogos.tocar('bahia_sala_milagres');
     }
@@ -3281,12 +3354,14 @@ export class Jogo {
     this.avisoCouraca = Math.max(0, this.avisoCouraca - dt);
 
     this.atualizarProjeteis(dt);
+    // numa região adormecida, a história dela não anda: nem etapas, nem cenas, nem lutas
+    const dorme = this.dormente;
     if (this.area === this.navio) this.atualizarNavio(dt);
-    if (this.area === this.naufragio) this.atualizarNaufragio(dt);
+    if (this.area === this.naufragio && !dorme) this.atualizarNaufragio(dt);
     else this.hud.mostrarBrasa(null);
-    if (this.area === this.malta) this.atualizarMalta(dt);
+    if (this.area === this.malta && !dorme) this.atualizarMalta(dt);
     else this.hud.mostrarOracao(null);
-    if (this.area === this.creta && !this.cretaArrumada && !this.hud.dialogoAberto) {
+    if (this.area === this.creta && !dorme && !this.cretaArrumada && !this.hud.dialogoAberto) {
       this.cretaArrumada = true;
       this.creta.arrumar((x) => this.estado.flags.has(x));
     }
@@ -3300,7 +3375,7 @@ export class Jogo {
       pos: per.pos, noChao: per.noChao, esquivando: per.acao === 'esquiva', invulneravel: per.invulneravel > 0, peso: this.pesoEfetivo(),
       rezando: per.acao === 'rezando', brasa: this.brasa, irado: this.irado,
     });
-    for (const s of this.area.sombras) {
+    for (const s of this.dormente ? [] : this.area.sombras) {
       if (s.estado === 'vencida' || parado) continue;
       s.atualizar(dt, this.area, per.pos);
       if (!s.ativa) continue;
@@ -3455,6 +3530,7 @@ export class Jogo {
 
   /** O chefão da área atual (se houver). */
   private chefeDaArea(): Chefe | null {
+    if (this.dormente) return null;
     if (this.area === this.cripta) return this.cripta.guardiao;
     if (this.area === this.meiodia) return this.meiodia.acedia;
     if (this.area === this.banquete) return this.banquete.gula;
@@ -3972,6 +4048,7 @@ export class Jogo {
   }
 
   private interacaoPerto() {
+    if (this.dormente) return this.interacaoDormente();
     const p = this.peregrino.pos;
     let melhor: Interacao | null = null;
     let dm = Infinity;

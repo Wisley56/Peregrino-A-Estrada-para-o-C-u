@@ -618,9 +618,9 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
 ## Mundo aberto (reforma em andamento)
 
 O jogo está passando de áreas isoladas para um mundo único e contínuo. O plano tem oito fases; estão feitas a 0
-(bordas), a 1 (geografia e terreno global) e a 2 (chunks e passagem livre). **Já se anda de uma região a outra**;
-as trocas por F entre regiões ainda existem (viram viagem rápida nas fases 3 e 4) e a história de cada região
-ainda não sabe "dormir" quando se chega fora de hora (fase 3).
+(bordas), a 1 (geografia e terreno global), a 2 (chunks e passagem livre) e a 3 (história adormecida). **Anda-se
+de uma região a outra a pé ou a nado**, e não há mais troca por F entre regiões ao ar livre: uma região a que se
+chega antes da hora fica com a história adormecida. A viagem rápida (fase 4) e o mapa-múndi (fase 5) vêm depois.
 
 - **Geografia** (`src/mundo/aberto/Geografia.ts`): a tabela `ORIGENS` diz onde fica cada área no mapa único (+x é
   o leste, +z é o sul). As constantes `ORIGEM_*` de cada área vêm dela. O Vale fica na origem; o Deserto a oeste; a
@@ -655,16 +655,38 @@ ainda não sabe "dormir" quando se chega fora de hora (fase 3).
   `Jogo.fisica` devolve o ermo sempre que se está ao ar livre, e ele responde altura, água e colisão pela região
   que manda em cada ponto ou pelo terreno procedural. Por isso o peregrino cruza a borda sem trocar de chão.
 - **Região atual**: no mundo aberto, `Jogo.area` é a região sob o peregrino (ou o ermo) e muda sozinha em
-  `reverRegiao` (com 3 m de folga), sem véu. `entrarEm` troca a luz, a névoa e o céu aos poucos (3 s,
+  `reverRegiao`, sem véu: manda a primeira região da lista de carimbos que tem o ponto; a atual segura até 3 m
+  fora dela e as outras só tomam 3 m para dentro. `entrarEm` troca a luz, a névoa e o céu aos poucos (3 s,
   `misturarAmbiente`) e a cor não salta. `verRegioes` decide o que se vê: a região atual, as vizinhas até onde
   a névoa alcança, e o ermo. `Area.presente(sim)` liga o mar e a chuva próprios de uma região só com o peregrino
   dentro dela. No ermo, a barra de cor é a da região mais próxima (`areaDaRegiao`).
 - **O que ficou aberto**: o Vale perdeu a parede invisível (`Mundo.colidir`) e o desfiladeiro do oeste agora
   corta a serra até a borda; nenhuma região devolve mais altura 99 para o mundo aberto (o ermo nunca pergunta
   fora do retângulo dela). A câmera enxerga até 2600 m.
-- **Pendências conhecidas**: as duas metades da Bahia ainda ocupam o mesmo pedaço do mapa (do ermo só se vê a
-  Baixa); as bordas das regiões são esticadas para fora na faixa de mistura (os desfiladeiros viram gargantas
-  compridas); não há estradas nem vegetação no ermo (fase 7).
+- **História adormecida** (`Jogo.acordada`, `revisarSono`): cada região ao ar livre tem um pré-requisito (o
+  Deserto, o véu do Vale aberto; a Cidade, `meiodia_vencido`; as duas Bahias, a Gula vencida; Creta,
+  `bahia_coracao_vencido`; o naufrágio, `naufragio_encalhou`; Malta, `naufragio_ira_vencida`; o Vale está sempre
+  acordado). Antes dele a região **dorme**: os santos dela somem (e voltam a sumir se ela se rearrumar), não há
+  chefão, sombras, cenas nem gatilhos de fala, as capelas não contam história, e F perto de qualquer pessoa é só
+  "cumprimentar". `Area.dormir?(sim)` é o gancho de cada região: o Deserto apaga as miragens, a Cidade Alta para
+  o Largo, o naufrágio vira uma enseada calma (sem navio, sem gente, sem chuva, com o tempo claro do Mediterrâneo),
+  e Malta dormindo também fica sem a garoa. A região acorda sozinha quando a flag chega (o tempo de lá é refeito
+  se o peregrino estiver dentro). Entrar a pé numa região dormindo mostra o aviso; numa acordada, `chegouAndando`
+  faz o que a troca por F fazia na chegada (a fala de chegada na primeira vez, a `chegada` vira checkpoint, e na
+  Bahia os anos passam: `peregrino_adulto`). Um checkpoint fora do carimbo da área volta para a `chegada` dela.
+- **Trocas por F que saíram**: Vale ⇄ Deserto, Deserto ⇄ Cidade, Cidade → Bahia, o fogo dos moradores do
+  naufrágio ⇄ Malta. Ficaram as portas dos interiores, os barcos (`fazerViagem`), o Elevador Lacerda e a ida
+  roteirizada do naufrágio a Malta depois da Ira.
+- **A Bahia é um lugar só**: a Cidade Alta fica sobre a escarpa, a leste da Baixa (o elevador de cima cai sobre o
+  de baixo). A Baixa desenha tudo menos o que fica debaixo da Alta (`MapaDaBahia.desenha`), e o carimbo dela é
+  inteiro: a Alta vem antes na lista e manda onde as duas se sobrepõem. Só a Baixa põe a baía. A **Ladeira da
+  Montanha** sobe a pé da Baixa (ao sul do elevador, junto à escarpa) até um patamar na Praça Tomé de Sousa, em
+  degraus de 1 m; a balaustrada tem a abertura dela. O chão da Alta a oeste da beira fica embaixo, para a parede
+  da escarpa descer inteira.
+- **O naufrágio fica junto a Malta**: a enseada está a oeste da ilha, com a praia na mesma linha, separada por um
+  estreito de 24 m que se atravessa a nado. O navio encalhado que Malta tinha "lá fora" saiu (é o da enseada).
+- **Pendências conhecidas**: não há estradas nem vegetação no ermo (fase 7); a Cidade Alta usa as cores das casas
+  na parede da escarpa ao lado da Ladeira.
 - **Mapa do terreno** (`src/mundo/aberto/MapaDoTerreno.ts`): `pintarMapa` desenha o chão do mundo visto de cima
   num canvas (será a base do mapa-múndi). No modo dev: `jogo.ganchosDev().mapaDoMundo(x0, z0, x1, z1, passo)`.
 - **Bordas**: as paredes da borda de um mapa descem até `FUNDO_BORDA` (`Terreno.ts`), a superfície da água

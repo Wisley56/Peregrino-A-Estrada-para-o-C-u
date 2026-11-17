@@ -163,8 +163,9 @@ export function malhaDeColunas(
   corTopo: (i: number, j: number, h: number) => number,
   corLado: (i: number, y: number, j: number, prof: number, topo: number) => number,
   profundidadeMax = 6,
+  usar?: (i: number, j: number) => boolean,
 ) {
-  const m = new THREE.Mesh(geometriaDeColunas(tam, 0, tam, 0, tam, h, corTopo, corLado, profundidadeMax), new THREE.MeshLambertMaterial({ vertexColors: true }));
+  const m = new THREE.Mesh(geometriaDeColunas(tam, 0, tam, 0, tam, h, corTopo, corLado, profundidadeMax, usar), new THREE.MeshLambertMaterial({ vertexColors: true }));
   m.receiveShadow = true;
   return m;
 }
@@ -199,7 +200,11 @@ export function blocosDeColunas(
 /** Até onde descem as paredes da borda de um mapa (m): abaixo do fundo do mar aberto. */
 const FUNDO_BORDA = -8;
 
-/** As colunas do retângulo [i0, i1) × [j0, j1) de um mapa `tam`×`tam` (vizinhos de fora do retângulo contam na oclusão). */
+/**
+ * As colunas do retângulo [i0, i1) × [j0, j1) de um mapa `tam`×`tam` (vizinhos de fora do retângulo contam na oclusão).
+ * `usar`: só as colunas que ela aceita são desenhadas (as outras continuam contando como vizinhas, para as paredes e a
+ * sombra): é o recorte de um mapa que divide o chão com outro.
+ */
 function geometriaDeColunas(
   tam: number,
   i0: number,
@@ -210,6 +215,7 @@ function geometriaDeColunas(
   corTopo: (i: number, j: number, h: number) => number,
   corLado: (i: number, y: number, j: number, prof: number, topo: number) => number,
   profundidadeMax: number,
+  usar?: (i: number, j: number) => boolean,
 ) {
   const meta = tam / 2;
   const b = new ConstrutorMalha();
@@ -222,6 +228,7 @@ function geometriaDeColunas(
   const ao = [0, 0, 0, 0];
   for (let i = i0; i < i1; i++)
     for (let j = j0; j < j1; j++) {
+      if (usar && !usar(i, j)) continue;
       const a = h(i, j);
       const hexTopo = corTopo(i, j, a);
       const x = i - meta, z = j - meta;

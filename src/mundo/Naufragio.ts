@@ -303,7 +303,16 @@ export class Naufragio implements Area {
 
   // ───────────── a história ─────────────
 
+  /** Põe cada um no seu lugar da etapa da história (e, se a enseada dorme, some com tudo de novo). */
   arrumar(tem: (flag: string) => boolean) {
+    this.tem = tem;
+    this.arrumarEtapa(tem);
+    if (this.dormindo) this.esconderTudo();
+  }
+
+  private tem: (flag: string) => boolean = () => false;
+
+  private arrumarEtapa(tem: (flag: string) => boolean) {
     this.etapa = etapaDoNaufragio(tem);
     this.vencido = this.etapa === 'praia';
     this.escuridao = { presos: 0.55, ira: 0.62, praia: 0.12 }[this.etapa];
@@ -412,16 +421,16 @@ export class Naufragio implements Area {
     this.chuva.atualizar(dt, jogador);
     for (const n of this.npcs) n.atualizar(dt, jogador);
     // o mar se acalma depois da Ira
-    const calma = this.vencido ? 0.14 : 0.55;
+    const calma = this.vencido || this.dormindo ? 0.14 : 0.55;
     this.oceano.intensidade += (calma - this.oceano.intensidade) * Math.min(1, dt * 0.4);
-    if (this.vencido) {
+    if (this.vencido || this.dormindo) {
       this.escuridao += (0.12 - this.escuridao) * Math.min(1, dt * 0.3);
       this.chuva.malha.visible = this.escuridao > 0.3;
     }
 
     // a luta começa quando o peregrino entra na água da enseada
     const c = this.chefe;
-    if (c && c.ativa && !this.lutando && this.etapa === 'ira' && this.naArena(jogador)) {
+    if (c && c.ativa && !this.lutando && !this.dormindo && this.etapa === 'ira' && this.naArena(jogador)) {
       this.lutando = true;
       c.acordar();
       this.eventos.lutaComecou();
@@ -486,8 +495,30 @@ export class Naufragio implements Area {
     return conves;
   }
 
+  /**
+   * Antes do encalhe a enseada é só uma enseada: nem navio, nem gente, nem tábuas, e o mar calmo. (Chega-se a ela
+   * pelo mundo aberto antes da hora; o encalhe a acorda.)
+   */
+  private dormindo = false;
+  dormir(sim: boolean) {
+    if (sim === this.dormindo) return;
+    this.dormindo = sim;
+    this.modelo.visible = !sim;
+    this.tabuas.visible = !sim;
+    if (sim) this.esconderTudo();
+    else this.arrumar(this.tem);
+  }
+
+  private esconderTudo() {
+    for (const n of this.naufragos) n.raiz.visible = false;
+    for (const n of this.npcs) n.raiz.visible = false;
+    this.escuridao = 0.12;
+    this.oceano.intensidade = 0.14;
+    this.chuva.malha.visible = false;
+  }
+
   altura(x: number, z: number) {
-    const n = this.alturaNavio(x, z);
+    const n = this.dormindo ? null : this.alturaNavio(x, z);
     if (n !== null) return n;
     const i = Math.floor(x - ORIGEM_NAUFRAGIO.x + META), j = Math.floor(z - ORIGEM_NAUFRAGIO.z + META);
     return this.h(i, j);
@@ -495,7 +526,7 @@ export class Naufragio implements Area {
 
   colidir(pos: THREE.Vector3, raio: number) {
     const mastro = this.local(MASTRO.x, MASTRO.z);
-    const extras: { x: number; z: number; r: number }[] = [{ x: mastro.x, z: mastro.z, r: 0.35 }];
+    const extras: { x: number; z: number; r: number }[] = this.dormindo ? [] : [{ x: mastro.x, z: mastro.z, r: 0.35 }];
     for (const n of this.npcs) if (n.raiz.visible) extras.push({ x: n.pos.x, z: n.pos.z, r: 0.35 });
     for (const c of extras) {
       const dx = pos.x - c.x, dz = pos.z - c.z;

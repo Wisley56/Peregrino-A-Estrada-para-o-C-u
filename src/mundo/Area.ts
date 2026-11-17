@@ -41,6 +41,11 @@ export interface Area extends Fisica {
    * que só faz sentido com ele dentro (o mar e a chuva da área, que o acompanham).
    */
   presente?(sim: boolean): void;
+  /**
+   * A história da região ainda não chegou (`true`) ou já chegou (`false`). Adormecida, ela não começa lutas nem
+   * cenas sozinha (o Jogo também não toca as dela); o resto da vida do lugar segue.
+   */
+  dormir?(sim: boolean): void;
   /** Quem vive na região (fauna do Veloren). */
   povoamento?(): Povoamento[];
 }

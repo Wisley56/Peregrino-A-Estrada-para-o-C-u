@@ -84,10 +84,6 @@ const CASAS_MELITE: [number, number, number, number, 1 | 2, number][] = [
   [-138, -128, 6, 5, 2, 0], [-126, -129, 5, 4.5, 1, 0], [-114, -128, 6, 5, 1, 0], [-138, -103, 6, 5, 1, Math.PI], [-124, -102, 5, 5, 2, Math.PI],
 ];
 const PRACA_MELITE = { x: -124, z: -115 };
-/** O navio encalhado, lá fora no banco de areia da baía (fora do mapa, no mar aberto). */
-const DESTROCO = { x: 14, z: 182, rumo: Math.PI + 0.25 };
-/** A ponta oeste da praia, por onde se volta à enseada do naufrágio. */
-const VOLTA_X = -96;
 /** A entrada do pátio de Públio, logo depois da porta (por onde passa quem chega pela estrada). */
 const PATIO: [number, number] = [CASA_PUBLIO.x, CASA_PUBLIO.z + VILLA.patio.z1 - 1];
 
@@ -163,7 +159,6 @@ export class Malta implements Area {
   readonly cais: THREE.Vector3;
   readonly povoado: THREE.Vector3;
   readonly portaMelite: THREE.Vector3;
-  readonly voltaEnseada: THREE.Vector3;
   /** Os montes de gravetos (o ponto e a malha, que some quando se apanha). */
   readonly gravetos: { pos: THREE.Vector3; malha: THREE.Object3D }[] = [];
   /** O peregrino leva um feixe (o Jogo diz). */
@@ -291,7 +286,6 @@ export class Malta implements Area {
     this.cais = this.w(CAIS.x0 + 2, NAVIO.z - 6);
     this.povoado = this.w(POCO_ALDEIA.x, POCO_ALDEIA.z + 3);
     this.portaMelite = this.w(MELITE.x1 + 4, MELITE.porta);
-    this.voltaEnseada = this.w(VOLTA_X, costa(VOLTA_X) - 3);
 
     // o feixe que Paulo traz na mão e a víbora (escondida até a cena)
     this.feixeDePaulo = feixeDeGravetos(99);
@@ -477,17 +471,7 @@ export class Malta implements Area {
       const x = -30 + k * 17 + r() * 4, z = costa(x) - 2 - r() * 3;
       this.por(anfora(k), x, z, r() * 6, undefined, false).rotation.z = Math.PI / 2;
     }
-    const destroco = navioAlexandrino(false, false);
-    destroco.position.set(DESTROCO.x + ORIGEM_MALTA.x, NIVEL - 1.1, DESTROCO.z + ORIGEM_MALTA.z);
-    destroco.rotation.set(0.1, DESTROCO.rumo, 0.06);
-    this.grupo.add(destroco);
-    for (let k = -4; k <= 4; k++) {
-      this.circulos.push({
-        x: DESTROCO.x + ORIGEM_MALTA.x + Math.sin(DESTROCO.rumo) * k * 3.2,
-        z: DESTROCO.z + ORIGEM_MALTA.z + Math.cos(DESTROCO.rumo) * k * 3.2,
-        r: 3.6 - Math.abs(k) * 0.3,
-      });
-    }
+    // (o navio encalhado é o da enseada do naufrágio, logo a oeste, no mundo aberto: daqui ele se vê)
     // rochas na garriga e na ponta da praia
     for (const [x, z] of [[-70, 30], [-58, 14], [30, 14], [46, 2], [70, 46], [76, 50], [-20, 6]]) {
       this.por(rochedo(x * 3 + z), x, z, x);

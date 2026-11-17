@@ -560,6 +560,12 @@ export class Deserto implements Area {
     this.eventos.miragemDesfeita(porCiencia);
   }
 
+  /** A história do deserto ainda não chegou: as miragens não sussurram nem se desfazem. */
+  private dormindo = false;
+  dormir(sim: boolean) {
+    this.dormindo = sim;
+  }
+
   atualizar(dt: number, jogador: THREE.Vector3) {
     this.t += dt;
     this.antao.atualizar(dt, jogador);
@@ -568,7 +574,7 @@ export class Deserto implements Area {
     // miragens: sussurram de longe; de perto, se desfazem e mostram a sombra
     let perto: Miragem | null = null;
     let dm = Infinity;
-    for (const m of this.miragens) {
+    for (const m of this.dormindo ? [] : this.miragens) {
       m.atualizar(dt);
       if (!m.intacta) continue;
       const d = m.pos.distanceTo(jogador);
