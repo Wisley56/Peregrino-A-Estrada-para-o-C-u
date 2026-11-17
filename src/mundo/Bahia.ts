@@ -119,6 +119,13 @@ abstract class MapaDaBahia implements Area {
     agua.position.set(this.origem.x, AGUA_BAHIA, this.origem.z);
     agua.receiveShadow = true;
     this.grupo.add(agua);
+    this.agua = agua;
+  }
+
+  /** No mundo aberto, o plano da baía só aparece com o peregrino na cidade: de fora, vê-se o mar do mundo. */
+  private agua: THREE.Mesh | null = null;
+  presente(sim: boolean) {
+    if (this.agua) this.agua.visible = sim;
   }
 
   // ───────────── ajudantes (coordenadas locais) ─────────────

@@ -37,7 +37,7 @@ export class CameraTerceira {
   private primeiro = true;
 
   constructor(aspecto: number) {
-    this.cam = new THREE.PerspectiveCamera(60, aspecto, 0.1, 700);
+    this.cam = new THREE.PerspectiveCamera(60, aspecto, 0.1, 2600);
   }
 
   /** Pula a suavização no próximo quadro (depois de teleportar). */

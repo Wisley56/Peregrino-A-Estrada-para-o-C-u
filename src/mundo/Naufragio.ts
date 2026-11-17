@@ -136,7 +136,8 @@ export class Naufragio implements Area {
     terreno.position.copy(ORIGEM_NAUFRAGIO);
     this.oceano.intensidade = 0.55;
     this.oceano.amplitude = 0.45;
-    this.grupo.add(terreno, this.oceano.malha, this.chuva.malha, this.luzRaio);
+    this.aoRedor.add(this.oceano.malha, this.chuva.malha);
+    this.grupo.add(terreno, this.aoRedor, this.luzRaio);
 
     // o navio encalhado: virado para a praia, a proa erguida e a popa afundada
     this.navio.set(NAVIO.x + ORIGEM_NAUFRAGIO.x, NIVEL - BAIXA, NAVIO.z + ORIGEM_NAUFRAGIO.z);
@@ -507,6 +508,12 @@ export class Naufragio implements Area {
 
   nivelAgua(x: number, z: number) {
     return this.oceano.altura(x, z);
+  }
+
+  /** No mundo aberto, o mar (e a chuva) da área só aparece com o peregrino dentro dela: de fora, vê-se o mar do mundo. */
+  private readonly aoRedor = new THREE.Group();
+  presente(sim: boolean) {
+    this.aoRedor.visible = sim;
   }
 
   fonteMapa(): FonteMapa {

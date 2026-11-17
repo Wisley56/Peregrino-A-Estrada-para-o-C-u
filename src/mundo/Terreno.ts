@@ -86,8 +86,8 @@ export class Terreno {
     const borda = Math.max(Math.abs(x), Math.abs(z));
     if (borda > 58) h += (borda - 58) * 1.4 + this.ruido.fbm(x * 0.08, z * 0.08) * 6 * suave(58, 70, borda);
 
-    // passagem a oeste, cortando as montanhas (fechada pelo véu de trevas)
-    if (x < PASSAGEM.entrada + 4 && x > PASSAGEM.fim - 3) {
+    // passagem a oeste, cortando as montanhas de lado a lado até a borda do Vale (no mundo aberto, sai-se por ela)
+    if (x < PASSAGEM.entrada + 4) {
       const w = (1 - suave(1.3, 2.6, Math.abs(z - PASSAGEM.z))) * (1 - suave(PASSAGEM.entrada, PASSAGEM.entrada + 4, x));
       const hp = this.base(PASSAGEM.entrada, PASSAGEM.z);
       h = h + (hp - h) * w;
@@ -152,9 +152,10 @@ export class Terreno {
 /**
  * Malha de colunas de voxel (1 m) a partir de um mapa de alturas `tam`×`tam`, centrado na origem.
  * `corLado` recebe a profundidade abaixo do topo (0 = a primeira camada) e a cor do topo.
- * Paredes mais fundas que `profundidadeMax` ficam abertas embaixo (ninguém as vê); as da borda do mapa descem
- * inteiras até `FUNDO_BORDA` (abaixo do fundo do mar), porque de fora (do mar, de quem pulou do penhasco) se vê o
- * paredão todo.
+ * As paredes são feitas metro a metro (com a sombra dos cantos) até `profundidadeMax` abaixo do topo; o resto de
+ * um penhasco mais fundo vai num painel só, com a cor do fundo (no mundo aberto vê-se tudo de longe, e uma parede
+ * aberta embaixo deixava o topo da coluna solto no ar). As da borda do mapa descem inteiras até `FUNDO_BORDA`
+ * (abaixo do fundo do mar), porque de fora (do mar, de quem pulou do penhasco) se vê o paredão todo.
  */
 export function malhaDeColunas(
   tam: number,
@@ -230,10 +231,16 @@ function geometriaDeColunas(
       for (const f of laterais) {
         const fora = i + f.n[0] < 0 || j + f.n[2] < 0 || i + f.n[0] >= tam || j + f.n[2] >= tam;
         const hv = fora ? FUNDO_BORDA : h(i + f.n[0], j + f.n[2]);
-        for (let y = fora ? hv : Math.max(hv, a - profundidadeMax); y < a; y++) {
+        const corte = fora ? hv : Math.max(hv, a - profundidadeMax);
+        for (let y = corte; y < a; y++) {
           cor.setHex(corLado(i, y, j, a - 1 - y, hexTopo));
           for (let k = 0; k < 4; k++) v[k] = [x + f.v[k][0], y + f.v[k][1], z + f.v[k][2]];
           b.quad(v, f.n, cor, f.sombra, ocluir(cheio, [i + f.n[0], y, j + f.n[2]], f.n[0] ? 0 : 2, f.v, ao));
+        }
+        if (corte > hv) {
+          cor.setHex(corLado(i, corte - 1, j, a - corte, hexTopo));
+          for (let k = 0; k < 4; k++) v[k] = [x + f.v[k][0], f.v[k][1] ? corte : hv, z + f.v[k][2]];
+          b.quad(v, f.n, cor, f.sombra);
         }
       }
     }

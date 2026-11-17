@@ -47,6 +47,12 @@ const BIOMAS: { x: number; z: number; alcance: number; cores: [number, number]; 
   { x: -900, z: 1200, alcance: 0.9, cores: [0x94aa52, 0xa8a04a] }, // os campos dourados da Cidade
   { x: 900, z: 2200, alcance: 1, cores: [0x5a9440, 0x6aa04a] }, // a mata do litoral da Bahia
 ];
+/**
+ * Inclinação (m de altura por m de distância) com que a borda de uma região desce ou sobe até o terreno do mundo.
+ * Uma serra de borda vira encosta, e um corte (estrada, desfiladeiro) vira uma rampa que se abre na planície, em vez
+ * de a borda ser esticada faixa afora como um paredão.
+ */
+const ENCOSTA = 0.7;
 const AREIA = 0xe2d2a0, ROCHA = 0x8a8274, ROCHA_ALTA = 0xa39a8c;
 
 function distSegmento(x: number, z: number, ax: number, az: number, bx: number, bz: number) {
@@ -77,6 +83,23 @@ export class TerrenoMundo {
   regiaoEm(x: number, z: number): Carimbo | null {
     for (const c of this.carimbos) if (x >= c.x0 && x < c.x1 && z >= c.z0 && z < c.z1) return c;
     return null;
+  }
+
+  /** O carimbo de uma área, se ela é uma região do mundo aberto. */
+  carimboDe(id: IdArea) {
+    return this.carimbos.find((c) => c.id === id) ?? null;
+  }
+
+  /** Distância (m) de (x, z) à borda de uma região: positiva do lado de fora, negativa dentro dela. */
+  distancia(c: Carimbo, x: number, z: number) {
+    const fora = Math.hypot(Math.max(c.x0 - x, 0, x - c.x1), Math.max(c.z0 - z, 0, z - c.z1));
+    return fora > 0 ? fora : -Math.min(x - c.x0, c.x1 - x, z - c.z0, c.z1 - z);
+  }
+
+  /** O retângulo [xa, xb] × [za, zb] está inteiro dentro de uma região? (Esse chão é a malha dela que desenha.) */
+  dentroDeRegiao(xa: number, za: number, xb: number, zb: number) {
+    for (const c of this.carimbos) if (xa >= c.x0 && xb <= c.x1 && za >= c.z0 && zb <= c.z1) return true;
+    return false;
   }
 
   /**
@@ -136,25 +159,39 @@ export class TerrenoMundo {
     return h > 30 && !b.seco ? misturar(cor, ROCHA, suave(30, 46, h)) : cor;
   }
 
+  /**
+   * Na faixa em volta de uma região: a altura que a borda dela (o ponto mais próximo dentro) projeta em (x, z),
+   * descendo ou subindo em encosta até o terreno do mundo, e quanto ela ainda pesa ali (0 a 1, para a cor).
+   */
+  private borda(c: Carimbo, w: number, x: number, z: number, natural: number): [number, number] {
+    const bx = Math.min(c.x1 - 0.5, Math.max(c.x0 + 0.5, x)), bz = Math.min(c.z1 - 0.5, Math.max(c.z0 + 0.5, z));
+    const d = Math.hypot(x - bx, z - bz) - 0.5;
+    const e = c.altura(bx, bz), dif = e - natural;
+    const alcance = Math.max(6, Math.abs(dif) / ENCOSTA);
+    const h = dif > 0 ? Math.max(natural, e - ENCOSTA * d) : Math.min(natural, e + ENCOSTA * d);
+    // no fim da faixa o mundo manda de todo, mesmo que a encosta ainda não tenha chegado lá
+    return [natural + (h - natural) * Math.min(1, w * 4), Math.max(0, 1 - d / alcance)];
+  }
+
   /** A altura do chão em (x, z), em colunas inteiras de 1 m. */
   altura(x: number, z: number) {
     const [c, w] = this.presenca(x, z);
-    if (c && w >= 1) return c.altura(x, z);
+    if (c && w >= 1 && x < c.x1 && z < c.z1) return c.altura(x, z);
     const natural = this.alturaNatural(x, z);
     if (!c || w <= 0) return Math.round(natural);
-    // na faixa de mistura, a borda da região (o ponto mais próximo dentro dela) desce até o terreno do mundo
-    const bx = Math.min(c.x1 - 0.5, Math.max(c.x0 + 0.5, x)), bz = Math.min(c.z1 - 0.5, Math.max(c.z0 + 0.5, z));
-    return Math.round(natural + (c.altura(bx, bz) - natural) * w);
+    return Math.round(this.borda(c, w, x, z, natural)[0]);
   }
 
   /** A cor do chão em (x, z). */
   cor(x: number, z: number) {
     const [c, w] = this.presenca(x, z);
-    if (c && w >= 1) return c.cor(x, z);
-    const natural = this.corNatural(x, z);
+    if (c && w >= 1 && x < c.x1 && z < c.z1) return c.cor(x, z);
+    const hn = this.alturaNatural(x, z);
+    const natural = this.corNatural(x, z, hn);
     if (!c || w <= 0) return natural;
     const bx = Math.min(c.x1 - 0.5, Math.max(c.x0 + 0.5, x)), bz = Math.min(c.z1 - 0.5, Math.max(c.z0 + 0.5, z));
+    const peso = this.borda(c, w, x, z, hn)[1];
     // pontilhado em vez de cores intermediárias: voxels não têm meia cor
-    return this.ruidoCor.valor(x * 0.9, z * 0.9) < w ? c.cor(bx, bz) : natural;
+    return this.ruidoCor.valor(x * 0.9, z * 0.9) < peso ? c.cor(bx, bz) : natural;
   }
 }

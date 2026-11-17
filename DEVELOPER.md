@@ -618,8 +618,9 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
 ## Mundo aberto (reforma em andamento)
 
 O jogo está passando de áreas isoladas para um mundo único e contínuo. O plano tem oito fases; estão feitas a 0
-(bordas) e a 1 (geografia e terreno global). Enquanto as fases seguintes não chegam, **o jogo ainda troca de área
-como antes** (`Jogo.trocarArea`); o que mudou foi o lugar de cada área e o nível do mar.
+(bordas), a 1 (geografia e terreno global) e a 2 (chunks e passagem livre). **Já se anda de uma região a outra**;
+as trocas por F entre regiões ainda existem (viram viagem rápida nas fases 3 e 4) e a história de cada região
+ainda não sabe "dormir" quando se chega fora de hora (fase 3).
 
 - **Geografia** (`src/mundo/aberto/Geografia.ts`): a tabela `ORIGENS` diz onde fica cada área no mapa único (+x é
   o leste, +z é o sul). As constantes `ORIGEM_*` de cada área vêm dela. O Vale fica na origem; o Deserto a oeste; a
@@ -631,10 +632,39 @@ como antes** (`Jogo.trocarArea`); o que mudou foi o lugar de cada área e o nív
   O fundo do mar pode ter altura negativa.
 - **Terreno global** (`src/mundo/aberto/TerrenoMundo.ts`): `altura(x, z)` e `cor(x, z)` para qualquer ponto do
   mundo. Cada região ao ar livre é um **carimbo**: dentro do retângulo dela vale o chão feito à mão; numa faixa em
-  volta (80 a 120 m) ele se desfaz no terreno procedural. O procedural usa simplex (`Ruido.simplex`,
+  volta (80 a 120 m) ele se desfaz no terreno procedural: a borda da região desce (ou sobe) em encosta de
+  `ENCOSTA` m por m até o chão do mundo. Uma serra de borda vira morro e um corte (estrada, fenda) vira rampa que se
+  abre na planície; a borda não é esticada faixa afora (era isso que fazia paredões e colunas soltas no ar). O procedural usa simplex (`Ruido.simplex`,
   `fbmSimplex`, `cristas`): a terra firme é a vizinhança da `ESPINHA` (trechos entre as regiões), com a costa
-  recortada por ruído; os `BIOMAS` dão as cores da terra de ligação conforme a região mais próxima. Ainda não é
-  desenhado nem pisado no jogo: isso vem com os chunks (fase 2).
+  recortada por ruído; os `BIOMAS` dão as cores da terra de ligação conforme a região mais próxima.
+- **Chunks** (`src/mundo/aberto/Chunks.ts`): o chão do ermo em ladrilhos de 32 × 32 células, feitos por distância
+  em três níveis (`NIVEIS`): células de 1 m até 128 m, de 4 m até 640 m e de 16 m até 1700 m. Cada ladrilho se
+  parte em 16 do nível mais fino e só cede o lugar quando os 16 estão prontos. As células inteiras dentro de uma
+  região não são desenhadas (a região tem a sua malha); na borda do ladrilho a parede desce uma célula a mais (a
+  saia), para esconder a fresta entre níveis. A montagem de um ladrilho (`Ladrilho.ts`, código puro) é feita fora
+  do thread do jogo, pela **obra**.
+- **Obra** (`src/mundo/aberto/Obra.ts` e `obra.worker.ts`): de 1 a 3 Web Workers que fazem os ladrilhos (até
+  `NA_OBRA` pedidos de uma vez, os grosseiros primeiro) e o minimapa do ermo (um quadrado de 192 m, pedido de novo
+  quando o peregrino se afasta 30 m do centro; o antigo fica na tela até o novo chegar). O thread do jogo só põe em
+  cena o que chegou (`ORCAMENTO` ms por quadro). As áreas não vão para o worker: cada região vai **assada**
+  (`Assado.ts`), com a volta de 1 m da borda exata e o miolo numa grade de 4 m. Se uma região mudar o chão perto da
+  borda depois de assada, os ladrilhos de ligação não veem a mudança. Sem suporte a workers, tudo é feito no thread
+  principal. O build precisa de `worker: { format: 'es' }` no `vite.config.ts`.
+- **Ermo** (`src/mundo/aberto/MundoAberto.ts`): a área `ermo` ("O Caminho") é a terra de ligação e o mar aberto
+  (os chunks, o `Oceano` do mundo e um anel de mar liso até o horizonte). É também a **física do mundo aberto**:
+  `Jogo.fisica` devolve o ermo sempre que se está ao ar livre, e ele responde altura, água e colisão pela região
+  que manda em cada ponto ou pelo terreno procedural. Por isso o peregrino cruza a borda sem trocar de chão.
+- **Região atual**: no mundo aberto, `Jogo.area` é a região sob o peregrino (ou o ermo) e muda sozinha em
+  `reverRegiao` (com 3 m de folga), sem véu. `entrarEm` troca a luz, a névoa e o céu aos poucos (3 s,
+  `misturarAmbiente`) e a cor não salta. `verRegioes` decide o que se vê: a região atual, as vizinhas até onde
+  a névoa alcança, e o ermo. `Area.presente(sim)` liga o mar e a chuva próprios de uma região só com o peregrino
+  dentro dela. No ermo, a barra de cor é a da região mais próxima (`areaDaRegiao`).
+- **O que ficou aberto**: o Vale perdeu a parede invisível (`Mundo.colidir`) e o desfiladeiro do oeste agora
+  corta a serra até a borda; nenhuma região devolve mais altura 99 para o mundo aberto (o ermo nunca pergunta
+  fora do retângulo dela). A câmera enxerga até 2600 m.
+- **Pendências conhecidas**: as duas metades da Bahia ainda ocupam o mesmo pedaço do mapa (do ermo só se vê a
+  Baixa); as bordas das regiões são esticadas para fora na faixa de mistura (os desfiladeiros viram gargantas
+  compridas); não há estradas nem vegetação no ermo (fase 7).
 - **Mapa do terreno** (`src/mundo/aberto/MapaDoTerreno.ts`): `pintarMapa` desenha o chão do mundo visto de cima
   num canvas (será a base do mapa-múndi). No modo dev: `jogo.ganchosDev().mapaDoMundo(x0, z0, x1, z1, passo)`.
 - **Bordas**: as paredes da borda de um mapa descem até `FUNDO_BORDA` (`Terreno.ts`), a superfície da água

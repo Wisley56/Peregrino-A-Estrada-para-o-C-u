@@ -213,7 +213,8 @@ export class Malta implements Area {
       (i, y, j, prof, topo) => this.corLado(i, y, j, prof, topo), 12);
     terreno.position.copy(ORIGEM_MALTA);
     this.oceano.intensidade = 0.22;
-    this.grupo.add(terreno, this.oceano.malha, this.chuva.malha);
+    this.aoRedor.add(this.oceano.malha, this.chuva.malha);
+    this.grupo.add(terreno, this.aoRedor);
 
     this.navio.set(NAVIO.x + ORIGEM_MALTA.x, NIVEL, NAVIO.z + ORIGEM_MALTA.z);
     this.montarPraia();
@@ -1064,6 +1065,12 @@ export class Malta implements Area {
       { especie: 'cao', quantidade: 1, centro: c(CASA_PUBLIO.x - 4, CASA_PUBLIO.z + 15), raio: 5 },
       { especie: 'coelho', quantidade: 4, centro: c(-60, -10), raio: 30 },
     ];
+  }
+
+  /** No mundo aberto, o mar (e a chuva) da área só aparece com o peregrino dentro dela: de fora, vê-se o mar do mundo. */
+  private readonly aoRedor = new THREE.Group();
+  presente(sim: boolean) {
+    this.aoRedor.visible = sim;
   }
 
   fonteMapa(): FonteMapa {

@@ -388,16 +388,8 @@ export class Mundo implements Fisica, Area {
   }
 
   colidir(pos: THREE.Vector3, raio: number) {
-    // limite do Vale: ninguém sobe as montanhas da borda; a oeste, só pelo corredor da passagem
-    // (assim não dá para contornar o véu por cima do morro e pular dentro da passagem)
-    const L = 59.5;
-    if (pos.x < -L) {
-      // fora do corredor: volta para a borda (dentro dele, as paredes do desfiladeiro já seguram)
-      if (Math.abs(pos.z - PASSAGEM.z) > 2.2) pos.x = -L;
-      pos.x = Math.max(pos.x, PASSAGEM.fim - 2);
-    }
-    pos.x = Math.min(pos.x, L);
-    pos.z = Math.min(Math.max(pos.z, -L), L);
+    // o Vale não tem mais parede invisível: quem segura são as montanhas da borda (íngremes demais para subir);
+    // sai-se pelo desfiladeiro do oeste, ou por onde a serra deixar
     // troncos e raízes: empurra para fora de cada célula sólida que o círculo toca
     const i0 = Math.floor((pos.x - raio) / CELULA_PE), i1 = Math.floor((pos.x + raio) / CELULA_PE);
     const k0 = Math.floor((pos.z - raio) / CELULA_PE), k1 = Math.floor((pos.z + raio) / CELULA_PE);

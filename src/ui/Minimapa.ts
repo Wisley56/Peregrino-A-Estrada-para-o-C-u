@@ -68,6 +68,26 @@ export class Minimapa {
     this.atual = b;
   }
 
+  /** Troca só o nome mostrado (a imagem fica a mesma até chegar outra). */
+  nomear(nome: string) {
+    this.nome.textContent = nome;
+  }
+
+  /**
+   * Usa como base uma imagem já pintada (RGBA, 1 pixel por metro) do retângulo `f`: é como chega o mapa do ermo,
+   * feito fora do thread do jogo.
+   */
+  definirImagem(chave: string, nome: string, f: Omit<FonteMapa, 'cor'>, px: Uint8ClampedArray) {
+    this.nome.textContent = nome;
+    const img = document.createElement('canvas');
+    img.width = Math.round(f.largura);
+    img.height = Math.round(f.profundidade);
+    img.getContext('2d')!.putImageData(new ImageData(px as Uint8ClampedArray<ArrayBuffer>, img.width, img.height), 0, 0);
+    const b = { img, f: { ...f, cor: () => 0 } };
+    this.bases.set(chave, b);
+    this.atual = b;
+  }
+
   /** Esquece a base de uma área (quando o chão dela muda, como a parede falsa que se abre). */
   esquecer(chave: string) {
     this.bases.delete(chave);
