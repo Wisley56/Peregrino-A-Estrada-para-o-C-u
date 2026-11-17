@@ -280,7 +280,7 @@ os mantém (o save guarda o número do nível, não o nome).
   ela, vale `nivelMinimo`. A Bahia devolve o nível da baía (lá o fundo do vau deixa a água pela cintura).
 - Vadeando (o corpo abaixo da superfície), a velocidade cai para 55%. Onde a água passa de `PROFUNDIDADE_NADO`
   (1,3 m), o peregrino nada (`nadando`): boia com a onda (uma mola amortecida puxa os pés para 1,3 m abaixo da
-  superfície parado e 0,95 m nadando), anda a 50%, não pula e não usa o cajado, que fica preso ao corpo.
+  superfície parado e 0,95 m nadando), anda a 50%, não pula e não usa o cajado, que vai pendurado nas costas (`cajadoCostas`, em diagonal; some se houver alguém carregado).
 - Nadando, ele sobe na margem que fique até 0,6 m acima da água. Parado, fica de pé na água, pedalando e remando;
   andando, deita em nado de peito. As duas poses se misturam por `nadoK`. Os sons são `respingo` ao cair na água
   funda e `bracada` no ritmo do nado.

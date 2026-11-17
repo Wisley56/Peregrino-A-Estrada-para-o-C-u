@@ -220,6 +220,8 @@ export class Peregrino {
   private tronco: THREE.Object3D;
   private cabeca: THREE.Object3D;
   readonly cajado: THREE.Object3D;
+  /** O cajado pendurado nas costas, em diagonal (no nado, quando as mãos estão nas braçadas). */
+  private cajadoCostas: THREE.Object3D;
 
   readonly pos = new THREE.Vector3();
   vy = 0;
@@ -274,6 +276,12 @@ export class Peregrino {
     this.cajado = new THREE.Group();
     this.cajado.position.set(0, -6 * S, 0.5 * S);
     this.bracoD.add(this.cajado);
+    // nas costas: atravessado do ombro direito ao quadril esquerdo, por fora da capa
+    this.cajadoCostas = new THREE.Group();
+    this.cajadoCostas.position.set(0, 4.5 * S, -4.2 * S);
+    this.cajadoCostas.rotation.set(0, 0, -0.75);
+    this.cajadoCostas.visible = false;
+    this.tronco.add(this.cajadoCostas);
     this.corpo.add(this.pernaE, this.pernaD, this.tronco, this.cabeca, this.bracoE, this.bracoD);
     this.centro.position.y = 0.85;
     this.corpo.position.y = -0.85;
@@ -288,7 +296,7 @@ export class Peregrino {
     const r = construirRig(visual);
     const trocar = (junta: THREE.Object3D, ...malhas: (THREE.Mesh | null)[]) => {
       for (const filho of [...junta.children]) {
-        if (filho === this.cajado || filho === this.lamparina || filho === this.joelhoE || filho === this.joelhoD) continue;
+        if (filho === this.cajado || filho === this.cajadoCostas || filho === this.lamparina || filho === this.joelhoE || filho === this.joelhoD) continue;
         if ((filho as THREE.Mesh).isMesh) (filho as THREE.Mesh).geometry.dispose();
         junta.remove(filho);
       }
@@ -306,6 +314,7 @@ export class Peregrino {
     trocar(this.bracoE, r.braco());
     trocar(this.bracoD, r.braco());
     trocar(this.cajado, r.cajado);
+    trocar(this.cajadoCostas, new THREE.Mesh(r.cajado.geometry.clone(), r.cajado.material));
     this.raiz.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) o.castShadow = true;
     });
@@ -385,7 +394,7 @@ export class Peregrino {
 
   /**
    * Nadando: a água passa de `PROFUNDIDADE_NADO`. O peregrino boia com a onda, sem pulo nem cajado na mão (o cajado
-   * vai junto ao corpo); parado, fica de pé na água batendo as pernas; andando, nada de peito.
+   * vai pendurado nas costas); parado, fica de pé na água batendo as pernas; andando, nada de peito.
    */
   nadando = false;
   /** A superfície da água debaixo do peregrino (ou `null` em terra seca). */
@@ -621,7 +630,7 @@ export class Peregrino {
     }
 
     // nadando: parado, de pé na água pedalando e remando com as mãos; andando, deitado em nado de peito (os braços
-    // vão à frente juntos e abrem para os lados, as pernas encolhem e chutam). O cajado vai preso junto ao corpo.
+    // vão à frente juntos e abrem para os lados, as pernas encolhem e chutam). O cajado vai pendurado nas costas.
     this.aguaK += ((this.nadando ? 1 : 0) - this.aguaK) * Math.min(1, dt * 5);
     if (this.nadando) this.bracada += dt * (1.6 + this.velocidadeHoriz * 0.8);
     if (this.aguaK > 0.01) {
@@ -643,7 +652,9 @@ export class Peregrino {
       corpoY = mistura(corpoY, Math.sin(c * 0.7) * 0.03);
       cabecaRx = mistura(cabecaRx, entre(0, -1.0)); // deitado, ergue a cabeça para ver aonde vai
     }
+    // no nado o cajado sai da mão e vai para as costas (com alguém carregado, as costas são da carga)
     this.cajado.visible = !this.cargaNasCostas && this.aguaK < 0.5;
+    this.cajadoCostas.visible = !this.cargaNasCostas && this.aguaK >= 0.5;
 
     // de joelhos: as coxas quase retas, as canelas deitadas para trás, o corpo curvado e as mãos postas; a cada
     // passo um joelho vai à frente e o quadril balança
