@@ -14,13 +14,14 @@
     espirito: Há um mar onde um homem preso atravessou a tempestade e não perdeu a calma. Um apóstolo, levado a Roma em correntes.
     espirito: Lá, a Ira levanta as ondas. Ali se aprende o dom do Conselho: saber o que fazer quando todos perdem a cabeça.
 }
-* [Navegar até Creta.]
-    ~ evento("viajar_creta")
-* {tem("mar_restaurado")} [Navegar até Malta.]
-    ~ evento("viajar_malta")
-* [Voltar à Cidade Dourada.]
-    ~ evento("viajar_cidade")
-* [Ficar na Bahia.]
+// Creta é a viagem da história (vai-se mesmo sem conhecer); os outros portos, só os já descobertos
++ [Navegar até Creta.]
+    ~ evento("viajar_creta_praia")
++ {descobriu("malta_praia")} [Navegar até Malta.]
+    ~ evento("viajar_malta_praia")
++ {descobriu("cidade_estrada")} [Voltar à Cidade Dourada.]
+    ~ evento("viajar_cidade_estrada")
++ [Ficar na Bahia.]
 - -> END
 
 === creta_chegada ===
@@ -33,9 +34,11 @@ espirito: Converse com a gente do porto. A leste, pela estrada das colinas, fica
 
 === creta_barco_volta ===
 pescador: Quer voltar? Um barco de pesca não vai longe... mas o Espírito leva onde o vento não leva.
-* [Voltar à Bahia.]
-    ~ evento("viajar_bahia")
-* [Ficar em Creta.]
++ {descobriu("bahia_cais")} [Voltar à Bahia.]
+    ~ evento("viajar_bahia_cais")
++ {descobriu("malta_porto")} [Ir a Malta.]
+    ~ evento("viajar_malta_porto")
++ [Ficar em Creta.]
 - -> END
 
 // ─── O cais e o navio ───

@@ -525,13 +525,13 @@ julio: Soldados, presos, todos a bordo. Roma está esperando. #gesto:explicar
 
 === malta_barco ===
 maltes: Um barco de pesca vai mais longe do que parece, se o vento ajudar. E o Espírito, dizem, leva onde o vento não leva. #gesto:explicar
-* [Ir à Bahia.]
-    ~ evento("viajar_bahia")
-* [Ir a Creta.]
-    ~ evento("viajar_creta")
-* [Ir à Cidade Dourada.]
-    ~ evento("viajar_cidade")
-* [Ficar em Malta.]
++ {descobriu("bahia_cais")} [Ir à Bahia.]
+    ~ evento("viajar_bahia_cais")
++ {descobriu("creta_praia")} [Ir a Creta.]
+    ~ evento("viajar_creta_praia")
++ {descobriu("cidade_estrada")} [Ir à Cidade Dourada.]
+    ~ evento("viajar_cidade_estrada")
++ [Ficar em Malta.]
 - -> END
 
 === malta_partida ===

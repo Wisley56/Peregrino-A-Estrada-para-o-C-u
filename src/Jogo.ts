@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ARFAGEM_LIVRE, CameraTerceira } from './core/Camera';
 import { Entrada, travarPonteiro } from './core/Entrada';
-import { CHEFOES, Estado } from './core/Estado';
+import { CHEFOES, Estado, quadraDoMapa } from './core/Estado';
 import { Som } from './core/Som';
 import { type Idade, identidadePadrao, visualDe } from './core/Aparencia';
 import { Efeitos } from './fx/Efeitos';
@@ -17,7 +17,7 @@ import { Criacao } from './ui/Criacao';
 import { Mundo } from './mundo/Mundo';
 import { Cripta } from './mundo/Cripta';
 import { Alvo, Area, IdArea } from './mundo/Area';
-import { ORIGENS } from './mundo/aberto/Geografia';
+import { ORIGENS, PONTOS_DE_VIAGEM, pontoDeViagem } from './mundo/aberto/Geografia';
 import { pintarMapa } from './mundo/aberto/MapaDoTerreno';
 import { Ermo } from './mundo/aberto/MundoAberto';
 import { Carimbo, TerrenoMundo } from './mundo/aberto/TerrenoMundo';
@@ -123,6 +123,7 @@ export class Jogo {
     nome: () => (this.estado.identidade ?? identidadePadrao()).nome,
     feminino: () => (this.estado.identidade ?? identidadePadrao()).genero === 'f',
     evento: (e) => this.eventoDialogo(e),
+    descobriu: (p) => this.estado.pontos.has(p),
   });
   readonly som = new Som();
   readonly mundo = new Mundo();
@@ -319,6 +320,7 @@ export class Jogo {
   private entrarEm(nova: Area) {
     const de = this.fotoDoAmbiente();
     this.area = nova;
+    this.visitar(nova);
     this.aplicarAmbiente();
     this.mistura = { de, para: this.fotoDoAmbiente(), t: 0 };
     this.porAmbiente(de, de, 0);
@@ -507,6 +509,7 @@ export class Jogo {
       a.presente?.(a === this.area || (a === this.bahiaBaixa && this.area === this.bahiaAlta));
     }
     this.revisarSono();
+    if (ab) this.descobrirPelaVolta();
     this.ermo.grupo.visible = ab;
     const marProprio = this.area === this.creta || this.area === this.naufragio || this.area === this.malta || this.area === this.bahiaBaixa || this.area === this.bahiaAlta;
     this.ermo.mostrarMar(ab && !marProprio);
@@ -1230,6 +1233,7 @@ export class Jogo {
       this.projeteis.forEach((p) => this.cena.remove(p.malha));
       this.projeteis = [];
       this.area = destino;
+      this.visitar(destino);
       this.aplicarAmbiente();
       const y = destino.altura(pos.x, pos.z);
       // um marco da história (a viagem para a Bahia): os anos passam no escuro da transição
@@ -1651,24 +1655,108 @@ export class Jogo {
     );
   }
 
-  /** Para onde o barco vai quando a conversa da partida acabar (`~ evento("viajar_…")`). */
-  private viagem: 'cidade' | 'creta' | 'bahia' | 'malta' | null = null;
+  /** O ponto de viagem para onde o barco vai quando a conversa da partida acabar (`~ evento("viajar_<ponto>")`). */
+  private viagem: string | null = null;
 
-  /** Faz a viagem escolhida na conversa do barco (depois que a caixa fecha). */
+  /** Faz a viagem escolhida na conversa do barco (depois que a caixa fecha). O Ink só oferece os portos permitidos. */
   private fazerViagem() {
     const destino = this.viagem;
     this.viagem = null;
-    if (destino === 'cidade') this.trocarArea(this.cidade, this.cidade.estradaDoMar.clone().add(new THREE.Vector3(0, 0, -3)), Math.PI);
-    else if (destino === 'bahia') this.trocarArea(this.bahiaBaixa, this.bahiaBaixa.saveiro.clone().add(new THREE.Vector3(0, 0, -2.5)), Math.PI);
-    else if (destino === 'creta') {
-      this.hud.anunciar('O saveiro sai da baía, mar afora…', 2);
-      this.trocarArea(this.creta, this.creta.chegada, 0, () => {
-        if (this.primeiraVez('creta_entrou')) this.dialogos.tocar('creta_chegada');
-      });
-    } else if (destino === 'malta') {
-      this.hud.anunciar('O barco vai mar afora, até a ilha de Malta…', 2);
-      this.trocarArea(this.malta, this.malta.chegada, Math.PI);
+    if (!destino) return;
+    const area = pontoDeViagem(destino)?.area;
+    const anuncio = area === 'creta' ? 'O saveiro sai da baía, mar afora…' : area === 'malta' ? 'O barco vai mar afora, até a ilha de Malta…' : undefined;
+    this.viajarPara(destino, { forcar: true, anuncio });
+  }
+
+  // ───────────── a descoberta do mundo e a viagem rápida ─────────────
+
+  /** Marca a área como visitada (o mapa-múndi a revela). O ermo não conta: dele ficam as quadras pisadas. */
+  private visitar(a: Area) {
+    if (a === this.ermoDoMundo || this.estado.visitadas.has(a.id)) return;
+    this.estado.visitadas.add(a.id);
+    this.estado.salvar();
+  }
+
+  /**
+   * Onde cada ponto de viagem fica no chão e para onde o peregrino olha ao chegar. As capelas: diante da porta, de
+   * frente para ela; os cais: no lugar de embarcar.
+   */
+  private lugarDoPonto(id: string): { area: Area; pos: THREE.Vector3; rumo: number } | null {
+    const v = (x: number, z: number) => new THREE.Vector3(x, 0, z);
+    const norte = Math.PI, oeste = -Math.PI / 2, leste = Math.PI / 2;
+    const diante = (c: CapelaRegional) => c.porta.clone().add(v(0, 5));
+    switch (id) {
+      case 'vale_cruzeiro': return { area: this.mundo, pos: this.mundo.cruzeiro.clone().add(v(0, 2.5)), rumo: norte };
+      case 'vale_capela': return { area: this.mundo, pos: diante(this.mundo.capela), rumo: norte };
+      case 'deserto_capela': return { area: this.deserto, pos: diante(this.deserto.capela), rumo: norte };
+      case 'deserto_poco': return { area: this.deserto, pos: this.deserto.poco.clone().add(v(3, 0)), rumo: oeste };
+      case 'cidade_capela': return { area: this.cidade, pos: diante(this.cidade.capela), rumo: norte };
+      case 'cidade_estrada': return { area: this.cidade, pos: this.cidade.estradaDoMar.clone().add(v(0, -3)), rumo: norte };
+      case 'bahia_cais': return { area: this.bahiaBaixa, pos: this.bahiaBaixa.saveiro.clone().add(v(0, -2.5)), rumo: norte };
+      case 'bahia_bonfim': return { area: this.bahiaBaixa, pos: diante(this.bahiaBaixa.capela), rumo: norte };
+      case 'bahia_praca': return { area: this.bahiaAlta, pos: this.bahiaAlta.chegada.clone(), rumo: leste };
+      case 'creta_praia': return { area: this.creta, pos: this.creta.chegada.clone(), rumo: 0 };
+      case 'malta_praia': return { area: this.malta, pos: this.malta.chegada.clone(), rumo: norte };
+      case 'malta_porto': return { area: this.malta, pos: this.malta.cais.clone(), rumo: leste };
+      default: return null;
     }
+  }
+
+  /**
+   * A cada meio segundo no mundo aberto: a quadra em que se pisa fica vista no mapa, e o ponto de viagem a menos de
+   * 14 m fica descoberto (com aviso). Vale também numa região adormecida: conhecer o lugar não depende da história.
+   */
+  private descobrirPelaVolta() {
+    const p = this.peregrino.pos, e = this.estado;
+    e.mapaVisto.add(quadraDoMapa(p.x, p.z));
+    for (const def of PONTOS_DE_VIAGEM) {
+      if (e.pontos.has(def.id)) continue;
+      const l = this.lugarDoPonto(def.id);
+      if (!l || Math.hypot(l.pos.x - p.x, l.pos.z - p.z) > 14) continue;
+      e.pontos.add(def.id);
+      e.salvar();
+      this.som.graca();
+      this.hud.anunciar(`Lugar de viagem: ${def.nome}. Pelo mapa, o Espírito leva até aqui.`, 3);
+    }
+  }
+
+  /** Alguma luta com chefão em andamento. */
+  private get emLuta() {
+    return this.cripta.lutando || this.meiodia.lutando || this.banquete.lutando || this.bahiaAlta.largo.lutando || this.naufragio.lutando;
+  }
+
+  /** Por que não dá para viajar agora (ou null, se dá). */
+  motivoParaNaoViajar(): string | null {
+    if (this.transitando) return 'Espere a passagem terminar.';
+    if (this.dialogos.ocupado || this.hud.dialogoAberto) return 'Termine a conversa primeiro.';
+    if (this.emLuta) return 'Não no meio da luta.';
+    if (this.peregrino.carregando || this.nasCostas) return 'Não com alguém (ou algo) nas costas: o caminho daqui é a pé.';
+    // as cenas roteirizadas do mar: o navio na tempestade e o naufrágio até a Ira cair
+    if (this.area === this.navio || (this.area === this.naufragio && !this.estado.flags.has('naufragio_ira_vencida')))
+      return 'Agora não: a história daqui ainda não terminou.';
+    return null;
+  }
+
+  /**
+   * A viagem rápida: escurece e leva a um ponto de viagem descoberto. `forcar` (a viagem da história e a dos barcos,
+   * que o Ink já filtrou) dispensa a descoberta e as recusas. Chegando a uma região acordada pela primeira vez, a
+   * fala de chegada toca como se tivesse vindo a pé. Devolve se a viagem começou.
+   */
+  viajarPara(id: string, o: { forcar?: boolean; anuncio?: string } = {}) {
+    const lugar = this.lugarDoPonto(id);
+    if (!lugar) return false;
+    const motivo = o.forcar ? (this.transitando ? 'ocupado' : null) : !this.estado.pontos.has(id) ? 'Esse lugar ainda não foi descoberto.' : this.motivoParaNaoViajar();
+    if (motivo) {
+      if (!o.forcar) this.hud.anunciar(motivo, 2.4);
+      return false;
+    }
+    if (o.anuncio) this.hud.anunciar(o.anuncio, 2);
+    this.trocarArea(lugar.area, lugar.pos, lugar.rumo, () => {
+      this.estado.pontos.add(id);
+      this.estado.salvar();
+      if (this.regioesAbertas().includes(lugar.area) && this.acordada(lugar.area.id)) this.chegouAndando(lugar.area);
+    });
+    return true;
   }
 
   // ───────────── o navio na tempestade (At 27,14-38) ─────────────
@@ -1882,8 +1970,8 @@ export class Jogo {
 
   /** Efeitos pedidos pelo roteiro da Bahia. Devolve true se o evento era daqui. */
   private eventoDaBahia(nome: string) {
-    if (nome === 'viajar_cidade' || nome === 'viajar_creta' || nome === 'viajar_bahia' || nome === 'viajar_malta') {
-      this.viagem = nome === 'viajar_cidade' ? 'cidade' : nome === 'viajar_creta' ? 'creta' : nome === 'viajar_malta' ? 'malta' : 'bahia';
+    if (nome.startsWith('viajar_') && pontoDeViagem(nome.slice(7))) {
+      this.viagem = nome.slice(7);
       return true;
     }
     if (nome === 'carregar_enfermo') {
@@ -2041,7 +2129,7 @@ export class Jogo {
   }
 
   private interacoesDaBahiaBaixa(): Interacao[] {
-    const b = this.bahiaBaixa, a = this.bahiaAlta, c = this.cidade;
+    const b = this.bahiaBaixa, a = this.bahiaAlta;
     const f = (x: string) => this.estado.flags.has(x);
     return [
       { ...this.conversaCom(() => b.dulceEmCena, 'dulce', 'F: falar com Irmã Dulce', 2.8), ativa: () => this.nasCostas === null },
@@ -2141,7 +2229,7 @@ export class Jogo {
         raio: 3.2,
         rotulo: () => (f('bahia_coracao_vencido') ? 'F: embarcar no saveiro' : 'F: voltar de saveiro à Cidade Dourada'),
         agir: () => {
-          if (!f('bahia_coracao_vencido')) return this.trocarArea(c, c.estradaDoMar.clone().add(new THREE.Vector3(0, 0, -3)), Math.PI);
+          if (!f('bahia_coracao_vencido')) return void this.viajarPara('cidade_estrada', { forcar: true });
           this.dialogos.tocar('bahia_saveiro', () => this.fazerViagem());
         },
       },

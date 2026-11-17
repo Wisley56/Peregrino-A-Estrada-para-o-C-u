@@ -135,6 +135,11 @@ tools/verificar-build.mjs confere que o modo dev não foi para o build
 - `versao`: 2 desde o mapa único. Um save sem `versao` (a 1) tem o checkpoint no lugar antigo da área: ao carregar,
   `pontoDaV1` (`Geografia.ts`) o traz para o lugar novo, e uma cópia do save original fica em
   `peregrino3d.slot.<n>.v1`.
+- **Descoberta do mundo** (separada das flags `*_entrou` da história): `visitadas` (áreas por onde se passou,
+  marcadas em `Jogo.visitar`), `pontos` (pontos de viagem descobertos) e `mapaVisto` (quadras de `QUADRA_MAPA` =
+  64 m pisadas no mundo aberto, chave `quadraDoMapa(x, z)`, para o mapa-múndi). Um save sem esses campos recebe as
+  `visitadas` deduzidas das flags de entrada (`FLAG_DE_ENTRADA`, mais a área do checkpoint) e o ponto `principal`
+  de cada região visitada. `mapaVisto` começa vazio. A `versao` continua 2: os campos ausentes bastam para saber.
 
 **Preferências** (`src/core/Preferencias.ts`) valem para todos os saves e ficam em `peregrino-preferencias`:
 `{ sensibilidade, mira, graficos, sensibilidadeControle, inverterY, vibracao }`. Os valores lidos são validados; o que vier inválido volta ao padrão.
@@ -285,9 +290,11 @@ os mantém (o save guarda o número do nível, não o nome).
 **Creta: Bons Portos e Laseia** (Mar da Tempestade, At 27,8-12)
 
 - Chega-se pelo saveiro da Bahia depois do Coração de Pedra (`bahia_coracao_vencido`): o nó `bahia_saveiro` oferece
-  Creta ou a Cidade Dourada. O roteiro marca a escolha com `~ evento("viajar_creta")` (ou `viajar_cidade`,
-  `viajar_bahia`), e `Jogo.fazerViagem` troca de área quando a conversa fecha. A primeira chegada (`creta_entrou`)
-  toca `creta_chegada`. O barco de pesca no fim da praia leva de volta à Bahia.
+  Creta sempre (é a viagem da história) e os outros portos já descobertos. O roteiro marca a escolha com
+  `~ evento("viajar_<ponto>")` (`viajar_creta_praia`, `viajar_cidade_estrada`…), e `Jogo.fazerViagem` chama
+  `viajarPara` quando a conversa fecha. A primeira chegada (`creta_entrou`) toca `creta_chegada`. O barco de pesca
+  no fim da praia leva de volta aos portos descobertos. As opções desses menus são `+` (ficam para sempre); com `*`
+  o Ink as gastaria na primeira escolha.
 - Todo o desenho fica em constantes no topo de `Creta.ts` (coordenadas locais; x para leste, +z para o mar):
   `CAIS`, `BACIA`, `NAVIO`, `CASAS`, `ESTRADA`, `LASEIA`, `CASAS_LASEIA`, `FAROL`, `CABANA`. O chão (`gerar`) aplaina
   as plataformas das casas e de Laseia, pinta a estrada de terra, draga a bacia e levanta o cais.
@@ -618,9 +625,10 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
 ## Mundo aberto (reforma em andamento)
 
 O jogo está passando de áreas isoladas para um mundo único e contínuo. O plano tem oito fases; estão feitas a 0
-(bordas), a 1 (geografia e terreno global), a 2 (chunks e passagem livre) e a 3 (história adormecida). **Anda-se
-de uma região a outra a pé ou a nado**, e não há mais troca por F entre regiões ao ar livre: uma região a que se
-chega antes da hora fica com a história adormecida. A viagem rápida (fase 4) e o mapa-múndi (fase 5) vêm depois.
+(bordas), a 1 (geografia e terreno global), a 2 (chunks e passagem livre), a 3 (história adormecida) e a 4 (save
+da descoberta e viagem rápida). **Anda-se de uma região a outra a pé ou a nado**, e não há mais troca por F entre
+regiões ao ar livre: uma região a que se chega antes da hora fica com a história adormecida. O mapa-múndi (fase 5),
+de onde a viagem rápida vai ser pedida, vem depois.
 
 - **Geografia** (`src/mundo/aberto/Geografia.ts`): a tabela `ORIGENS` diz onde fica cada área no mapa único (+x é
   o leste, +z é o sul). As constantes `ORIGEM_*` de cada área vêm dela. O Vale fica na origem; o Deserto a oeste; a
@@ -685,6 +693,15 @@ chega antes da hora fica com a história adormecida. A viagem rápida (fase 4) e
   da escarpa descer inteira.
 - **O naufrágio fica junto a Malta**: a enseada está a oeste da ilha, com a praia na mesma linha, separada por um
   estreito de 24 m que se atravessa a nado. O navio encalhado que Malta tinha "lá fora" saiu (é o da enseada).
+- **Pontos de viagem** (`PONTOS_DE_VIAGEM` em `Geografia.ts`; o lugar no chão em `Jogo.lugarDoPonto`): capelas
+  (diante da porta), o cruzeiro do Vale, os cais e alguns lugares de cada região. Descobre-se um chegando a 14 m
+  dele no mundo aberto (`descobrirPelaVolta`, a cada meio segundo, também numa região adormecida), com aviso.
+- **Viagem rápida** (`Jogo.viajarPara(id, { forcar, anuncio })`): escurece (`trocarArea`) e leva ao ponto, que vira
+  checkpoint; chegando a uma região acordada, `chegouAndando` toca a fala de chegada se for a primeira vez. Sem
+  `forcar`, recusa ponto não descoberto e `motivoParaNaoViajar`: passagem em curso, conversa aberta, luta com
+  chefão, alguém (ou algo) nas costas, o navio na tempestade e o naufrágio antes da Ira. `forcar` é para a viagem
+  da história e os barcos, que o Ink já filtrou com `descobriu("<ponto>")`. Por ora só os barcos e o saveiro a
+  usam; o mapa-múndi (fase 5) vai ser a porta dela.
 - **Pendências conhecidas**: não há estradas nem vegetação no ermo (fase 7); a Cidade Alta usa as cores das casas
   na parede da escarpa ao lado da Ladeira.
 - **Mapa do terreno** (`src/mundo/aberto/MapaDoTerreno.ts`): `pintarMapa` desenha o chão do mundo visto de cima
@@ -721,7 +738,7 @@ aparece quando a fala toca.
 | `~ evento("dom_ciencia")` | efeito de jogo tratado em `Jogo.eventoDialogo` |
 | `~ marcar("flag")` | grava uma flag no save |
 
-Funções externas: `tem(flag)`, `primeira(flag)` (verdadeiro só na primeira vez, e já marca), `nivel(dom)`,
+Funções externas: `descobriu(ponto)` (o ponto de viagem já foi descoberto), `tem(flag)`, `primeira(flag)` (verdadeiro só na primeira vez, e já marca), `nivel(dom)`,
 `valor(chave)` (números do jogo, em `Jogo.valorDialogo`), `nome()` e `g(masculino, feminino)` para o gênero
 do peregrino. As consultas puras são registradas como seguras para a leitura antecipada do Ink; as que mudam o
 jogo, não.

@@ -1,6 +1,6 @@
 import { Identidade, normalizar } from './Aparencia';
 import { AREAS, IdArea } from '../mundo/Area';
-import { pontoDaV1 } from '../mundo/aberto/Geografia';
+import { PONTOS_DE_VIAGEM, pontoDaV1 } from '../mundo/aberto/Geografia';
 import { CUSTO_NIVEL, DONS, IdDom, domPorId } from './Dons';
 
 const areaValida = (a: unknown): IdArea => (AREAS.includes(a as IdArea) ? (a as IdArea) : 'vale');
@@ -38,6 +38,31 @@ export interface DadosSalvos {
   comungou?: boolean;
   /** Iscas da Gula carregadas (o ouro que pesa). */
   peso?: number;
+  /** Regiões e interiores por onde o peregrino já passou (o mapa-múndi as revela). Ausente: deduz-se das flags. */
+  visitadas?: IdArea[];
+  /** Pontos de viagem rápida descobertos (ids de `PONTOS_DE_VIAGEM`). Ausente: o principal de cada visitada. */
+  pontos?: string[];
+  /** Quadras do mundo aberto já pisadas (`quadraDoMapa`): o ermo do mapa-múndi se revela por onde se andou. */
+  mapaVisto?: string[];
+}
+
+/** O lado de uma quadra do mapa-múndi (m). */
+export const QUADRA_MAPA = 64;
+export const quadraDoMapa = (x: number, z: number) => `${Math.floor(x / QUADRA_MAPA)},${Math.floor(z / QUADRA_MAPA)}`;
+
+/** A flag que diz que já se entrou em cada área (para trazer `visitadas` de um save de antes dela). */
+const FLAG_DE_ENTRADA: Partial<Record<IdArea, string>> = {
+  cripta: 'cripta_entrou', deserto: 'deserto_entrou', meiodia: 'meiodia_entrou', cidade: 'cidade_entrou', palacio: 'palacio_entrou',
+  bahiabaixa: 'bahia_entrou', bahiaalta: 'bahia_alta_entrou', creta: 'creta_entrou', navio: 'navio_entrou',
+  naufragio: 'naufragio_encalhou', malta: 'malta_entrou',
+};
+
+/** As áreas visitadas segundo as flags da história (saves de antes do registro de visitas). */
+function visitadasPelasFlags(flags: Set<string>, onde: IdArea): Set<IdArea> {
+  const v = new Set<IdArea>(['vale']);
+  for (const [a, f] of Object.entries(FLAG_DE_ENTRADA)) if (flags.has(f)) v.add(a as IdArea);
+  if (onde !== 'ermo') v.add(onde);
+  return v;
 }
 
 /** O que a tela inicial mostra de cada espaço de jogo. */
@@ -99,6 +124,12 @@ export class Estado {
   tempo = 0;
   /** Iscas da Gula que o peregrino pegou e ainda não deu aos pobres: cada uma pesa. */
   peso = 0;
+  /** Regiões e interiores já visitados (a descoberta, separada das flags `*_entrou` da história). */
+  visitadas = new Set<IdArea>(['vale']);
+  /** Pontos de viagem rápida descobertos. */
+  pontos = new Set<string>();
+  /** Quadras do mundo aberto já pisadas (ver `quadraDoMapa`). */
+  mapaVisto = new Set<string>();
   /**
    * Trava de salvamento do modo dev: depois de usar o painel de desenvolvedor, nada vai para o espaço de jogo até
    * alguém liberar de propósito. Assim um teste não estraga o progresso de verdade. Em produção fica sempre falso.
@@ -190,6 +221,15 @@ export class Estado {
     this.confessado = !!d.confessado;
     this.comungou = !!d.comungou;
     this.peso = Math.max(0, Math.floor(d.peso ?? 0));
+    // a descoberta do mundo: um save de antes dela recebe as regiões por onde a história já passou e o ponto de
+    // viagem principal de cada uma
+    this.visitadas = Array.isArray(d.visitadas)
+      ? new Set<IdArea>(['vale', ...d.visitadas.filter((a) => AREAS.includes(a))])
+      : visitadasPelasFlags(this.flags, this.checkpointArea);
+    this.pontos = Array.isArray(d.pontos)
+      ? new Set(d.pontos.filter((id) => PONTOS_DE_VIAGEM.some((p) => p.id === id)))
+      : new Set(PONTOS_DE_VIAGEM.filter((p) => p.principal && this.visitadas.has(p.area)).map((p) => p.id));
+    this.mapaVisto = new Set(Array.isArray(d.mapaVisto) ? d.mapaVisto : []);
     // o zerar() encheu os corações antes de saber dos chefões e da Eucaristia
     this.coracoes = this.coracoesMax;
     return true;
@@ -211,6 +251,9 @@ export class Estado {
     this.identidade = null;
     this.tempo = 0;
     this.peso = 0;
+    this.visitadas = new Set(['vale']);
+    this.pontos = new Set();
+    this.mapaVisto = new Set();
   }
 
   salvar() {
@@ -230,6 +273,9 @@ export class Estado {
       confessado: this.confessado || undefined,
       comungou: this.comungou || undefined,
       peso: this.peso || undefined,
+      visitadas: [...this.visitadas],
+      pontos: [...this.pontos],
+      mapaVisto: [...this.mapaVisto],
     };
     try {
       localStorage.setItem(CHAVE_SLOT(this.slot), JSON.stringify(d));

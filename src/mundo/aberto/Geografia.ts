@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { IdArea } from '../Area';
 
 /**
  * A geografia do mundo: onde fica cada região no mapa único. Antes cada área vivia num canto qualquer, longe das
@@ -87,3 +88,36 @@ export function pontoDaV1(area: string, p: [number, number, number]): [number, n
   const dy = (NIVEL_HOJE[area as IdOrigem] ?? 0) - antes[2];
   return [p[0] - antes[0] + agora.x, p[1] + dy, p[2] - antes[1] + agora.z];
 }
+
+/** O que marca um ponto de viagem no chão: uma capela, um cruzeiro, um cais ou um lugar conhecido da região. */
+export type TipoPontoDeViagem = 'capela' | 'cruzeiro' | 'cais' | 'lugar';
+
+/**
+ * Um lugar para onde a viagem rápida leva. Descobre-se chegando perto dele (a pé, a nado ou de barco); o lugar exato
+ * no chão vem da própria região (`Jogo.lugarDoPonto`). O ponto `principal` de uma região é o que se dá como
+ * descoberto a quem já tinha passado por ela antes de os pontos existirem (saves antigos).
+ */
+export interface DefPontoDeViagem {
+  id: string;
+  nome: string;
+  area: IdArea;
+  tipo: TipoPontoDeViagem;
+  principal?: boolean;
+}
+
+export const PONTOS_DE_VIAGEM: readonly DefPontoDeViagem[] = [
+  { id: 'vale_cruzeiro', nome: 'O cruzeiro do Vale', area: 'vale', tipo: 'cruzeiro', principal: true },
+  { id: 'vale_capela', nome: 'A capela do Vale', area: 'vale', tipo: 'capela' },
+  { id: 'deserto_capela', nome: 'A capela do Deserto', area: 'deserto', tipo: 'capela', principal: true },
+  { id: 'deserto_poco', nome: 'O poço do Deserto', area: 'deserto', tipo: 'lugar' },
+  { id: 'cidade_capela', nome: 'A capela da Cidade Dourada', area: 'cidade', tipo: 'capela', principal: true },
+  { id: 'cidade_estrada', nome: 'A porta da estrada do mar', area: 'cidade', tipo: 'lugar' },
+  { id: 'bahia_cais', nome: 'O cais do saveiro', area: 'bahiabaixa', tipo: 'cais', principal: true },
+  { id: 'bahia_bonfim', nome: 'A igreja do Bonfim', area: 'bahiabaixa', tipo: 'capela' },
+  { id: 'bahia_praca', nome: 'A Praça Tomé de Sousa', area: 'bahiaalta', tipo: 'lugar', principal: true },
+  { id: 'creta_praia', nome: 'Bons Portos', area: 'creta', tipo: 'cais', principal: true },
+  { id: 'malta_praia', nome: 'A praia do fogo, em Malta', area: 'malta', tipo: 'lugar', principal: true },
+  { id: 'malta_porto', nome: 'O porto de Malta', area: 'malta', tipo: 'cais' },
+];
+
+export const pontoDeViagem = (id: string) => PONTOS_DE_VIAGEM.find((p) => p.id === id) ?? null;
