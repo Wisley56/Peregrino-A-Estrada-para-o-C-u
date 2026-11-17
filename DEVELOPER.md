@@ -625,10 +625,10 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
 ## Mundo aberto (reforma em andamento)
 
 O jogo está passando de áreas isoladas para um mundo único e contínuo. O plano tem oito fases; estão feitas a 0
-(bordas), a 1 (geografia e terreno global), a 2 (chunks e passagem livre), a 3 (história adormecida) e a 4 (save
-da descoberta e viagem rápida). **Anda-se de uma região a outra a pé ou a nado**, e não há mais troca por F entre
-regiões ao ar livre: uma região a que se chega antes da hora fica com a história adormecida. O mapa-múndi (fase 5),
-de onde a viagem rápida vai ser pedida, vem depois.
+(bordas), a 1 (geografia e terreno global), a 2 (chunks e passagem livre), a 3 (história adormecida), a 4 (save
+da descoberta e viagem rápida) e a 5 (mapa-múndi e minimapa do mundo). **Anda-se de uma região a outra a pé ou a
+nado**, e não há mais troca por F entre regiões ao ar livre: uma região a que se chega antes da hora fica com a
+história adormecida. Pelo mapa (M) viaja-se aos lugares já descobertos. O barco (fase 6) vem depois.
 
 - **Geografia** (`src/mundo/aberto/Geografia.ts`): a tabela `ORIGENS` diz onde fica cada área no mapa único (+x é
   o leste, +z é o sul). As constantes `ORIGEM_*` de cada área vêm dela. O Vale fica na origem; o Deserto a oeste; a
@@ -700,12 +700,26 @@ de onde a viagem rápida vai ser pedida, vem depois.
   checkpoint; chegando a uma região acordada, `chegouAndando` toca a fala de chegada se for a primeira vez. Sem
   `forcar`, recusa ponto não descoberto e `motivoParaNaoViajar`: passagem em curso, conversa aberta, luta com
   chefão, alguém (ou algo) nas costas, o navio na tempestade e o naufrágio antes da Ira. `forcar` é para a viagem
-  da história e os barcos, que o Ink já filtrou com `descobriu("<ponto>")`. Por ora só os barcos e o saveiro a
-  usam; o mapa-múndi (fase 5) vai ser a porta dela.
+  da história e os barcos, que o Ink já filtrou com `descobriu("<ponto>")`. Fora dos barcos, ela é pedida pelo
+  mapa-múndi.
+- **Mapa-múndi** (`src/ui/MapaMundi.ts`; tecla M, ou "Mapa do mundo" na pausa, que é o caminho do controle): pausa
+  o jogo como a rosácea dos dons. É um pergaminho com o chão do mundo (`PASSO` = 10 m por pixel, o relevo sombreado
+  como em `pintarMapa`), pintado aos poucos desde o começo do jogo (`trabalhar`, 2 ms por quadro; abrindo antes,
+  termina de uma vez). Só aparece o que o peregrino conhece (`compor`): região não visitada, encoberta, com o
+  contorno tracejado e "?"; visitada, em sépia; restaurada (`RESTAURACAO`, a flag `*_restaurad*` de cada região),
+  em cor; o ermo, nas quadras pisadas (`mapaVisto`: `descobrirPelaVolta` marca uma roda de raio 2 quadras em volta
+  do peregrino). Marcas: os pontos de viagem descobertos, o peregrino (só no mundo aberto) e a estrela do Conselho
+  (nível 2). Ao lado, a lista dos pontos por região: focar um leva a vista até ele; escolher (na lista ou clicando
+  no mapa) pede confirmação, e "Viajar" chama `viajarPara` (a recusa aparece ali mesmo). Arrastar e a roda do mouse
+  movem e aproximam; W A S D, + − (ou Q E) também. M ou Esc fecham. Os dados vêm de `FonteMapaMundi`, que o
+  `Jogo` monta (o mapa só é criado na primeira vez, porque precisa do terreno do mundo).
+- **Minimapa do mundo**: no mundo aberto, o minimapa tem um **fundo**, o quadrado de 192 m do chão do mundo em volta
+  do peregrino que a obra pinta (`Minimapa.definirFundo`, pedido de novo a cada 30 m), e a região vai por cima.
+  A terra e o mar de fora da região aparecem, e no ermo só o fundo (`soFundo`). Num interior não há fundo.
 - **Pendências conhecidas**: não há estradas nem vegetação no ermo (fase 7); a Cidade Alta usa as cores das casas
   na parede da escarpa ao lado da Ladeira.
 - **Mapa do terreno** (`src/mundo/aberto/MapaDoTerreno.ts`): `pintarMapa` desenha o chão do mundo visto de cima
-  num canvas (será a base do mapa-múndi). No modo dev: `jogo.ganchosDev().mapaDoMundo(x0, z0, x1, z1, passo)`.
+  num canvas (a mesma pintura que o mapa-múndi faz aos poucos). No modo dev: `jogo.ganchosDev().mapaDoMundo(x0, z0, x1, z1, passo)`.
 - **Bordas**: as paredes da borda de um mapa descem até `FUNDO_BORDA` (`Terreno.ts`), a superfície da água
   segura a câmera (ela não mergulha) e o `Oceano` desenha os dois lados.
 
@@ -950,7 +964,8 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
   - um acerto pisca um X (`Hud.acertou`);
   - sem energia ou com torpor, a mira fica fraca;
   - ela some com a mira travada (aí vale o losango sobre o alvo), em diálogos, na oração, na confissão e nos menus.
-- **`Pausa.ts`**: menu de pausa.
+- **`Pausa.ts`**: menu de pausa (com o botão do mapa do mundo).
+- **`MapaMundi.ts`**: o mapa do mundo (M) e a viagem rápida (ver Mundo aberto).
 - **`Configuracoes.ts`**: abas Geral, Controles e Gráficos. Enquanto a janela está aberta, ela captura as teclas.
 - **`Dons.ts`** e **`IconesDons.ts`**: a rosácea dos sete dons, com ícones SVG.
 - **`creditos.ts`**: os créditos que rolam na tela.

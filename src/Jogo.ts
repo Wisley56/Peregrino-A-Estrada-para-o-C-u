@@ -1,7 +1,13 @@
 import * as THREE from 'three';
 import { ARFAGEM_LIVRE, CameraTerceira } from './core/Camera';
 import { Entrada, travarPonteiro } from './core/Entrada';
-import { CHEFOES, Estado, quadraDoMapa } from './core/Estado';
+import { CHEFOES, Estado, QUADRA_MAPA, quadraDoMapa } from './core/Estado';
+
+/** A flag da cor restaurada de cada região ao ar livre (o mapa-múndi a pinta em cor). */
+const RESTAURACAO: Partial<Record<IdArea, string>> = {
+  vale: 'vale_restaurado', deserto: 'deserto_restaurado', cidade: 'cidade_restaurada', bahiabaixa: 'bahia_restaurada', bahiaalta: 'bahia_restaurada',
+  creta: 'mar_restaurado', naufragio: 'mar_restaurado', malta: 'mar_restaurado',
+};
 import { Som } from './core/Som';
 import { type Idade, identidadePadrao, visualDe } from './core/Aparencia';
 import { Efeitos } from './fx/Efeitos';
@@ -41,6 +47,7 @@ import { Banquete, type Ajudante, type IdAjudante } from './mundo/Banquete';
 import { Chefe } from './entidades/Guardiao';
 import { Minimapa, Marca } from './ui/Minimapa';
 import { Pausa } from './ui/Pausa';
+import { MapaMundi } from './ui/MapaMundi';
 import { CAPELA } from './mundo/Terreno';
 import type { CapelaRegional } from './mundo/Capela';
 import { colunaDeLuz, construirCeu } from './mundo/Cenario';
@@ -202,6 +209,8 @@ export class Jogo {
   private readonly centroMapaErmo = new THREE.Vector2();
   /** Um mapa do ermo já foi pedido à obra e ainda não chegou. */
   private mapaErmoPedido = false;
+  /** O fundo do mundo aberto está (ou vai estar) no minimapa. */
+  private fundoNoMapa = false;
   private prefs = new Preferencias();
   /** Quadros por segundo (média suave), mostrados na aba Gráficos. */
   private qps = 60;
@@ -217,8 +226,42 @@ export class Jogo {
     continuar: () => this.retomar(),
     sair: () => this.sairParaTitulo(),
     dons: () => this.abrirDons(),
+    mapa: () => this.abrirMapa(),
     config: () => this.config.abrir(),
   });
+  private mapaDoMundo: MapaMundi | null = null;
+  /** O mapa-múndi (feito na primeira vez que se pede: precisa do terreno do mundo). */
+  private get mapaMundi() {
+    return (this.mapaDoMundo ??= new MapaMundi({
+      terreno: this.terrenoMundo,
+      regioes: () => this.regioesAbertas().flatMap((a) => {
+        const c = this.terrenoMundo.carimboDe(a.id);
+        if (!c) return [];
+        const flag = RESTAURACAO[a.id];
+        return [{ id: a.id, nome: NOMES_AREA[a.id], x0: c.x0, z0: c.z0, x1: c.x1, z1: c.z1, visitada: this.estado.visitadas.has(a.id), restaurada: !!flag && this.estado.flags.has(flag) }];
+      }),
+      pontos: () => PONTOS_DE_VIAGEM.flatMap((def) => {
+        const l = this.estado.pontos.has(def.id) ? this.lugarDoPonto(def.id) : null;
+        return l ? [{ id: def.id, nome: def.nome, tipo: def.tipo, regiao: NOMES_AREA[def.area], x: l.pos.x, z: l.pos.z }] : [];
+      }),
+      quadras: () => this.estado.mapaVisto,
+      peregrino: () => (this.aberto ? { x: this.peregrino.pos.x, z: this.peregrino.pos.z, rumo: this.peregrino.rumo } : null),
+      ondeEsta: () => (this.aberto ? `Você está em: ${NOMES_AREA[this.areaDaRegiao().id]}` : `Você está em: ${NOMES_AREA[this.area.id]} (um lugar à parte, fora do mapa)`),
+      estrela: () => {
+        if (this.estado.nivel('conselho') < 2) return null;
+        const r = this.rumoDoCaminho();
+        return r ? { x: r.x, z: r.z } : null;
+      },
+      viajar: (id) => {
+        const motivo = this.motivoParaNaoViajar();
+        if (motivo) return motivo;
+        this.fecharMapa();
+        this.viajarPara(id);
+        return null;
+      },
+      fechar: () => this.fecharMapa(),
+    }));
+  }
   private telaDons = new TelaDons(this.estado, {
     fechar: () => this.fecharDons(),
     // a própria rosácea mostra o nó acendendo; aqui só o som da graça
@@ -1708,7 +1751,8 @@ export class Jogo {
    */
   private descobrirPelaVolta() {
     const p = this.peregrino.pos, e = this.estado;
-    e.mapaVisto.add(quadraDoMapa(p.x, p.z));
+    for (let di = -2; di <= 2; di++)
+      for (let dj = -2; dj <= 2; dj++) if (di * di + dj * dj <= 5) e.mapaVisto.add(quadraDoMapa(p.x + di * QUADRA_MAPA, p.z + dj * QUADRA_MAPA));
     for (const def of PONTOS_DE_VIAGEM) {
       if (e.pontos.has(def.id)) continue;
       const l = this.lugarDoPonto(def.id);
@@ -3209,7 +3253,7 @@ export class Jogo {
     }
     const e = this.entrada;
     // controle: nos menus ele navega pelos botões; no jogo vira as mesmas teclas do teclado
-    const menu = !this.comecou || this.pausado || this.telaDons.aberta || this.modoCriacao || this.config.aberta;
+    const menu = !this.comecou || this.pausado || this.telaDons.aberta || this.modoCriacao || this.config.aberta || !!this.mapaDoMundo?.aberta;
     e.lerControle(menu);
     if (menu) {
       this.navUi.atualizar(e.controle, Math.min(0.05, bruto));
@@ -3219,13 +3263,19 @@ export class Jogo {
     if (this.comecou && !this.modoCriacao && !this.transitando && !this.morrendo && !dev?.painelAberto) {
       if (this.telaDons.aberta) {
         if (e.apertou('Escape', 'KeyG')) this.fecharDons();
+      } else if (this.mapaDoMundo?.aberta) {
+        if (e.apertou('Escape', 'KeyM')) this.fecharMapa();
       } else if (this.pausado && e.apertou('Escape', 'KeyP')) this.retomar();
       else if (!this.pausado && !this.hud.dialogoAberto && e.apertou('KeyG')) this.abrirDons();
+      else if (!this.pausado && !this.hud.dialogoAberto && e.apertou('KeyM')) this.abrirMapa();
       else if (!this.pausado && (e.apertou('Escape', 'KeyP') || e.soltouPonteiro)) this.pausar();
     }
     e.soltouPonteiro = false;
     e.seguirMouse = this.comecou && !this.pausado && !this.modoCriacao;
+    // a imagem do mapa-múndi vai sendo pintada aos poucos desde o começo (pronta quando ele for aberto)
+    if (this.comecou && !this.mapaMundi.pronto) this.mapaMundi.trabalhar(2);
     if (this.pausado) {
+      this.mapaDoMundo?.atualizar();
       this.efeitos.renderizar(0, this.corAtual());
       e.fimDoQuadro();
       return;
@@ -3518,6 +3568,20 @@ export class Jogo {
     this.retomar();
   }
 
+  /** O mapa-múndi (M, ou pela pausa): pausa o jogo enquanto está aberto; dele sai a viagem rápida. */
+  private abrirMapa() {
+    this.pausado = true;
+    this.hud.mostrarRetic(this.prefs.mira, null, 0);
+    document.exitPointerLock?.();
+    this.pausa.fechar();
+    this.mapaMundi.abrir();
+  }
+
+  private fecharMapa() {
+    this.mapaDoMundo?.fechar();
+    this.retomar();
+  }
+
   private retomar() {
     this.pausado = false;
     this.pausa.fechar();
@@ -3531,6 +3595,7 @@ export class Jogo {
     this.pausado = false;
     this.pausa.fechar();
     this.telaDons.fechar();
+    this.mapaDoMundo?.fechar();
     this.comecou = false;
     this.torpor = 0;
     this.tempoCiencia = 0;
@@ -3566,24 +3631,27 @@ export class Jogo {
     const a = this.area;
     // o mapa do ermo é um quadrado em volta do peregrino, pintado pela obra (fora do thread do jogo): pede-se outro
     // quando ele se afasta do centro, e o antigo continua na tela até o novo chegar
+    // no mundo aberto o fundo é o chão do mundo (terra e mar de fora da região), e a região vai por cima
     const pm = this.peregrino.pos;
-    if (a === this.ermoDoMundo) {
+    if (this.aberto) {
       const longe = Math.hypot(pm.x - this.centroMapaErmo.x, pm.z - this.centroMapaErmo.y) > 30;
-      if (this.areaNoMapa !== a.id || (longe && !this.mapaErmoPedido)) {
-        this.areaNoMapa = a.id;
-        this.minimapa.nomear(NOMES_AREA.ermo);
+      if (!this.mapaErmoPedido && (longe || this.areaNoMapa === '' || !this.fundoNoMapa)) {
         this.centroMapaErmo.set(pm.x, pm.z);
         this.mapaErmoPedido = true;
+        this.fundoNoMapa = true;
         this.ermo.pedirMapa(pm.x, pm.z, (f, px) => {
           this.mapaErmoPedido = false;
-          if (this.area === this.ermoDoMundo) this.minimapa.definirImagem(a.id, NOMES_AREA.ermo, f, px);
+          if (this.aberto) this.minimapa.definirFundo(f, px);
         });
       }
-    } else if (this.areaNoMapa !== a.id) {
-      this.centroMapaErmo.set(pm.x, pm.z);
+    } else if (this.fundoNoMapa) {
+      this.fundoNoMapa = false;
+      this.minimapa.definirFundo(null);
+    }
+    if (this.areaNoMapa !== a.id) {
       this.areaNoMapa = a.id;
-      const nomes = NOMES_AREA;
-      this.minimapa.definirArea(a.id, nomes[a.id], a.fonteMapa());
+      if (a === this.ermoDoMundo) this.minimapa.soFundo(NOMES_AREA.ermo);
+      else this.minimapa.definirArea(a.id, NOMES_AREA[a.id], a.fonteMapa());
     }
     const marcas: Marca[] = [];
     for (const i of this.interacoes[a.id]) {

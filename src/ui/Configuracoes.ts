@@ -15,7 +15,7 @@ const MAPA: [string, [string, NomeBotao[] | string][]][] = [
   ['Combate', [['Golpe de cajado', ['X']], ['Luz (10 de energia)', ['RT']], ['Travar a mira', ['RB', 'R3']]]],
   ['Fé e caminho', [
     ['Rezar (parado)', ['LB']], ['Ajoelhar-se (segurar)', ['BAIXO']], ['Interagir / diálogo', ['Y', 'A']], ['Lamparina da Fé', ['ESQ']], ['Dom da Ciência', ['DIR', 'LT']],
-    ['Os Sete Dons', ['VOLTAR']], ['Pausa', ['MENU']],
+    ['Os Sete Dons', ['VOLTAR']], ['Pausa', ['MENU']], ['Mapa do mundo', 'na pausa'],
   ]],
 ];
 
