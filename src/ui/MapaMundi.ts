@@ -36,6 +36,8 @@ export interface FonteMapaMundi {
   /** Onde o peregrino está, se estiver no mundo aberto (num interior, null), e onde ele está em palavras. */
   peregrino(): { x: number; z: number; rumo: number } | null;
   ondeEsta(): string;
+  /** Onde o barco do peregrino está (sempre no mundo aberto). */
+  barco(): { x: number; z: number } | null;
   /** A estrela do Conselho: o próximo passo do caminho, ou null. */
   estrela(): { x: number; z: number } | null;
   /** Pede a viagem: devolve o motivo da recusa, ou null se ela começou (o jogo fecha o mapa). */
@@ -464,6 +466,20 @@ export class MapaMundi {
       c.stroke();
       c.fillStyle = sel ? '#f8ecd0' : TINTA;
       c.fillText(ICONE[p.tipo], x, y + 1 * d);
+    }
+
+    // o barco
+    const b = this.fonte.barco();
+    if (b) {
+      const [x, y] = this.naTela(b.x, b.z);
+      c.save();
+      c.font = `${15 * d}px 'Segoe UI Symbol', 'Noto Sans Symbols', serif`;
+      c.lineWidth = 3 * d;
+      c.strokeStyle = 'rgba(240,226,190,0.95)';
+      c.strokeText('⛵', x, y);
+      c.fillStyle = TINTA;
+      c.fillText('⛵', x, y);
+      c.restore();
     }
 
     // a estrela do Conselho

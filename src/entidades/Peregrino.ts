@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Modelo, variar } from '../voxel/Modelo';
 import { Visual, misturar } from '../core/Aparencia';
 import { lamparinaModelo } from '../mundo/Cenario';
+import type { Timoneiro } from './Barco';
 
 const S = 0.085; // tamanho do voxel do personagem (m)
 
@@ -407,6 +408,14 @@ export class Peregrino {
   private aguaK = 0;
   private bracada = 0;
 
+  /**
+   * No barco: sentado no banco da popa, a mão do cajado na cana do leme e a outra na escota (o cajado vai nas
+   * costas). `null` fora do barco. Quem prende o boneco ao casco (que arfa e aderna) é o `Jogo`.
+   */
+  timoneiro: Timoneiro | null = null;
+  /** 0 de pé … 1 sentado ao leme (a pose entra aos poucos). */
+  private sentadoK = 0;
+
   /** O idoso anda mais devagar. */
   get fatorVelocidade() {
     return this.visual.idade === 'idoso' ? 0.82 : 1;
@@ -576,7 +585,7 @@ export class Peregrino {
 
     this.yVisual += (this.pos.y - this.yVisual) * Math.min(1, dt * 18);
     this.raiz.position.set(this.pos.x, this.yVisual, this.pos.z);
-    this.raiz.rotation.y = this.rumo;
+    this.raiz.rotation.set(0, this.rumo, 0);
 
     // pose base
     let pE = s * 0.8 * balanco, pD = -s * 0.8 * balanco;
@@ -652,9 +661,37 @@ export class Peregrino {
       corpoY = mistura(corpoY, Math.sin(c * 0.7) * 0.03);
       cabecaRx = mistura(cabecaRx, entre(0, -1.0)); // deitado, ergue a cabeça para ver aonde vai
     }
-    // no nado o cajado sai da mão e vai para as costas (com alguém carregado, as costas são da carga)
-    this.cajado.visible = !this.cargaNasCostas && this.aguaK < 0.5;
-    this.cajadoCostas.visible = !this.cargaNasCostas && this.aguaK >= 0.5;
+    // ao leme: sentado no banco, as coxas para a frente e as canelas para baixo; a mão direita segue a cana do leme,
+    // a esquerda segura a escota e dá um puxão de vez em quando; o corpo pende contra o adernamento e a cabeça às
+    // vezes sobe para a vela
+    let contrapeso = 0;
+    const tim = this.timoneiro;
+    this.sentadoK += ((tim ? 1 : 0) - this.sentadoK) * Math.min(1, dt * 6);
+    if (this.sentadoK > 0.01) {
+      const k = this.sentadoK;
+      const mistura = (de: number, para: number) => de + (para - de) * k;
+      const leme = tim?.leme ?? 0, puxa = (tim?.escota ?? 0) * (0.5 + 0.5 * Math.sin(this.respira * 0.9));
+      pE = mistura(pE, -1.42);
+      pD = mistura(pD, -1.38);
+      jE = mistura(jE, 1.25);
+      jD = mistura(jD, 1.32);
+      corpoY = mistura(corpoY, -0.2 + Math.sin(this.respira * 1.7) * 0.008);
+      corpoRx = mistura(corpoRx, 0.06 + puxa * 0.05);
+      corpoRy = mistura(corpoRy, -leme * 0.12);
+      bD = mistura(bD, -0.42 + Math.abs(leme) * 0.08);
+      bDz = mistura(bDz, -0.05 + leme * 0.55);
+      bE = mistura(bE, -0.6 - puxa * 0.22);
+      bEz = mistura(bEz, 0.32);
+      const olha = tim?.olharVela ?? 0;
+      cabecaRx = mistura(cabecaRx, -0.42 * olha);
+      cabecaRy = mistura(cabecaRy, olha * 0.5 * (tim?.ladoVela ?? 1) - leme * 0.15);
+      contrapeso = -(tim?.aderna ?? 0) * 0.6 * k;
+    }
+
+    // no nado e ao leme o cajado sai da mão e vai para as costas (com alguém carregado, as costas são da carga)
+    const costas = this.aguaK >= 0.5 || this.sentadoK >= 0.5;
+    this.cajado.visible = !this.cargaNasCostas && !costas;
+    this.cajadoCostas.visible = !this.cargaNasCostas && costas;
 
     // de joelhos: as coxas quase retas, as canelas deitadas para trás, o corpo curvado e as mãos postas; a cada
     // passo um joelho vai à frente e o quadril balança
@@ -766,7 +803,7 @@ export class Peregrino {
     lerp(this.cabeca, 'x', cabecaRx);
     this.cabeca.rotation.y += (cabecaRy - this.cabeca.rotation.y) * Math.min(1, dt * 5);
     this.corpo.rotation.y += (corpoRy - this.corpo.rotation.y) * suav;
-    this.centro.rotation.z = this.acao === 'esquiva' ? 0 : -this.inclinaCurva;
+    this.centro.rotation.z = this.acao === 'esquiva' ? 0 : -this.inclinaCurva + contrapeso;
     // movimento secundário: o cajado acompanha a mão com atraso, o chapéu balança no passo e na queda,
     // a lamparina pende como pêndulo (fica de pé enquanto o braço balança)
     this.cajado.rotation.x = this.molaCajado.passo(cajadoRx, dt);

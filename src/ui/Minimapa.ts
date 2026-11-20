@@ -16,7 +16,7 @@ export interface FonteMapa {
   cor(x: number, z: number): number;
 }
 
-export type TipoMarca = 'lugar' | 'descanso' | 'pessoa' | 'sombra' | 'chefe' | 'saida';
+export type TipoMarca = 'lugar' | 'descanso' | 'pessoa' | 'sombra' | 'chefe' | 'saida' | 'barco';
 export interface Marca {
   x: number;
   z: number;
@@ -258,6 +258,19 @@ export class Minimapa {
         c.lineTo(-3.4 * d, 3 * d);
         c.closePath();
         c.fillStyle = '#ff9a40';
+        break;
+      case 'barco':
+        // o casco e a vela
+        c.moveTo(-4.5 * d, 1 * d);
+        c.lineTo(4.5 * d, 1 * d);
+        c.lineTo(3 * d, 4 * d);
+        c.lineTo(-3 * d, 4 * d);
+        c.closePath();
+        c.moveTo(0, 0);
+        c.lineTo(0, -6 * d);
+        c.lineTo(3.8 * d, 0);
+        c.closePath();
+        c.fillStyle = '#f2e6c8';
         break;
       case 'saida':
         c.rect(-3 * d, -3 * d, 6 * d, 6 * d);

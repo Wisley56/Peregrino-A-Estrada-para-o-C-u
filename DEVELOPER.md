@@ -626,9 +626,9 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
 
 O jogo está passando de áreas isoladas para um mundo único e contínuo. O plano tem oito fases; estão feitas a 0
 (bordas), a 1 (geografia e terreno global), a 2 (chunks e passagem livre), a 3 (história adormecida), a 4 (save
-da descoberta e viagem rápida) e a 5 (mapa-múndi e minimapa do mundo). **Anda-se de uma região a outra a pé ou a
-nado**, e não há mais troca por F entre regiões ao ar livre: uma região a que se chega antes da hora fica com a
-história adormecida. Pelo mapa (M) viaja-se aos lugares já descobertos. O barco (fase 6) vem depois.
+da descoberta e viagem rápida), a 5 (mapa-múndi e minimapa do mundo) e a 6 (barco). **Anda-se de uma região a
+outra a pé, a nado ou de barco**, e não há mais troca por F entre regiões ao ar livre: uma região a que se chega
+antes da hora fica com a história adormecida. Pelo mapa (M) viaja-se aos lugares já descobertos.
 
 - **Geografia** (`src/mundo/aberto/Geografia.ts`): a tabela `ORIGENS` diz onde fica cada área no mapa único (+x é
   o leste, +z é o sul). As constantes `ORIGEM_*` de cada área vêm dela. O Vale fica na origem; o Deserto a oeste; a
@@ -716,6 +716,29 @@ história adormecida. Pelo mapa (M) viaja-se aos lugares já descobertos. O barc
 - **Minimapa do mundo**: no mundo aberto, o minimapa tem um **fundo**, o quadrado de 192 m do chão do mundo em volta
   do peregrino que a obra pinta (`Minimapa.definirFundo`, pedido de novo a cada 30 m), e a região vai por cima.
   A terra e o mar de fora da região aparecem, e no ermo só o fundo (`soFundo`). Num interior não há fundo.
+- **Barco** (`src/entidades/Barco.ts`): um saveiro pequeno, de 6,75 m, modelado à parte (voxel de 0,1875 m), que o peregrino conduz. Fica
+  ancorado no cais da Bahia até ser usado; a posição vai para o save (`Estado.barco`, `[x, z, rumo]`; `null` = no
+  cais da Bahia). Flutua no `nivelAgua` com arfagem e adernamento tirados das ondas e encalha onde a água tem menos
+  que `CALADO` (0,7 m): `cabe` olha só o meio e a ponta para onde ele anda, para uma ponta no raso não prendê-lo.
+  Conduz-se com as teclas de andar, relativas à câmera (vira devagar para o pedido; para trás, de ré; Shift, vela
+  cheia); a câmera fica mais longe (10,5 m). Interações, nesta ordem, antes das da área: a bordo, "desembarcar"
+  (`lugarDeDesembarque`, terra firme a 3–9 m) ou, sem terra perto, "pular na água"; perto do casco, "embarcar"
+  (recusado carregando alguém); num dos `CAIS_DO_BARCO` (Bahia, Creta, Malta), "chamar o barco", que o põe no
+  ancoradouro do cais (`ancoradouro`: o primeiro lugar com calado numa roda em volta do ponto de viagem). A bordo
+  não há combate nem dons. Não colide com píeres nem com os navios grandes, só com o raso. Aparece no mapa-múndi
+  (⛵) e no minimapa.
+  - *O peregrino a bordo* vai sentado no banco da popa (`Peregrino.timoneiro`, que mistura a pose aos poucos): a mão
+    do cajado segue a cana do leme, a outra segura a escota e dá puxões, o corpo pende contra o adernamento e a
+    cabeça às vezes sobe para a vela; o cajado vai nas costas. O `Jogo` prende o boneco ao banco
+    (`prenderAoAssento`), e ele arfa e aderna com o casco.
+  - *Animação de navegação*: o vento muda devagar (`rumoDoVento`; serve só para o visual, a velocidade não depende
+    dele). A vela é feita de colunas que enfunam para sotavento ou panejam (aproado ao vento, ou sem ninguém no
+    leme); a retranca é uma mola que vai ao bordo de sotavento e cruza no jaibe; a escota estica entre a retranca e o
+    bordo; a cana do leme vai contra a curva; a flâmula do mastro aponta o vento aparente. O casco aderna com a vela
+    e na curva e ergue a proa com a velocidade. A água (`Espuma`, um `InstancedMesh` no mundo, em `Barco.efeitos`):
+    a esteira em V, a espuma da proa, os borrifos (correndo, ou ao encalhar) e a marola no costado do barco parado.
+  - *Som* (`Som.navegar`, `panejar`, `jaibe`, `rangido`): a água correndo no casco conforme a velocidade, a vela
+    batendo, o tranco do jaibe e o casco rangendo de vez em quando.
 - **Pendências conhecidas**: não há estradas nem vegetação no ermo (fase 7); a Cidade Alta usa as cores das casas
   na parede da escarpa ao lado da Ladeira.
 - **Mapa do terreno** (`src/mundo/aberto/MapaDoTerreno.ts`): `pintarMapa` desenha o chão do mundo visto de cima

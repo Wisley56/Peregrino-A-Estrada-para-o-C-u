@@ -44,6 +44,8 @@ export interface DadosSalvos {
   pontos?: string[];
   /** Quadras do mundo aberto já pisadas (`quadraDoMapa`): o ermo do mapa-múndi se revela por onde se andou. */
   mapaVisto?: string[];
+  /** Onde o barco do peregrino ficou: [x, z, rumo]. Ausente: ancorado no cais da Bahia. */
+  barco?: [number, number, number];
 }
 
 /** O lado de uma quadra do mapa-múndi (m). */
@@ -130,6 +132,8 @@ export class Estado {
   pontos = new Set<string>();
   /** Quadras do mundo aberto já pisadas (ver `quadraDoMapa`). */
   mapaVisto = new Set<string>();
+  /** Onde o barco ficou ([x, z, rumo] no mundo), ou null (ainda no cais da Bahia). */
+  barco: [number, number, number] | null = null;
   /**
    * Trava de salvamento do modo dev: depois de usar o painel de desenvolvedor, nada vai para o espaço de jogo até
    * alguém liberar de propósito. Assim um teste não estraga o progresso de verdade. Em produção fica sempre falso.
@@ -230,6 +234,7 @@ export class Estado {
       ? new Set(d.pontos.filter((id) => PONTOS_DE_VIAGEM.some((p) => p.id === id)))
       : new Set(PONTOS_DE_VIAGEM.filter((p) => p.principal && this.visitadas.has(p.area)).map((p) => p.id));
     this.mapaVisto = new Set(Array.isArray(d.mapaVisto) ? d.mapaVisto : []);
+    this.barco = Array.isArray(d.barco) && d.barco.length === 3 && d.barco.every(Number.isFinite) ? d.barco : null;
     // o zerar() encheu os corações antes de saber dos chefões e da Eucaristia
     this.coracoes = this.coracoesMax;
     return true;
@@ -254,6 +259,7 @@ export class Estado {
     this.visitadas = new Set(['vale']);
     this.pontos = new Set();
     this.mapaVisto = new Set();
+    this.barco = null;
   }
 
   salvar() {
@@ -276,6 +282,7 @@ export class Estado {
       visitadas: [...this.visitadas],
       pontos: [...this.pontos],
       mapaVisto: [...this.mapaVisto],
+      barco: this.barco ?? undefined,
     };
     try {
       localStorage.setItem(CHAVE_SLOT(this.slot), JSON.stringify(d));
