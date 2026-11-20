@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { ARFAGEM_LIVRE, CameraTerceira } from './core/Camera';
 import { Entrada, travarPonteiro } from './core/Entrada';
 import { CHEFOES, Estado, QUADRA_MAPA, quadraDoMapa } from './core/Estado';
+import { PassoFixo } from './core/PassoFixo';
+import { Agenda } from './core/Agenda';
 
 /** A flag da cor restaurada de cada região ao ar livre (o mapa-múndi a pinta em cor). */
 const RESTAURACAO: Partial<Record<IdArea, string>> = {
@@ -151,6 +153,12 @@ export class Jogo {
   private hemi = new THREE.HemisphereLight(0xcfe3ff, 0x6b5a3a, 1.5);
   private ceu = construirCeu();
   private relogio = new THREE.Clock();
+  /** A física do peregrino anda em passos fixos de 1/60 s (o resto do jogo segue o quadro): ver `PassoFixo`. */
+  private fisicaFixa = new PassoFixo();
+  /** O pulo pedido num quadro em que a física não deu passo espera o passo seguinte, para não se perder. */
+  private puloPendente = false;
+  /** Cenas com atraso ("daqui a 0,9 s, toque a fala"): contam o tempo do jogo, param na pausa e somem ao sair. */
+  private agenda = new Agenda();
   private travado: Alvo | null = null;
   private projeteis: Projetil[] = [];
   private golpePendente = -1;
@@ -465,13 +473,13 @@ export class Jogo {
       this.estado.flags.add('peregrino_adulto');
       this.transitando = true;
       this.hud.escurecer(true);
-      setTimeout(() => {
+      this.agenda.depois(0.9, () => {
         if (this.idadeDaHistoria() !== this.idadeVestida) this.vestirPeregrino();
         this.hud.escurecer(false);
         this.transitando = false;
         this.hud.anunciar('Os anos passaram pelo caminho…', 2.6);
         fala();
-      }, 900);
+      });
     }
   }
 
@@ -669,6 +677,7 @@ export class Jogo {
    * (passando pela criação do personagem).
    */
   iniciarSlot(slot: number) {
+    this.agenda.limpar();
     const temSave = this.estado.carregarSlot(slot);
     this.minimapa.esquecer('deserto');
     this.areaNoMapa = '';
@@ -758,7 +767,7 @@ export class Jogo {
           per.carinhoAlto = anatomia(b.especie).corpo === 'quadruped_medium';
           per.iniciar('carinho');
           b.carinho = DURACAO_CARINHO;
-          if (b.ficha.voz) setTimeout(() => this.som.voz(b.ficha.voz!), 700);
+          if (b.ficha.voz) this.agenda.depois(0.7, () => this.som.voz(b.ficha.voz!));
         },
       }];
     }
@@ -774,7 +783,7 @@ export class Jogo {
           per.carinhoAlto = anatomia(b.especie).corpo === 'quadruped_medium';
           per.iniciar('carinho');
           b.carinho = DURACAO_CARINHO;
-          if (b.ficha.voz) setTimeout(() => this.som.voz(b.ficha.voz!), 700);
+          if (b.ficha.voz) this.agenda.depois(0.7, () => this.som.voz(b.ficha.voz!));
         },
       }));
   }
@@ -1119,22 +1128,14 @@ export class Jogo {
     this.hud.sussurrar(texto);
     this.som.sussurro();
     if (this.primeiraVez('deserto_dica_vozes'))
-      setTimeout(
-        () =>
-          this.dialogos.tocar('deserto_dica_vozes'),
-        1500,
-      );
+      this.agenda.depois(1.5, () => this.dialogos.tocar('deserto_dica_vozes'));
   }
 
   private aoDesfazerMiragem(porCiencia: boolean) {
     this.som.dissolver();
     this.hud.anunciar(porCiencia ? 'A Ciência mostrou a verdade: era uma miragem!' : 'Era uma miragem!', 2.4);
     if (!porCiencia && this.primeiraVez('deserto_dica_miragem'))
-      setTimeout(
-        () =>
-          this.dialogos.tocar('deserto_dica_miragem'),
-        900,
-      );
+      this.agenda.depois(0.9, () => this.dialogos.tocar('deserto_dica_miragem'));
   }
 
   /** Dom da Ciência (E): por alguns segundos, vê o que as coisas são de verdade. */
@@ -1167,7 +1168,7 @@ export class Jogo {
           this.minimapa.esquecer('deserto');
           this.areaNoMapa = '';
           this.som.dissolver();
-          setTimeout(() => this.som.graca(), 500);
+          this.agenda.depois(0.5, () => this.som.graca());
           this.efeitos.ouro = 0.8;
           this.dialogos.tocar('deserto_parede_revelada');
         }
@@ -1319,7 +1320,7 @@ export class Jogo {
     this.pesoBanquete = 0;
     this.torpor = 0;
     this.hud.escurecer(true);
-    setTimeout(() => {
+    this.agenda.depois(0.8, () => {
       this.projeteis.forEach((p) => this.cena.remove(p.malha));
       this.projeteis = [];
       this.barco.aBordo = false;
@@ -1340,7 +1341,7 @@ export class Jogo {
       this.hud.escurecer(false);
       this.transitando = false;
       depois?.();
-    }, 800);
+    });
   }
 
   private criarInteracoes() {
@@ -1388,7 +1389,7 @@ export class Jogo {
             this.marcar('cripta_laje');
             this.som.portao();
             this.hud.anunciar('A laje cedeu.', 1.6);
-            setTimeout(descer, 900);
+            this.agenda.depois(0.9, descer);
           } else descer();
         },
       },
@@ -1749,7 +1750,7 @@ export class Jogo {
     this.dialogos.tocar(`bahia_entrega_${id}`, () => {
       d.falando = false;
       const todos = ENFERMOS.every((e) => this.estado.flags.has(`bahia_recolhido_${e.id}`));
-      if (todos && this.primeiraVez('bahia_esquecidos_todos')) setTimeout(() => this.dialogos.tocar('bahia_esquecidos_todos'), 400);
+      if (todos && this.primeiraVez('bahia_esquecidos_todos')) this.agenda.depois(0.4, () => this.dialogos.tocar('bahia_esquecidos_todos'));
     });
   }
 
@@ -2357,7 +2358,7 @@ export class Jogo {
       this.hud.anunciar(`${def.nome} tem uma esteira debaixo de um telhado (${feitos} de ${ENFERMOS.length}).`, 2.4);
       return;
     }
-    if (this.primeiraVez('bahia_galinheiro_todos')) setTimeout(() => this.falaDeDulce('bahia_galinheiro_pronto'), 300);
+    if (this.primeiraVez('bahia_galinheiro_todos')) this.agenda.depois(0.3, () => this.falaDeDulce('bahia_galinheiro_pronto'));
   }
 
   /** Semanas depois: o galinheiro virou enfermaria. Escurece, troca o estágio e Dulce mostra o que mudou. */
@@ -2365,7 +2366,7 @@ export class Jogo {
     const b = this.bahiaBaixa, h = b.hospital;
     this.transitando = true;
     this.hud.escurecer(true);
-    setTimeout(() => {
+    this.agenda.depois(0.9, () => {
       this.atoDaBahia('bahia_enfermaria', 'Semanas depois, o galinheiro virou enfermaria');
       b.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
       // o peregrino entra pela porta, olhando os catres; Dulce está lá dentro
@@ -2373,12 +2374,12 @@ export class Jogo {
       this.peregrino.rumo = Math.PI;
       this.camera.guinada = 0;
       this.camera.reposicionar();
-    }, 900);
-    setTimeout(() => {
+    });
+    this.agenda.depois(3.4, () => {
       this.hud.escurecer(false);
       this.transitando = false;
-      setTimeout(() => this.falaDeDulce('bahia_enfermaria'), 700);
-    }, 3400);
+      this.agenda.depois(0.7, () => this.falaDeDulce('bahia_enfermaria'));
+    });
   }
 
   /**
@@ -2389,7 +2390,7 @@ export class Jogo {
     if (this.estado.flags.has('bahia_piedade_aperfeicoada')) return;
     this.estado.flags.add('bahia_piedade_aperfeicoada');
     this.atoDaBahia('bahia_restaurada', 'A Piedade foi aperfeiçoada: os níveis IV e V se abriram (G)');
-    for (let i = 0; i < 3; i++) setTimeout(() => this.som.sino(), 900 + i * 1700);
+    for (let i = 0; i < 3; i++) this.agenda.depois((900 + i * 1700) / 1000, () => this.som.sino());
     this.dialogos.tocar('bahia_restaurada');
   }
 
@@ -2648,7 +2649,7 @@ export class Jogo {
     this.som.graca();
     this.tempoColuna = 0;
     this.hud.anunciar(`✦ ${aviso} · ato de piedade ${this.atosDaCidade()} de ${TOTAL_ATOS_CIDADE}`, 3);
-    setTimeout(() => this.verificarCidadeRestaurada(), 2500);
+    this.agenda.depois(2.5, () => this.verificarCidadeRestaurada());
   }
 
   /** Efeitos pedidos pelo roteiro da cidade. Devolve true se o evento era daqui. */
@@ -2714,7 +2715,7 @@ export class Jogo {
     this.som.moedas();
     this.hud.sussurrar(SUSSURRO_ISCA[i.tipo], 3.2);
     this.hud.anunciar(`Você pegou ${NOME_ISCA[i.tipo]}. Pesa…`, 2.2);
-    if (this.primeiraVez('cidade_dica_peso')) setTimeout(() => this.dialogos.tocar('cidade_dica_peso'), 1200);
+    if (this.primeiraVez('cidade_dica_peso')) this.agenda.depois(1.2, () => this.dialogos.tocar('cidade_dica_peso'));
   }
 
   /** Falar com alguém da cidade (vira para o peregrino enquanto a conversa dura). */
@@ -2797,10 +2798,10 @@ export class Jogo {
           if (n >= PEDRAS_DAMIAO) {
             this.som.portao();
             this.atoDePiedade('cidade_damiao', 'São Damião foi reconstruída');
-            setTimeout(() => {
+            this.agenda.depois(1.4, () => {
               c.francisco.falando = true;
               this.dialogos.tocar('francisco', () => (c.francisco.falando = false));
-            }, 1400);
+            });
           } else this.hud.anunciar(`Pedra assentada: ${n} de ${PEDRAS_DAMIAO}`, 2);
         },
       },
@@ -2831,7 +2832,7 @@ export class Jogo {
           per.carinhoAlto = false;
           per.iniciar('carinho');
           l.carinho = DURACAO_CARINHO;
-          setTimeout(() => this.som.voz('uivo', 0.35), 700);
+          this.agenda.depois(0.7, () => this.som.voz('uivo', 0.35));
         },
       },
       ...c.iscas.map((i) => ({
@@ -2906,7 +2907,7 @@ export class Jogo {
     this.pesoBanquete = 0;
     this.jejum = 0;
     a.npc.falando = true;
-    setTimeout(() => (a.npc.falando = false), 1600);
+    this.agenda.depois(1.6, () => (a.npc.falando = false));
     this.som.graca();
     this.efeitos.ouro = 0.5;
     let extra = '';
@@ -2969,12 +2970,12 @@ export class Jogo {
     // quando a conversa fechar: todos se lançam ao mar (At 27,43-44)
     this.aposDialogo = () => {
       this.hud.escurecer(true);
-      setTimeout(() => {
+      this.agenda.depois(0.9, () => {
         this.naufragioArrumado = false;
         this.som.respingo();
         this.hud.escurecer(false);
         this.hud.anunciar('Todos se lançam ao mar. Desça pela brecha da borda e vá até a praia.', 3.6);
-      }, 900);
+      });
     };
     return true;
   }
@@ -3032,12 +3033,12 @@ export class Jogo {
   private iraVencida() {
     this.efeitos.ouro = 1.4;
     this.som.graca();
-    setTimeout(() => this.som.item(), 600);
+    this.agenda.depois(0.6, () => this.som.item());
     this.tempoColuna = 0;
     this.hud.anunciar('✦ A tempestade se desfez: a resposta branda aplacou o furor', 3.4);
     this.dialogos.tocar('naufragio_ira_vencida', () => {
       this.hud.escurecer(true);
-      setTimeout(() => {
+      this.agenda.depois(1, () => {
         this.naufragio.arrumar((x) => this.estado.flags.has(x));
         const p = this.naufragio.praia.clone();
         p.z += 2;
@@ -3056,7 +3057,7 @@ export class Jogo {
           paulo.falando = false;
           this.irParaMalta();
         });
-      }, 1000);
+      });
     });
   }
 
@@ -3145,7 +3146,7 @@ export class Jogo {
       k.cenaDaVibora(nome === 'vibora_lanca' ? 'lanca' : nome === 'vibora_prende' ? 'prende' : 'sacode');
       if (nome === 'vibora_lanca') this.som.fogo();
       else if (nome === 'vibora_prende') this.som.tensao();
-      else setTimeout(() => this.som.faisca(), 1100);
+      else this.agenda.depois(1.1, () => this.som.faisca());
       return true;
     }
     if (nome === 'dom_conselho') {
@@ -3171,12 +3172,12 @@ export class Jogo {
       this.marcar('malta_boatos');
       this.aposDialogo = () => {
         this.maltaArrumada = false;
-        setTimeout(() => {
+        this.agenda.depois(0.4, () => {
           const p = this.malta.publio;
           p.falando = true;
           this.interlocutor = p;
           this.dialogos.tocar('malta_publio_chega', () => (p.falando = false));
-        }, 400);
+        });
       };
       return true;
     }
@@ -3208,7 +3209,7 @@ export class Jogo {
       this.efeitos.ouro = 1.6;
       this.tempoColuna = 0;
       this.som.graca();
-      setTimeout(() => this.som.item(), 700);
+      this.agenda.depois(0.7, () => this.som.item());
       this.hud.anunciar('✦ A cor voltou ao Mar da Tempestade', 3.6);
       return true;
     }
@@ -3216,7 +3217,7 @@ export class Jogo {
       this.aposDialogo = () => {
         this.transitando = true;
         this.hud.escurecer(true);
-        setTimeout(() => {
+        this.agenda.depois(0.9, () => {
           this.marcar('malta_tres_meses');
           k.arrumar(tem);
           const p = k.cais.clone().add(new THREE.Vector3(-1.5, 0, -3));
@@ -3228,12 +3229,12 @@ export class Jogo {
           this.estado.checkpointArea = 'malta';
           this.estado.salvar();
           this.hud.anunciar('Três meses depois…', 3);
-        }, 900);
-        setTimeout(() => {
+        });
+        this.agenda.depois(3.2, () => {
           this.hud.escurecer(false);
           this.transitando = false;
-          setTimeout(() => this.dialogos.tocar('malta_partida'), 900);
-        }, 3200);
+          this.agenda.depois(0.9, () => this.dialogos.tocar('malta_partida'));
+        });
       };
       return true;
     }
@@ -3289,7 +3290,7 @@ export class Jogo {
           if (n >= FEIXES) {
             this.marcar('malta_fogo');
             this.hud.anunciar('O fogo pega alto. Paulo vem com o feixe dele…', 2.4);
-            setTimeout(() => this.cenaDaVibora(), 1600);
+            this.agenda.depois(1.6, () => this.cenaDaVibora());
           } else this.hud.anunciar(`O fogo cresce. (${n} de ${FEIXES} feixes)`, 2);
         },
       },
@@ -3405,24 +3406,24 @@ export class Jogo {
   private coracaoVencido() {
     this.efeitos.ouro = 1.4;
     this.som.graca();
-    setTimeout(() => this.som.item(), 600);
+    this.agenda.depois(0.6, () => this.som.item());
     this.tempoColuna = 0;
     this.hud.anunciar('✦ A pedra rachou: por dentro havia um coração de carne', 3.4);
     this.dialogos.tocar('bahia_coracao_vencido', () => {
       this.hud.escurecer(true);
-      setTimeout(() => {
+      this.agenda.depois(0.9, () => {
         this.bahiaAlta.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
         this.bahiaBaixa.reiniciar(this.estado.sombrasVencidas, this.estado.flags);
         this.hud.escurecer(false);
         this.hud.anunciar('As portas do largo se abriram: os moradores levaram os enfermos ao hospital.', 3.4);
-      }, 900);
+      });
     });
   }
 
   private gulaVencida() {
     this.efeitos.ouro = 1.4;
     this.som.graca();
-    setTimeout(() => this.som.item(), 600);
+    this.agenda.depois(0.6, () => this.som.item());
     this.tempoColuna = 0;
     this.hud.anunciar('✦ A Gula se desfez: a mesa é dos pobres', 3);
     this.dialogos.tocar('palacio_vencida', () => this.verificarCidadeRestaurada());
@@ -3461,7 +3462,7 @@ export class Jogo {
     this.hud.anunciar('Você recebeu a Lamparina da Fé!', 3.5);
     this.lamparinaAcesa = true;
     this.atualizarLamparina();
-    setTimeout(() => this.dialogos.tocar('cripta_lamparina'), 1200);
+    this.agenda.depois(1.2, () => this.dialogos.tocar('cripta_lamparina'));
   }
 
   private atualizarLamparina() {
@@ -3514,6 +3515,7 @@ export class Jogo {
       e.fimDoQuadro();
       return;
     }
+    this.agenda.atualizar(dt);
     if (this.comecou) {
       const borda = e.giroDeBorda();
       if (borda && !this.travado && !this.conversa.emUso) this.camera.girar(borda * 520 * dt * this.prefs.sensibilidade, 0);
@@ -3563,7 +3565,7 @@ export class Jogo {
     // a superfície da água também segura a câmera: ela nunca mergulha (debaixo do mar se veria o terreno por baixo)
     const chao = area.nivelAgua ? (x: number, z: number) => Math.max(solo(x, z), area.nivelAgua!(x, z) ?? -Infinity) : solo;
     const alturaCam = naCapela ? (x: number, z: number) => cap!.alturaCamera(x, z, chao) : noHospital ? (x: number, z: number) => hosp!.alturaCamera(x, z, chao) : chao;
-    this.camera.atualizar(dt, this.peregrino.pos, alvoCam, alturaCam);
+    this.camera.atualizar(dt, this.peregrino.posVisual, alvoCam, alturaCam);
     if (this.comecou) this.atualizarConversa(dt, alturaCam);
     if (this.area === this.navio) this.navio.balancar(this.camera.cam);
     if (this.modoCriacao) this.quadroCriacao(dt);
@@ -3708,8 +3710,13 @@ export class Jogo {
     if (this.barco.aBordo) this.conduzirBarco(dt, parado ? new THREE.Vector3() : desejo, correndo);
     else {
       per.timoneiro = null;
-      per.atualizar(dt, this.fisica, desejo, velocidade, pular, olharPara);
-      if (per.queda > 0) this.cairDeAltura(per.queda);
+      this.puloPendente ||= pular;
+      const k = this.fisicaFixa.avancar(dt, (passo) => {
+        per.atualizar(passo, this.fisica, desejo, velocidade, this.puloPendente, olharPara);
+        this.puloPendente = false;
+        if (per.queda > 0) this.cairDeAltura(per.queda);
+      });
+      per.interpolar(k);
       if (this.barco.grupo.visible) this.barco.deriva(dt, this.ermo);
       this.som.navegar(0);
     }
@@ -3837,6 +3844,7 @@ export class Jogo {
   /** Salva (o checkpoint já está no save) e volta à tela inicial. */
   private sairParaTitulo() {
     this.estado.salvar();
+    this.agenda.limpar();
     this.pausado = false;
     this.pausa.fechar();
     this.telaDons.fechar();
@@ -3924,7 +3932,7 @@ export class Jogo {
   private acediaVencida() {
     this.efeitos.ouro = 1.4;
     this.som.graca();
-    setTimeout(() => this.som.item(), 600);
+    this.agenda.depois(0.6, () => this.som.item());
     this.tempoColuna = 0;
     this.hud.anunciar('✦ A acídia se desfez ao sol', 3);
     this.dialogos.tocar('meiodia_vencido');
@@ -4033,7 +4041,7 @@ export class Jogo {
     m.abrirVeu();
     this.marcar('veu_oeste');
     this.som.dissolver();
-    setTimeout(() => this.som.graca(), 500);
+    this.agenda.depois(0.5, () => this.som.graca());
     this.efeitos.ouro = 1;
     this.dialogos.tocar('vale_nevoa_desfeita');
   }
@@ -4253,13 +4261,13 @@ export class Jogo {
     if (guardiao || s.id === 'meiodia_acedia' || s.id === 'palacio_gula' || s.id === ID_CORACAO || s.id === ID_IRA) {
       // cada chefão vencido dá um coração a mais, e o peregrino sai da luta curado
       this.estado.coracoes = this.estado.coracoesMax;
-      setTimeout(() => this.hud.anunciar('❤️ Mais um coração!', 2.6), 3400);
+      this.agenda.depois(3.4, () => this.hud.anunciar('❤️ Mais um coração!', 2.6));
     }
     if (s.id === 'palacio_gula') {
       this.banquete.chefeVencido();
       this.pesoBanquete = 0;
       this.marcar('gula_vencida');
-      setTimeout(() => this.gulaVencida(), 900);
+      this.agenda.depois(0.9, () => this.gulaVencida());
       return;
     }
     if (s.id === ID_IRA) {
@@ -4267,24 +4275,24 @@ export class Jogo {
       this.brasa = 0;
       this.irado = false;
       this.marcar('naufragio_ira_vencida');
-      setTimeout(() => this.iraVencida(), 1800);
+      this.agenda.depois(1.8, () => this.iraVencida());
       return;
     }
     if (s.id === ID_CORACAO) {
       this.bahiaAlta.largo.chefeVencido();
       this.indiferenca = 0;
       this.marcar('bahia_coracao_vencido');
-      setTimeout(() => this.coracaoVencido(), 1800);
+      this.agenda.depois(1.8, () => this.coracaoVencido());
       return;
     }
     if (s.id === 'meiodia_acedia') {
       this.meiodia.chefeVencido();
       this.torpor = 0;
       this.marcar('meiodia_vencido');
-      setTimeout(() => this.acediaVencida(), 900);
+      this.agenda.depois(0.9, () => this.acediaVencida());
       return;
     }
-    setTimeout(() => {
+    this.agenda.depois(0.7, () => {
       this.efeitos.ouro = guardiao ? 1.4 : 1;
       this.som.graca();
       this.tempoColuna = 0;
@@ -4299,7 +4307,7 @@ export class Jogo {
       if (s.id.startsWith('deserto_') && this.sombrasDoDesertoVencidas() >= TOTAL_SOMBRAS_DESERTO && this.primeiraVez('deserto_restaurado'))
         this.dialogos.tocar('deserto_restaurado');
       if (s.id.startsWith('cidade_')) this.verificarCidadeRestaurada();
-    }, 700);
+    });
   }
 
   private atualizarColuna(dt: number) {
@@ -4434,7 +4442,7 @@ export class Jogo {
     this.puxao = null;
     this.travado = null;
     this.hud.escurecer(true);
-    setTimeout(() => {
+    this.agenda.depois(1.2, () => {
       this.cripta.reiniciarLuta();
       this.meiodia.reiniciarLuta();
       this.banquete.reiniciarLuta();
@@ -4463,7 +4471,7 @@ export class Jogo {
       this.hud.escurecer(false);
       this.hud.anunciar('Você voltou ao último lugar de descanso.', 3);
       this.morrendo = false;
-    }, 1200);
+    });
   }
 
   private interacaoPerto() {

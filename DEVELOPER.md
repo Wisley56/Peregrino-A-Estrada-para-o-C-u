@@ -29,6 +29,9 @@ npm run typecheck  # só checa os tipos
 npm run build      # tsc + vite build + verificação de que o modo dev não vazou: gera dist/ (site estático)
 npm run preview    # serve o dist/ para conferir o build
 npm run fauna      # baixa do Veloren os .vox dos bichos e regenera src/fauna/especies.gerado.json
+npm run lint       # ESLint (typescript-eslint recomendado)
+npm test           # testes unitários (Vitest); npm run test:watch fica observando
+npm run test:fumaca # teste de fumaça (Playwright): abre cada região com ?teste= e confere que o jogo anda
 ```
 
 O `dist/` é um site estático e pode ser publicado em qualquer hospedagem de arquivos.
@@ -40,6 +43,27 @@ Parâmetros de URL para testes:
   `cidade`, `bahiabaixa`, `bahiaalta`, `creta`) já começa na área. Só no modo dev.
 
 O protótipo 2D anterior (Phaser) continua em `../jogo`, como referência de sistemas e de narrativa.
+
+### Testes e CI
+
+- **Unitários (Vitest):** ficam ao lado do código, como `*.test.ts` (save e migração, dons, queda, geografia,
+  passo fixo, agenda). Rodam em Node, com um `localStorage` em memória (`tools/testes/armazenamento.ts`), então
+  nunca tocam nos saves reais.
+- **Fumaça (Playwright, `testes/fumaca/`):** sobe o Vite na porta 5190 (o `?teste=` só existe no modo dev),
+  abre cada área e falha se o tempo do jogo parar, se o WebGL cair ou se houver erro no console. Localmente usa o
+  Edge instalado; na CI, o Chromium. Não é teste de jogabilidade: serve para pegar quebras grosseiras.
+- **CI (`.github/workflows/ci.yml`):** a cada push e PR roda typecheck, lint, testes, build e a fumaça.
+
+### Tempo do jogo
+
+- **Passo fixo (`src/core/PassoFixo.ts`):** a física do peregrino anda em passos de 1/60 s (no máximo 5 por
+  quadro), então o pulo e a queda dão o mesmo resultado a 30, 60 ou 144 qps. O peregrino e a câmera são desenhados
+  interpolados entre os dois últimos passos (`Peregrino.interpolar`, `posVisual`). Um pulo apertado num quadro
+  sem passo espera o passo seguinte. O resto do jogo ainda segue o quadro.
+- **Agenda (`src/core/Agenda.ts`):** cenas com atraso usam `this.agenda.depois(seg, fn)`, nunca `setTimeout`. A
+  agenda conta o tempo do jogo: para na pausa, obedece à câmera lenta do modo dev e é limpa ao voltar ao título e
+  ao abrir outro jogo. (Ainda há dois `setTimeout` em `Deserto.ts` e `Tempestade.ts`, que saem na divisão do
+  `Jogo.ts`.)
 
 ## Modo desenvolvedor
 
