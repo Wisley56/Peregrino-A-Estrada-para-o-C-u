@@ -46,7 +46,7 @@ export class Oceano {
     this.nivel = nivel;
     const g = new THREE.PlaneGeometry(LADO, LADO, LADO / PASSO, LADO / PASSO);
     g.rotateX(-Math.PI / 2);
-    const material = new THREE.MeshLambertMaterial({ color: cor, emissive: 0x03202a, transparent: true, opacity: 0.88, flatShading: true });
+    const material = new THREE.MeshLambertMaterial({ color: cor, emissive: 0x03202a, transparent: true, opacity: 0.88, flatShading: true, side: THREE.DoubleSide });
     const u = this.uniforms;
     material.onBeforeCompile = (s) => {
       Object.assign(s.uniforms, u);

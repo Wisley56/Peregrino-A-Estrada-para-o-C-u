@@ -44,6 +44,11 @@ export class Npc {
     return melhor;
   }
 
+  /** Todos os NPCs criados, de todas as áreas (só leitura). */
+  static get lista(): readonly Npc[] {
+    return Npc.todos;
+  }
+
   readonly raiz = new THREE.Group();
   readonly gestos: Gesticulador;
   readonly pos: THREE.Vector3;

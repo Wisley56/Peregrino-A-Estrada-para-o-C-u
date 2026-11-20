@@ -8,6 +8,7 @@ import { Area } from './Area';
 import { construirPlaca } from './Cenario';
 import { malhaDeColunas } from './Terreno';
 import { FonteMapa } from '../ui/Minimapa';
+import { ORIGENS } from './aberto/Geografia';
 
 /**
  * O Poço do Meio-Dia: arena do chefão do deserto, depois da fenda. É uma área separada.
@@ -17,7 +18,7 @@ import { FonteMapa } from '../ui/Minimapa';
 
 const TAM = 64;
 const META = TAM / 2;
-export const ORIGEM_MEIODIA = new THREE.Vector3(-500, 0, -400);
+export const ORIGEM_MEIODIA = ORIGENS.meiodia;
 const RAIO = 15;
 const CHAO = 4;
 const POCO = new THREE.Vector2(0, -11.5);

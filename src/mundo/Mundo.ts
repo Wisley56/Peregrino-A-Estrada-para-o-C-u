@@ -8,7 +8,7 @@ import { Sombra } from '../entidades/Sombra';
 import type { DefNpc } from '../entidades/Npc';
 import { CAPELA, JARDIM, LAGO, NIVEL_AGUA, PASSAGEM, Terreno, estradaX } from './Terreno';
 import { JardimDeAgostinho } from './Jardim';
-import { construirCruzeiro, construirEntradaCripta, construirPlaca, construirVeu } from './Cenario';
+import { EMISSIVO_VEU, VOLUME_VEU, construirCruzeiro, construirEntradaCripta, construirPlaca, construirVeu } from './Cenario';
 import { Area } from './Area';
 import { CapelaRegional, ESTILO_VALE } from './Capela';
 import type { FonteMapa } from '../ui/Minimapa';
@@ -54,7 +54,7 @@ function pegada(g: THREE.BufferGeometry) {
   return lista;
 }
 
-function folhas(base: number, variacao: number) {
+export function folhas(base: number, variacao: number) {
   const c = new THREE.Color(base);
   const hsl = { h: 0, s: 0, l: 0 };
   c.getHSL(hsl);
@@ -149,13 +149,15 @@ export class Mundo implements Fisica, Area {
       { x0: e.x - 1.75, x1: e.x + 1.75, z0: e.z - 1.5, z1: e.z + 0.6, topo: hc + 4 },
     );
 
-    // véu de trevas na passagem do oeste
+    // véu de trevas na passagem do oeste: enche a garganta do desfiladeiro e as bordas dela, e não se passa por
+    // cima (o topo da caixa fica muito acima de onde se chega escalando a encosta e pulando)
     this.veu = new THREE.Vector3(PASSAGEM.veu, 0, PASSAGEM.z);
     this.veu.y = h(this.veu.x, this.veu.z);
-    this.malhaVeu = construirVeu(6, 5);
-    this.malhaVeu.position.copy(this.veu).add(new THREE.Vector3(0, -0.5, 0));
+    const vv = this.veu, V = VOLUME_VEU;
+    this.malhaVeu = construirVeu((dx, dz) => h(vv.x + dx, vv.z + dz) - vv.y);
+    this.malhaVeu.position.copy(vv);
     this.grupo.add(this.malhaVeu);
-    this.caixaVeu = { x0: this.veu.x - 0.6, x1: this.veu.x + 0.6, z0: this.veu.z - 3, z1: this.veu.z + 3, topo: this.veu.y + 6 };
+    this.caixaVeu = { x0: vv.x - V.oeste, x1: vv.x + V.leste, z0: vv.z - V.meio, z1: vv.z + V.meio, topo: vv.y + 80 };
     this.caixas.push(this.caixaVeu);
     this.fimPassagem = new THREE.Vector3(PASSAGEM.fim + 2.5, 0, PASSAGEM.z + 1.4);
     this.fimPassagem.y = h(this.fimPassagem.x, this.fimPassagem.z);
@@ -175,6 +177,16 @@ export class Mundo implements Fisica, Area {
     this.desfazendoVeu = imediato ? 1 : 0;
     this.caixas.splice(this.caixas.indexOf(this.caixaVeu), 1);
     if (imediato) this.malhaVeu.visible = false;
+    else this.transparenciaDoVeu(true);
+  }
+
+  /** O véu parado é opaco; ao se desfazer, fica transparente para sumir aos poucos. */
+  private transparenciaDoVeu(sim: boolean) {
+    const mat = this.malhaVeu.material as THREE.MeshLambertMaterial;
+    mat.transparent = sim;
+    mat.depthWrite = !sim;
+    mat.opacity = 1;
+    mat.needsUpdate = true;
   }
 
   /** Volta a fechar o véu (outro jogo salvo carregado depois de voltar à tela inicial). */
@@ -185,9 +197,8 @@ export class Mundo implements Fisica, Area {
     const v = this.malhaVeu;
     v.visible = true;
     v.scale.set(1, 1, 1);
-    const mat = v.material as THREE.MeshLambertMaterial;
-    mat.opacity = 0.88;
-    mat.emissive.setHex(0x1a0d33);
+    this.transparenciaDoVeu(false);
+    (v.material as THREE.MeshLambertMaterial).emissive.setHex(EMISSIVO_VEU);
   }
 
   atualizar(dt: number, jogador?: THREE.Vector3) {
@@ -198,13 +209,13 @@ export class Mundo implements Fisica, Area {
     }
     const v = this.malhaVeu;
     if (this.desfazendoVeu < 0) {
-      v.scale.set(1 + Math.sin(this.t * 2.1) * 0.15, 1 + Math.sin(this.t * 1.3) * 0.03, 1);
-      (v.material as THREE.MeshLambertMaterial).opacity = 0.8 + Math.sin(this.t * 3) * 0.08;
+      v.scale.set(1, 1 + Math.sin(this.t * 1.3) * 0.03, 1 + Math.sin(this.t * 2.1) * 0.02);
+      (v.material as THREE.MeshLambertMaterial).emissive.setHex(EMISSIVO_VEU).multiplyScalar(1 + Math.sin(this.t * 3) * 0.6);
     } else if (this.desfazendoVeu < 1) {
       this.desfazendoVeu = Math.min(1, this.desfazendoVeu + dt / 1.6);
       const k = this.desfazendoVeu;
-      v.scale.set(1 + k * 2, 1 - k * 0.9, 1);
-      (v.material as THREE.MeshLambertMaterial).opacity = 0.88 * (1 - k);
+      v.scale.set(1 + k * 0.6, 1 - k * 0.9, 1 + k * 0.3);
+      (v.material as THREE.MeshLambertMaterial).opacity = 1 - k;
       (v.material as THREE.MeshLambertMaterial).emissive.setRGB(k, k * 0.85, k * 0.5);
       if (k >= 1) v.visible = false;
     }
@@ -388,16 +399,8 @@ export class Mundo implements Fisica, Area {
   }
 
   colidir(pos: THREE.Vector3, raio: number) {
-    // limite do Vale: ninguém sobe as montanhas da borda; a oeste, só pelo corredor da passagem
-    // (assim não dá para contornar o véu por cima do morro e pular dentro da passagem)
-    const L = 59.5;
-    if (pos.x < -L) {
-      // fora do corredor: volta para a borda (dentro dele, as paredes do desfiladeiro já seguram)
-      if (Math.abs(pos.z - PASSAGEM.z) > 2.2) pos.x = -L;
-      pos.x = Math.max(pos.x, PASSAGEM.fim - 2);
-    }
-    pos.x = Math.min(pos.x, L);
-    pos.z = Math.min(Math.max(pos.z, -L), L);
+    // o Vale não tem mais parede invisível: quem segura são as montanhas da borda (íngremes demais para subir);
+    // sai-se pelo desfiladeiro do oeste, ou por onde a serra deixar
     // troncos e raízes: empurra para fora de cada célula sólida que o círculo toca
     const i0 = Math.floor((pos.x - raio) / CELULA_PE), i1 = Math.floor((pos.x + raio) / CELULA_PE);
     const k0 = Math.floor((pos.z - raio) / CELULA_PE), k1 = Math.floor((pos.z + raio) / CELULA_PE);

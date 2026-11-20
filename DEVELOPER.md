@@ -49,7 +49,7 @@ até lá.
 | Tecla | O que faz |
 |---|---|
 | F9 | Abre e fecha o painel (Esc também fecha). Aberto, o ponteiro fica solto e o jogo não pausa. |
-| F3 | Overlay de depuração: qps, draw calls e triângulos por quadro, posição, câmera, mira, chefão da área. |
+| F3 | Overlay de depuração: qps, draw calls e triângulos por quadro, posição, câmera, mira, chefão da área; no mundo aberto, os ladrilhos do chão e o recheio do ermo. |
 | F6 | Teleporta para onde a mira aponta (1 m antes do ponto). |
 | F7 | Congela e solta o tempo (a câmera continua livre). |
 | F8 | Avança um quadro com o tempo congelado. |
@@ -102,6 +102,9 @@ src/
   mundo/     Area (interface comum), Terreno, Oceano, Mundo (o Vale), Creta (com CretaModelos e NavioModelos), Cripta, Deserto, PocoMeioDia, Cidade (a Cidade Dourada),
              CidadeModelos (casas, palácio, São Damião, iscas), Capela (capela de região com interior, confessionário
              e CapelaRegional), Cenario (cruzeiro, céu, entrada da cripta, véu, lamparina)
+  mundo/aberto/ o mundo aberto: Geografia (onde fica cada região, estradas, pontos de viagem), TerrenoMundo (chão,
+             biomas e estradas de todo o mundo), Chunks/Ladrilho/Obra (o chão do ermo em ladrilhos, feito em workers),
+             MundoAberto (o Ermo e a física do mundo), Recheio (vegetação, capelinhas e bichos do ermo), ErmoModelos
   fauna/     Especies (fichas), Corpo (esqueletos do Veloren), Animal (comportamento), Fauna (povoamento por área)
   entidades/ Peregrino, Npc (base de quem conversa), Sombra, Guardiao (Mamom e a interface Chefe),
              Acedia, Antao e Francisco (fichas de NPC com modelo próprio), Romanos, Companheiros e GenteDeCreta, Pomba
@@ -132,6 +135,14 @@ tools/verificar-build.mjs confere que o modo dev não foi para o build
 - `coracoesMax` é calculado: 5, mais 1 por chefão vencido (lista `CHEFOES`).
 - `energiaMax` é calculada: 100, ou 130 com o Temor de Deus no nível 5.
 - Migração: um save com chefão vencido e sem a flag `graca_grande_<id>` recebe a diferença da graça grande.
+- `versao`: 2 desde o mapa único. Um save sem `versao` (a 1) tem o checkpoint no lugar antigo da área: ao carregar,
+  `pontoDaV1` (`Geografia.ts`) o traz para o lugar novo, e uma cópia do save original fica em
+  `peregrino3d.slot.<n>.v1`.
+- **Descoberta do mundo** (separada das flags `*_entrou` da história): `visitadas` (áreas por onde se passou,
+  marcadas em `Jogo.visitar`), `pontos` (pontos de viagem descobertos) e `mapaVisto` (quadras de `QUADRA_MAPA` =
+  64 m pisadas no mundo aberto, chave `quadraDoMapa(x, z)`, para o mapa-múndi). Um save sem esses campos recebe as
+  `visitadas` deduzidas das flags de entrada (`FLAG_DE_ENTRADA`, mais a área do checkpoint) e o ponto `principal`
+  de cada região visitada. `mapaVisto` começa vazio. A `versao` continua 2: os campos ausentes bastam para saber.
 
 **Preferências** (`src/core/Preferencias.ts`) valem para todos os saves e ficam em `peregrino-preferencias`:
 `{ sensibilidade, mira, graficos, sensibilidadeControle, inverterY, vibracao }`. Os valores lidos são validados; o que vier inválido volta ao padrão.
@@ -199,6 +210,11 @@ Notas:
 
 - Começa com 5. Um golpe comum tira meio coração; a Corrente da Cobiça tira um inteiro.
 - Cada chefão vencido dá +1 coração e cura tudo.
+- **Queda:** o `Peregrino` mede a altura de cada queda (do ponto mais alto desde que saiu do chão até onde pousa) em
+  `queda`, e o `Jogo` (`cairDeAltura`) aplica `danoDeQueda`: até `QUEDA_SEGURA` (5 m, um pulo de um barranco de
+  3,5 m) não fere; acima, meio coração a cada `QUEDA_POR_MEIO` (2,5 m); de `QUEDA_FATAL` (30 m) para cima, mata.
+  Fere mesmo no tempo de graça de um golpe. Água funda freia a queda; descer degraus andando e encostas (cada
+  pouso zera a conta) e teleportes não contam. O modo invencível do painel dev também protege.
 
 **Sacramentos** (cada capela de região tem os dois)
 
@@ -253,7 +269,7 @@ os mantém (o save guarda o número do nível, não o nome).
 
 | Área | Arquivo | Destaques técnicos |
 |---|---|---|
-| O Vale | `mundo/Mundo.ts` | Terreno gerado, capela com interior, cruzeiro, fauna pastoril, jardim de Agostinho (`mundo/Jardim.ts`); a névoa a oeste exige a lamparina acesa |
+| O Vale | `mundo/Mundo.ts` | Terreno gerado, capela com interior, cruzeiro, fauna pastoril, jardim de Agostinho (`mundo/Jardim.ts`); a névoa a oeste exige a lamparina acesa: é um banco que enche a garganta do desfiladeiro e as bordas dela (`VOLUME_VEU`, em `Cenario.ts`), com a caixa de choque muito acima de onde se chega escalando e pulando |
 | Cripta dos Primeiros Peregrinos | `mundo/Cripta.ts` | Braseiros com chama de 14 s; arena de Mamom (`entidades/Guardiao.ts`) |
 | Deserto das Vozes | `mundo/Deserto.ts` | Miragens que viram sombras, vozes, rocha falsa revelada pela Ciência, capela de cúpulas |
 | Poço do Meio-Dia | `mundo/PocoMeioDia.ts` | A Acídia (`entidades/Acedia.ts`), reflexos que só a Ciência desfaz, torpor |
@@ -272,7 +288,7 @@ os mantém (o save guarda o número do nível, não o nome).
   ela, vale `nivelMinimo`. A Bahia devolve o nível da baía (lá o fundo do vau deixa a água pela cintura).
 - Vadeando (o corpo abaixo da superfície), a velocidade cai para 55%. Onde a água passa de `PROFUNDIDADE_NADO`
   (1,3 m), o peregrino nada (`nadando`): boia com a onda (uma mola amortecida puxa os pés para 1,3 m abaixo da
-  superfície parado e 0,95 m nadando), anda a 50%, não pula e não usa o cajado, que fica preso ao corpo.
+  superfície parado e 0,95 m nadando), anda a 50%, não pula e não usa o cajado, que vai pendurado nas costas (`cajadoCostas`, em diagonal; some se houver alguém carregado).
 - Nadando, ele sobe na margem que fique até 0,6 m acima da água. Parado, fica de pé na água, pedalando e remando;
   andando, deita em nado de peito. As duas poses se misturam por `nadoK`. Os sons são `respingo` ao cair na água
   funda e `bracada` no ritmo do nado.
@@ -282,9 +298,11 @@ os mantém (o save guarda o número do nível, não o nome).
 **Creta: Bons Portos e Laseia** (Mar da Tempestade, At 27,8-12)
 
 - Chega-se pelo saveiro da Bahia depois do Coração de Pedra (`bahia_coracao_vencido`): o nó `bahia_saveiro` oferece
-  Creta ou a Cidade Dourada. O roteiro marca a escolha com `~ evento("viajar_creta")` (ou `viajar_cidade`,
-  `viajar_bahia`), e `Jogo.fazerViagem` troca de área quando a conversa fecha. A primeira chegada (`creta_entrou`)
-  toca `creta_chegada`. O barco de pesca no fim da praia leva de volta à Bahia.
+  Creta sempre (é a viagem da história) e os outros portos já descobertos. O roteiro marca a escolha com
+  `~ evento("viajar_<ponto>")` (`viajar_creta_praia`, `viajar_cidade_estrada`…), e `Jogo.fazerViagem` chama
+  `viajarPara` quando a conversa fecha. A primeira chegada (`creta_entrou`) toca `creta_chegada`. O barco de pesca
+  no fim da praia leva de volta aos portos descobertos. As opções desses menus são `+` (ficam para sempre); com `*`
+  o Ink as gastaria na primeira escolha.
 - Todo o desenho fica em constantes no topo de `Creta.ts` (coordenadas locais; x para leste, +z para o mar):
   `CAIS`, `BACIA`, `NAVIO`, `CASAS`, `ESTRADA`, `LASEIA`, `CASAS_LASEIA`, `FAROL`, `CABANA`. O chão (`gerar`) aplaina
   as plataformas das casas e de Laseia, pinta a estrada de terra, draga a bacia e levanta o cais.
@@ -612,6 +630,177 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
   da cor fica em `MapaDaBahia.depoisDaCor`, e as caixas que vêm com ele em `caixasDaCor` (desligadas antes, com
   `topo = -PAREDE`); as duas listas são acertadas em `reiniciar`.
 
+## Mundo aberto
+
+O jogo passou de áreas isoladas para um mundo único e contínuo, em oito fases: 0 (bordas), 1 (geografia e terreno
+global), 2 (chunks e passagem livre), 3 (história adormecida), 4 (save da descoberta e viagem rápida), 5 (mapa-múndi
+e minimapa do mundo), 6 (barco) e 7 (recheio do ermo e desempenho). **Anda-se de uma região a
+outra a pé, a nado ou de barco**, e não há mais troca por F entre regiões ao ar livre: uma região a que se chega
+antes da hora fica com a história adormecida. Pelo mapa (M) viaja-se aos lugares já descobertos.
+
+- **Geografia** (`src/mundo/aberto/Geografia.ts`): a tabela `ORIGENS` diz onde fica cada área no mapa único (+x é
+  o leste, +z é o sul). As constantes `ORIGEM_*` de cada área vêm dela. O Vale fica na origem; o Deserto a oeste; a
+  Cidade Dourada ao sul do Deserto; a Bahia na baía, mais ao sul e a leste; Creta, o naufrágio e Malta são ilhas no
+  mar do sul. As regiões vizinhas ficam a mais de 1 km uma da outra. Os interiores e as cenas à parte (cripta, Poço
+  do Meio-Dia, palácio, o navio na tempestade) ficam numa faixa distante (`z = -9000`) e não têm lugar no mapa.
+- **Nível do mar**: `NIVEL_MAR = 2`, um só para o mundo. Creta, o naufrágio e Malta desceram 6 m (o mar delas era
+  no nível 8) e a baía da Bahia desceu de 2,6 para 2. O navio na tempestade continua no nível 8 (é uma cena à parte).
+  O fundo do mar pode ter altura negativa.
+- **Terreno global** (`src/mundo/aberto/TerrenoMundo.ts`): `altura(x, z)` e `cor(x, z)` para qualquer ponto do
+  mundo. Cada região ao ar livre é um **carimbo**: dentro do retângulo dela vale o chão feito à mão; numa faixa em
+  volta (80 a 120 m) ele se desfaz no terreno procedural: a borda da região desce (ou sobe) em encosta de
+  `ENCOSTA` m por m até o chão do mundo. Uma serra de borda vira morro e um corte (estrada, fenda) vira rampa que se
+  abre na planície; a borda não é esticada faixa afora (era isso que fazia paredões e colunas soltas no ar). O procedural usa simplex (`Ruido.simplex`,
+  `fbmSimplex`, `cristas`): a terra firme é a vizinhança da `ESPINHA` (trechos entre as regiões), com a costa
+  recortada por ruído; os `BIOMAS` dão as cores da terra de ligação conforme a região mais próxima.
+- **Chunks** (`src/mundo/aberto/Chunks.ts`): o chão do ermo em ladrilhos de 32 × 32 células, feitos por distância
+  em três níveis (`NIVEIS`): células de 1 m até 128 m, de 4 m até 640 m e de 16 m até 1700 m. Cada ladrilho se
+  parte em 16 do nível mais fino e só cede o lugar quando os 16 estão prontos. As células inteiras dentro de uma
+  região não são desenhadas (a região tem a sua malha); na borda do ladrilho a parede desce uma célula a mais (a
+  saia), para esconder a fresta entre níveis. A montagem de um ladrilho (`Ladrilho.ts`, código puro) é feita fora
+  do thread do jogo, pela **obra**.
+- **Obra** (`src/mundo/aberto/Obra.ts` e `obra.worker.ts`): de 1 a 3 Web Workers que fazem os ladrilhos (até
+  `NA_OBRA` pedidos de uma vez, os grosseiros primeiro) e o minimapa do ermo (um quadrado de 192 m, pedido de novo
+  quando o peregrino se afasta 30 m do centro; o antigo fica na tela até o novo chegar). O thread do jogo só põe em
+  cena o que chegou (`ORCAMENTO` ms por quadro). As áreas não vão para o worker: cada região vai **assada**
+  (`Assado.ts`), com a volta de 1 m da borda exata e o miolo numa grade de 4 m. Se uma região mudar o chão perto da
+  borda depois de assada, os ladrilhos de ligação não veem a mudança. Sem suporte a workers, tudo é feito no thread
+  principal. O build precisa de `worker: { format: 'es' }` no `vite.config.ts`.
+- **Ermo** (`src/mundo/aberto/MundoAberto.ts`): a área `ermo` ("O Caminho") é a terra de ligação e o mar aberto
+  (os chunks, o `Oceano` do mundo e um anel de mar liso até o horizonte). É também a **física do mundo aberto**:
+  `Jogo.fisica` devolve o ermo sempre que se está ao ar livre, e ele responde altura, água e colisão pela região
+  que manda em cada ponto ou pelo terreno procedural. Por isso o peregrino cruza a borda sem trocar de chão.
+- **Região atual**: no mundo aberto, `Jogo.area` é a região sob o peregrino (ou o ermo) e muda sozinha em
+  `reverRegiao`, sem véu: manda a primeira região da lista de carimbos que tem o ponto; a atual segura até 3 m
+  fora dela e as outras só tomam 3 m para dentro. `entrarEm` troca a luz, a névoa e o céu aos poucos (3 s,
+  `misturarAmbiente`) e a cor não salta. `verRegioes` decide o que se vê: a região atual, as vizinhas até onde
+  a névoa alcança, e o ermo. `Area.presente(sim)` liga o mar e a chuva próprios de uma região só com o peregrino
+  dentro dela. No ermo, a barra de cor é a da região mais próxima (`areaDaRegiao`).
+- **O que ficou aberto**: o Vale perdeu a parede invisível (`Mundo.colidir`) e o desfiladeiro do oeste agora
+  corta a serra até a borda; nenhuma região devolve mais altura 99 para o mundo aberto (o ermo nunca pergunta
+  fora do retângulo dela). A câmera enxerga até 2600 m.
+- **História adormecida** (`Jogo.acordada`, `revisarSono`): cada região ao ar livre tem um pré-requisito (o
+  Deserto, o véu do Vale aberto; a Cidade, `meiodia_vencido`; as duas Bahias, a Gula vencida; Creta,
+  `bahia_coracao_vencido`; o naufrágio, `naufragio_encalhou`; Malta, `naufragio_ira_vencida`; o Vale está sempre
+  acordado). Antes dele a região **dorme**: os santos dela somem (e voltam a sumir se ela se rearrumar), não há
+  chefão, sombras, cenas nem gatilhos de fala, as capelas não contam história, e F perto de qualquer pessoa é só
+  "cumprimentar". `Area.dormir?(sim)` é o gancho de cada região: o Deserto apaga as miragens, a Cidade Alta para
+  o Largo, o naufrágio vira uma enseada calma (sem navio, sem gente, sem chuva, com o tempo claro do Mediterrâneo),
+  e Malta dormindo também fica sem a garoa. A região acorda sozinha quando a flag chega (o tempo de lá é refeito
+  se o peregrino estiver dentro). Entrar a pé numa região dormindo mostra o aviso; numa acordada, `chegouAndando`
+  faz o que a troca por F fazia na chegada (a fala de chegada na primeira vez, a `chegada` vira checkpoint, e na
+  Bahia os anos passam: `peregrino_adulto`). Um checkpoint fora do carimbo da área volta para a `chegada` dela.
+- **Trocas por F que saíram**: Vale ⇄ Deserto, Deserto ⇄ Cidade, Cidade → Bahia, o fogo dos moradores do
+  naufrágio ⇄ Malta. Ficaram as portas dos interiores, os barcos (`fazerViagem`), o Elevador Lacerda e a ida
+  roteirizada do naufrágio a Malta depois da Ira.
+- **A Bahia é um lugar só**: a Cidade Alta fica sobre a escarpa, a leste da Baixa (o elevador de cima cai sobre o
+  de baixo). A Baixa desenha tudo menos o que fica debaixo da Alta (`MapaDaBahia.desenha`), e o carimbo dela é
+  inteiro: a Alta vem antes na lista e manda onde as duas se sobrepõem. Só a Baixa põe a baía. A **Ladeira da
+  Montanha** sobe a pé da Baixa (ao sul do elevador, junto à escarpa) até um patamar na Praça Tomé de Sousa, em
+  degraus de 1 m; a balaustrada tem a abertura dela. O chão da Alta a oeste da beira fica embaixo, para a parede
+  da escarpa descer inteira.
+- **O naufrágio fica junto a Malta**: a enseada está a oeste da ilha, com a praia na mesma linha, separada por um
+  estreito de 24 m que se atravessa a nado. O navio encalhado que Malta tinha "lá fora" saiu (é o da enseada).
+- **Pontos de viagem** (`PONTOS_DE_VIAGEM` em `Geografia.ts`; o lugar no chão em `Jogo.lugarDoPonto`): capelas
+  (diante da porta), o cruzeiro do Vale, os cais e alguns lugares de cada região. Descobre-se um chegando a 14 m
+  dele no mundo aberto (`descobrirPelaVolta`, a cada meio segundo, também numa região adormecida), com aviso.
+- **Viagem rápida** (`Jogo.viajarPara(id, { forcar, anuncio })`): escurece (`trocarArea`) e leva ao ponto, que vira
+  checkpoint; chegando a uma região acordada, `chegouAndando` toca a fala de chegada se for a primeira vez. Sem
+  `forcar`, recusa ponto não descoberto e `motivoParaNaoViajar`: passagem em curso, conversa aberta, luta com
+  chefão, alguém (ou algo) nas costas, o navio na tempestade e o naufrágio antes da Ira. `forcar` é para a viagem
+  da história e os barcos, que o Ink já filtrou com `descobriu("<ponto>")`. Fora dos barcos, ela é pedida pelo
+  mapa-múndi.
+- **Mapa-múndi** (`src/ui/MapaMundi.ts`; tecla M, ou "Mapa do mundo" na pausa, que é o caminho do controle): pausa
+  o jogo como a rosácea dos dons. É um pergaminho com o chão do mundo (`PASSO` = 10 m por pixel, o relevo sombreado
+  como em `pintarMapa`), pintado aos poucos desde o começo do jogo (`trabalhar`, 2 ms por quadro; abrindo antes,
+  termina de uma vez). Só aparece o que o peregrino conhece (`compor`): região não visitada, encoberta, com o
+  contorno tracejado e "?"; visitada, em sépia; restaurada (`RESTAURACAO`, a flag `*_restaurad*` de cada região),
+  em cor; o ermo, nas quadras pisadas (`mapaVisto`: `descobrirPelaVolta` marca uma roda de raio 2 quadras em volta
+  do peregrino). Marcas: os pontos de viagem descobertos, o peregrino (só no mundo aberto) e a estrela do Conselho
+  (nível 2). Ao lado, a lista dos pontos por região: focar um leva a vista até ele; escolher (na lista ou clicando
+  no mapa) pede confirmação, e "Viajar" chama `viajarPara` (a recusa aparece ali mesmo). Arrastar e a roda do mouse
+  movem e aproximam; W A S D, + − (ou Q E) também. M ou Esc fecham. Os dados vêm de `FonteMapaMundi`, que o
+  `Jogo` monta (o mapa só é criado na primeira vez, porque precisa do terreno do mundo).
+- **Minimapa do mundo**: no mundo aberto, o minimapa tem um **fundo**, o quadrado de 192 m do chão do mundo em volta
+  do peregrino que a obra pinta (`Minimapa.definirFundo`, pedido de novo a cada 30 m), e a região vai por cima.
+  A terra e o mar de fora da região aparecem, e no ermo só o fundo (`soFundo`). Num interior não há fundo.
+- **Barco** (`src/entidades/Barco.ts`): um saveiro pequeno, de 6,75 m, modelado à parte (voxel de 0,1875 m), que o peregrino conduz. Fica
+  ancorado no cais da Bahia até ser usado; a posição vai para o save (`Estado.barco`, `[x, z, rumo]`; `null` = no
+  cais da Bahia). Flutua no `nivelAgua` com arfagem e adernamento tirados das ondas e encalha onde a água tem menos
+  que `CALADO` (0,7 m): `cabe` olha só o meio e a ponta para onde ele anda, para uma ponta no raso não prendê-lo.
+  Conduz-se com as teclas de andar, relativas à câmera (vira devagar para o pedido; para trás, de ré; Shift, vela
+  cheia); a câmera fica mais longe (10,5 m). Interações, nesta ordem, antes das da área: a bordo, "desembarcar"
+  (`lugarDeDesembarque`, terra firme a 3–9 m) ou, sem terra perto, "pular na água"; perto do casco, "embarcar"
+  (recusado carregando alguém); num dos `CAIS_DO_BARCO` (Bahia, Creta, Malta), "chamar o barco", que o põe no
+  ancoradouro do cais (`ancoradouro`: o primeiro lugar com calado numa roda em volta do ponto de viagem). A bordo
+  não há combate nem dons. Não colide com píeres nem com os navios grandes, só com o raso. Aparece no mapa-múndi
+  (⛵) e no minimapa.
+  - *O peregrino a bordo* vai sentado no banco da popa (`Peregrino.timoneiro`, que mistura a pose aos poucos): a mão
+    do cajado segue a cana do leme, a outra segura a escota e dá puxões, o corpo pende contra o adernamento e a
+    cabeça às vezes sobe para a vela; o cajado vai nas costas. O `Jogo` prende o boneco ao banco
+    (`prenderAoAssento`), e ele arfa e aderna com o casco.
+  - *Animação de navegação*: o vento muda devagar (`rumoDoVento`; serve só para o visual, a velocidade não depende
+    dele). A vela é feita de colunas que enfunam para sotavento ou panejam (aproado ao vento, ou sem ninguém no
+    leme); a retranca é uma mola que vai ao bordo de sotavento e cruza no jaibe; a escota estica entre a retranca e o
+    bordo; a cana do leme vai contra a curva; a flâmula do mastro aponta o vento aparente. O casco aderna com a vela
+    e na curva e ergue a proa com a velocidade. A água (`Espuma`, um `InstancedMesh` no mundo, em `Barco.efeitos`):
+    a esteira em V, a espuma da proa, os borrifos (correndo, ou ao encalhar) e a marola no costado do barco parado.
+  - *Som* (`Som.navegar`, `panejar`, `jaibe`, `rangido`): a água correndo no casco conforme a velocidade, a vela
+    batendo, o tranco do jaibe e o casco rangendo de vez em quando.
+- **Estradas** (`ESTRADAS` em `Geografia.ts`; `TerrenoMundo.estrada` e `distEstrada`): três estradas de terra
+  batida ligam as saídas das regiões: Vale (a passagem do oeste) → Deserto (o corredor do leste); Deserto (o
+  corredor do sul) → diante da porta da Cidade Dourada, contornando a muralha; e a estrada do mar, da porta da
+  Cidade à Cidade Alta da Bahia pelo norte da baía. O eixo é a linha das `ESTRADAS` entortada por ruído (até 9 m),
+  menos perto das pontas, que caem certinho no corte de cada região. Na estrada o chão perde os calombos miúdos e
+  ganha a cor de terra do bioma (vermelha na mata da Bahia), com a beira pontilhada sobre o mato; ela aparece no
+  minimapa e no mapa-múndi. Só pinta e alisa: não prende ninguém.
+- **Biomas** (`TerrenoMundo.bioma`): `prado` (vizinhança do Vale), `deserto`, `campos` (da Cidade Dourada),
+  `mata` (do litoral da Bahia), `praia`, `rocha` (acima de 46 m) e `mar`. O mesmo sorteio de fronteira dá a cor
+  do chão e o que nasce e vive ali.
+- **Recheio do ermo** (`src/mundo/aberto/Recheio.ts`, dono do `Ermo.recheio`):
+  - *Vegetação*, sorteada por célula de 48 m (semente = o lugar, sempre igual) numa grade de 4 m, conforme a
+    `receita` de cada bioma: no prado, árvores pequenas, álamos e pinheiros no alto, capim e flores; no deserto,
+    arbustos secos, pedregulhos, uma tamareira de vez em quando e os marcos de pedras empilhadas dos peregrinos à
+    beira da estrada; nos campos, oliveiras e ciprestes (em fila na beira da estrada, como na Úmbria); na mata,
+    árvores densas e coqueiros perto da costa; na praia, coqueiros e pedras; na rocha, pinheiros. Nada nasce dentro
+    das regiões (elas têm a sua), na estrada, na água, a menos de `CLAREIRA` m dos monumentos, nem (árvore) em chão
+    inclinado. Os modelos são os das regiões (`Deserto`, `CidadeModelos`, `BahiaModelos`) e os .vox do Veloren.
+  - *Desenho*: uma `InstancedMesh` por variante e por distância, refeitas de uma vez (`recompor`) quando as
+    células mudam: até `RAIO_PERTO` (36 m) com todos os voxels e sombra; até `RAIO_MEIO` (80 m) as árvores do
+    Veloren com voxels maiores (`reduzirVox`, 2 ou 3 vezes) e ainda com sombra; até `RAIO_LONGE` (250 m) só os
+    grandes, com voxels maiores e sem sombra. O miúdo (capim, flores, pedrinhas) só existe até 80 m. As células são
+    montadas no thread do jogo, `ORCAMENTO` ms por quadro (~2 ms cada). Com isso a mata densa custa ~1,7 milhão de
+    triângulos por quadro (eram 6,5 com tudo em resolução cheia).
+  - *Choque*: troncos, pedregulhos e marcos têm raio (`FICHAS`); `Ermo.colidir` empurra para fora deles (e das
+    capelinhas e cruzeiros) fora das regiões. Capim e flores se atravessam.
+  - *Capelinhas e cruzeiros de beira de estrada* (`BEIRAS` em `Geografia.ts`; modelos em `ErmoModelos.ts`): dois
+    cruzeiros e três capelinhas caiadas, com barrado azul, telha de barro e a imagem no nicho, cada uma de uma
+    devoção dos viajantes, na iconografia própria: São Cristóvão (túnica verde e manto vermelho, o Menino no ombro,
+    o tronco na mão e a água do rio nos pés), Nossa Senhora da Guia (manto azul, véu branco, o Menino no braço) e
+    Nossa Senhora da Boa Viagem (manto azul, coroa, o Menino e o barquinho). Ficam a 4,5 m do eixo de verdade da
+    estrada, de frente para ela. São pontos de viagem (área `ermo`, `Jogo.lugarDoPonto`: diante da imagem). F:
+    "contemplar o cruzeiro" ou "rezar diante da imagem" (nós `ermo_*` em `dialogos/ermo.ink`: na primeira vez o
+    Espírito conta o que é; depois, só a inscrição da Escritura). Junto deles a oração tem o dobro de força
+    (`oracaoDobrada`).
+  - *Bichos* (`Recheio.povoamento`): um bando a cada ~85 m de terra (grade com o lugar sorteado em cada quadra;
+    perto do mar, quase sempre bichos de praia) e mais uma passada fina pela costa, com as espécies do bioma
+    (ovelhas, cervos, coelhos, lebres, cavalos e raposas no prado; lagartixas, camelos, antílopes, hienas e a águia no
+    deserto; cabras, ovelhas, jumento, lebres e bois nos campos; esquilos, cervos, raposas, coelhos e sapos na mata;
+    cabras e águias na rocha; tartarugas, patos e gansos na praia). São ~870 bandos, então a `Fauna` os solta **sob
+    demanda** (`definirSitios`): um bando nasce quando o peregrino chega a 170 m do território e some a 260 m,
+    sempre igual (semente do bando). É uma `Fauna` própria (`faunas.get('ermo')`) sobre a física do mundo com
+    `nivelMinimo` no mar (os bichos não entram nele), vista e atualizada em todo o mundo aberto, também de dentro das
+    regiões. O carinho no ermo é uma interação só, com o bicho manso à vista mais perto.
+- **Desempenho no modo dev**: o overlay F3 mostra, no mundo aberto, os ladrilhos do chão (quantos, quantos na fila,
+  quantos feitos e em quanto tempo), as células do recheio (montadas e o tempo), as peças em cena e os bichos do
+  ermo (à vista, soltos e quantos bandos estão soltos). A aba "Ir" do painel (F9) tem "O Caminho", com as capelinhas e os cruzeiros.
+- **Pendências conhecidas**: a Cidade Alta usa as cores das casas na parede da escarpa ao lado da Ladeira. As
+  células do recheio ainda são montadas no thread do jogo (se pesar, vão para a obra, como os ladrilhos).
+- **Mapa do terreno** (`src/mundo/aberto/MapaDoTerreno.ts`): `pintarMapa` desenha o chão do mundo visto de cima
+  num canvas (a mesma pintura que o mapa-múndi faz aos poucos). No modo dev: `jogo.ganchosDev().mapaDoMundo(x0, z0, x1, z1, passo)`.
+- **Bordas**: as paredes da borda de um mapa descem até `FUNDO_BORDA` (`Terreno.ts`), a superfície da água
+  segura a câmera (ela não mergulha) e o `Oceano` desenha os dois lados.
+
 ## Diálogos
 
 As conversas são escritas em **[Ink](https://github.com/inkle/ink)** (MIT), a linguagem de roteiro da inkle,
@@ -641,7 +830,7 @@ aparece quando a fala toca.
 | `~ evento("dom_ciencia")` | efeito de jogo tratado em `Jogo.eventoDialogo` |
 | `~ marcar("flag")` | grava uma flag no save |
 
-Funções externas: `tem(flag)`, `primeira(flag)` (verdadeiro só na primeira vez, e já marca), `nivel(dom)`,
+Funções externas: `descobriu(ponto)` (o ponto de viagem já foi descoberto), `tem(flag)`, `primeira(flag)` (verdadeiro só na primeira vez, e já marca), `nivel(dom)`,
 `valor(chave)` (números do jogo, em `Jogo.valorDialogo`), `nome()` e `g(masculino, feminino)` para o gênero
 do peregrino. As consultas puras são registradas como seguras para a leitura antecipada do Ink; as que mudam o
 jogo, não.
@@ -853,7 +1042,8 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
   - um acerto pisca um X (`Hud.acertou`);
   - sem energia ou com torpor, a mira fica fraca;
   - ela some com a mira travada (aí vale o losango sobre o alvo), em diálogos, na oração, na confissão e nos menus.
-- **`Pausa.ts`**: menu de pausa.
+- **`Pausa.ts`**: menu de pausa (com o botão do mapa do mundo).
+- **`MapaMundi.ts`**: o mapa do mundo (M) e a viagem rápida (ver Mundo aberto).
 - **`Configuracoes.ts`**: abas Geral, Controles e Gráficos. Enquanto a janela está aberta, ela captura as teclas.
 - **`Dons.ts`** e **`IconesDons.ts`**: a rosácea dos sete dons, com ícones SVG.
 - **`creditos.ts`**: os créditos que rolam na tela.

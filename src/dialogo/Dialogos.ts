@@ -17,6 +17,8 @@ export interface ContextoDialogo {
   feminino(): boolean;
   /** Efeito de jogo pedido pelo roteiro com `~ evento("nome")`. */
   evento(nome: string): void;
+  /** O ponto de viagem já foi descoberto (ids em `PONTOS_DE_VIAGEM`, Geografia.ts)? */
+  descobriu(ponto: string): boolean;
 }
 
 /** Uma fala pronta para a caixa de diálogo. */
@@ -69,6 +71,7 @@ export class Dialogos {
     h.BindExternalFunction('valor', (k: string) => ctx.valor(k), true);
     h.BindExternalFunction('nome', () => ctx.nome(), true);
     h.BindExternalFunction('g', (m: string, f: string) => (ctx.feminino() ? f : m), true);
+    h.BindExternalFunction('descobriu', (p: string) => ctx.descobriu(p), true);
     h.BindExternalFunction('marcar', (f: string) => ctx.marcar(f), false);
     h.BindExternalFunction(
       'primeira',

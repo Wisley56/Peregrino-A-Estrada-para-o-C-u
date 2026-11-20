@@ -68,6 +68,8 @@ export interface InfoDev {
   mira: THREE.Vector3;
   peso: number;
   torpor: number;
+  /** O mundo aberto em carga: ladrilhos do chão e recheio do ermo (null fora dele). */
+  mundo: string | null;
 }
 
 export interface GanchosDev {
@@ -75,6 +77,8 @@ export interface GanchosDev {
   readonly peregrino: Peregrino;
   readonly renderer: THREE.WebGLRenderer;
   areas(): AreaDev[];
+  /** O chão do mundo visto de cima (para conferir a geografia): o retângulo pedido, a `passo` metros por pixel. */
+  mapaDoMundo(x0: number, z0: number, x1: number, z1: number, passo: number): HTMLCanvasElement;
   chefes(): ChefeDev[];
   info(): InfoDev;
   /** Vai a um ponto (troca de área com o véu, ou teleporta direto se já estiver nela). */

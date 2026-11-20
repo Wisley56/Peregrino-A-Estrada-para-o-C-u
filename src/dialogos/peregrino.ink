@@ -28,6 +28,9 @@ EXTERNAL nome()
 EXTERNAL g(masculino, feminino)
 /// Efeito de jogo no meio da conversa (ver Jogo.eventoDialogo).
 EXTERNAL evento(nome)
+/// O ponto de viagem já foi descoberto? "bahia_cais", "creta_praia"… (ver PONTOS_DE_VIAGEM em Geografia.ts)
+/// A viagem até ele se pede com ~ evento("viajar_<ponto>").
+EXTERNAL descobriu(ponto)
 
 INCLUDE vale.ink
 INCLUDE cripta.ink
@@ -40,5 +43,6 @@ INCLUDE creta.ink
 INCLUDE navio.ink
 INCLUDE naufragio.ink
 INCLUDE malta.ink
+INCLUDE ermo.ink
 
 -> END

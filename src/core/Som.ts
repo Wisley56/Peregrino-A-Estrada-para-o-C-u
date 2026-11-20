@@ -104,6 +104,52 @@ export class Som {
   fogo() { this.ruido(0.5, 0.3, 700); this.tom(220, 0.3, 'triangle', 0.06, 330); }
   private ambiente: { tipo: string; para: () => void } | null = null;
 
+  private aguaNoCasco: { g: GainNode; f: BiquadFilterNode; k: number } | null = null;
+  /**
+   * A água correndo no costado do barco (0 parado … 1 com a vela toda): ruído contínuo por um passa-baixa que abre
+   * com a velocidade. Chamado a cada quadro; só mexe no som quando o valor muda de verdade.
+   */
+  navegar(k: number) {
+    if (!this.ctx || !this.mestre) return;
+    if (!this.aguaNoCasco) {
+      if (k < 0.01) return;
+      const ctx = this.ctx;
+      const n = ctx.sampleRate * 2;
+      const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      // ruído "marrom" (passeio aleatório): grave, como água e não chiado
+      let ultimo = 0;
+      for (let i = 0; i < n; i++) {
+        ultimo = (ultimo + (Math.random() * 2 - 1) * 0.08) * 0.985;
+        d[i] = ultimo * 4;
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const f = ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 400;
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      src.connect(f).connect(g).connect(this.mestre);
+      src.start();
+      this.aguaNoCasco = { g, f, k: -1 };
+    }
+    const a = this.aguaNoCasco;
+    if (Math.abs(k - a.k) < 0.02) return;
+    a.k = k;
+    const t = this.ctx.currentTime;
+    a.g.gain.setTargetAtTime(0.03 + k * 0.22, t, 0.3);
+    if (k < 0.01) a.g.gain.setTargetAtTime(0, t, 0.3);
+    a.f.frequency.setTargetAtTime(350 + k * 1100, t, 0.3);
+  }
+  /** A vela batendo solta (um estalo de pano). */
+  panejar(k: number) { this.ruido(0.07, 0.05 + k * 0.06, 1500 + Math.random() * 600); }
+  /** A retranca cruzando de bordo: o pano estoura e a madeira dá um tranco. */
+  jaibe() { this.ruido(0.22, 0.2, 700); this.tom(95, 0.25, 'triangle', 0.07, 60); }
+  /** O casco de madeira rangendo nas ondas. */
+  rangido() { this.tom(150 + Math.random() * 70, 0.4, 'sawtooth', 0.01, 120 + Math.random() * 40); }
+
   /** Som de fundo contínuo da área: a cripta (zumbido grave e vento) ou o deserto (vento em rajadas). */
   ambienteDe(tipo: 'cripta' | 'deserto' | 'tempestade' | null) {
     if (!this.ctx || !this.mestre) return;

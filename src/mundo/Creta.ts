@@ -17,14 +17,14 @@ import {
 import { BORDA_PAREDE, CABINE, MASTRO, MEIO_COMPRIMENTO, anfora, bote, bordaEm, convesEm, meiaLarguraConves, navioAlexandrino, sacoDeTrigo } from './NavioModelos';
 import { Oceano } from './Oceano';
 import { blocosDeColunas } from './Terreno';
+import { NIVEL_MAR, ORIGENS } from './aberto/Geografia';
 
 /** Canto do mapa de Creta no mundo (longe das outras áreas). */
-export const ORIGEM_CRETA = new THREE.Vector3(1600, 0, 0);
+export const ORIGEM_CRETA = ORIGENS.creta;
 /** Colunas de 1 m de cada lado. */
 const TAM = 320;
 const META = TAM / 2;
-/** O nível do mar (m). Abaixo dele, o fundo; a terra começa logo acima. */
-export const NIVEL_MAR = 8;
+export { NIVEL_MAR };
 /** Fundo do mar aberto, fora do mapa (m): fundo demais para se ficar de pé; nada-se para onde quiser. */
 const FUNDO_ABERTO = NIVEL_MAR - 8;
 
@@ -154,13 +154,14 @@ export class Creta implements Area {
     for (let i = 0; i < TAM; i++)
       for (let j = 0; j < TAM; j++) {
         const [h, t] = this.gerar(i - META + 0.5, j - META + 0.5);
-        this.alturas[i * TAM + j] = Math.max(0, Math.round(h));
+        this.alturas[i * TAM + j] = Math.round(h);
         this.tipo[i * TAM + j] = t;
       }
     const terreno = blocosDeColunas(TAM, (i, j) => this.alturas[i * TAM + j], (i, j, h) => this.corTopo(i, j, h),
       (i, y, j, prof, topo) => this.corLado(i, y, j, prof, topo), 12);
     terreno.position.copy(ORIGEM_CRETA);
-    this.grupo.add(terreno, this.oceano.malha);
+    this.aoRedor.add(this.oceano.malha);
+    this.grupo.add(terreno, this.aoRedor);
 
     this.navio.set(NAVIO.x + ORIGEM_CRETA.x, NIVEL_MAR, NAVIO.z + ORIGEM_CRETA.z);
     this.montarPorto();
@@ -665,6 +666,12 @@ export class Creta implements Area {
       { especie: 'galinha', quantidade: 4, centro: c(AGORA.x - 8, AGORA.z + 12), raio: 4 },
       { especie: 'aguia', quantidade: 1, centro: c(0, -60), raio: 60 },
     ];
+  }
+
+  /** No mundo aberto, o mar (e a chuva) da área só aparece com o peregrino dentro dela: de fora, vê-se o mar do mundo. */
+  private readonly aoRedor = new THREE.Group();
+  presente(sim: boolean) {
+    this.aoRedor.visible = sim;
   }
 
   fonteMapa(): FonteMapa {

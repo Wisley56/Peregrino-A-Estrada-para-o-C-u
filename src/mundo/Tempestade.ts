@@ -11,9 +11,10 @@ import type { Area } from './Area';
 import { Chuva } from './Chuva';
 import { BORDA_PAREDE, CABINE, MASTRO, MEIO_COMPRIMENTO, anfora, ancora, bote, bordaEm, convesEm, meiaLarguraConves, navioAlexandrino, sacoDeTrigo } from './NavioModelos';
 import { Oceano } from './Oceano';
+import { ORIGENS } from './aberto/Geografia';
 
 /** Onde fica o navio no mundo (longe das outras áreas). O navio não sai do lugar: é o mar que corre por ele. */
-export const ORIGEM_NAVIO = new THREE.Vector3(2400, 0, 0);
+export const ORIGEM_NAVIO = ORIGENS.navio;
 const NIVEL = 8;
 /** O fundo, muito abaixo: em toda parte fora do navio se nada. */
 const FUNDO = NIVEL - 60;

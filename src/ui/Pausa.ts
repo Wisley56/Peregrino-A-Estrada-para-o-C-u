@@ -4,6 +4,8 @@ export interface AcoesPausa {
   continuar(): void;
   sair(): void;
   dons(): void;
+  /** Abre o mapa do mundo (o caminho do controle até ele). */
+  mapa(): void;
   /** Abre as Configurações (sensibilidade, controles, gráficos). */
   config(): void;
 }
@@ -27,6 +29,7 @@ export class Pausa {
         <p class="nota"></p>
         <nav>
           <button class="vb rubi" data-a="continuar">Continuar</button>
+          <button class="vb" data-a="mapa">Mapa do mundo</button>
           <button class="vb" data-a="dons">Os Sete Dons</button>
           <button class="vb" data-a="config">Configurações</button>
           <button class="vb" data-a="sair">Voltar à tela inicial</button>
@@ -44,6 +47,7 @@ export class Pausa {
       const a = (e.target as HTMLElement).closest('button')?.dataset.a;
       if (a === 'continuar') this.acoes.continuar();
       else if (a === 'dons') this.acoes.dons();
+      else if (a === 'mapa') this.acoes.mapa();
       else if (a === 'config') this.acoes.config();
       else if (a === 'sair') this.confirmar.hidden = false;
       else if (a === 'sim') this.acoes.sair();

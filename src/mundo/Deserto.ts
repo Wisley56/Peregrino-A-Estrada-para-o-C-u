@@ -14,6 +14,7 @@ import type { FonteMapa } from '../ui/Minimapa';
 import { escurecer } from './PocoMeioDia';
 import { CapelaRegional, type EstiloCapela } from './Capela';
 import type { DefNpc } from '../entidades/Npc';
+import { ORIGENS } from './aberto/Geografia';
 
 /**
  * O Deserto das Vozes (segunda região). Fica longe do Vale (em ORIGEM) e é uma área separada,
@@ -24,7 +25,7 @@ import type { DefNpc } from '../entidades/Npc';
 
 const TAM = 160;
 const META = TAM / 2;
-export const ORIGEM_DESERTO = new THREE.Vector3(-500, 0, 0);
+export const ORIGEM_DESERTO = ORIGENS.deserto;
 /** Sombras do deserto que devolvem a cor (4 escondidas nas miragens + 2 à vista). */
 export const TOTAL_SOMBRAS_DESERTO = 6;
 
@@ -111,7 +112,7 @@ function distRastro(x: number, z: number) {
 // ───────────────────────────── modelos (arte por código) ─────────────────────────────
 
 /** Tamareira: tronco anelado e levemente inclinado, folhas caídas e cachos de tâmaras. */
-function palmeira(semente: number, material: THREE.Material = materialVoxel) {
+export function palmeira(semente: number, material: THREE.Material = materialVoxel) {
   const rnd = aleatorio(semente);
   const m = new Modelo();
   const alt = 20 + Math.floor(rnd() * 6);
@@ -134,7 +135,7 @@ function palmeira(semente: number, material: THREE.Material = materialVoxel) {
 }
 
 /** Marco de pedras empilhadas (o rastro dos peregrinos). */
-function marco(semente: number) {
+export function marco(semente: number) {
   const rnd = aleatorio(semente);
   const m = new Modelo();
   const pedra = (x: number, y: number, z: number) => variar(0x9a8a74, x, y, z, 0.08);
@@ -148,7 +149,7 @@ function marco(semente: number) {
 }
 
 /** Pedregulho de arenito. */
-function pedregulho(semente: number) {
+export function pedregulho(semente: number) {
   const rnd = aleatorio(semente);
   const m = new Modelo();
   const r = 3 + rnd() * 3;
@@ -162,7 +163,7 @@ function pedregulho(semente: number) {
 }
 
 /** Arbusto seco. */
-function arbusto(semente: number) {
+export function arbusto(semente: number) {
   const rnd = aleatorio(semente);
   const m = new Modelo();
   for (let g = 0; g < 7; g++) {
@@ -559,6 +560,12 @@ export class Deserto implements Area {
     this.eventos.miragemDesfeita(porCiencia);
   }
 
+  /** A história do deserto ainda não chegou: as miragens não sussurram nem se desfazem. */
+  private dormindo = false;
+  dormir(sim: boolean) {
+    this.dormindo = sim;
+  }
+
   atualizar(dt: number, jogador: THREE.Vector3) {
     this.t += dt;
     this.antao.atualizar(dt, jogador);
@@ -567,7 +574,7 @@ export class Deserto implements Area {
     // miragens: sussurram de longe; de perto, se desfazem e mostram a sombra
     let perto: Miragem | null = null;
     let dm = Infinity;
-    for (const m of this.miragens) {
+    for (const m of this.dormindo ? [] : this.miragens) {
       m.atualizar(dt);
       if (!m.intacta) continue;
       const d = m.pos.distanceTo(jogador);

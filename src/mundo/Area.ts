@@ -12,8 +12,8 @@ export interface Alvo {
   readonly ativa: boolean;
 }
 
-export type IdArea = 'vale' | 'cripta' | 'deserto' | 'meiodia' | 'cidade' | 'palacio' | 'bahiabaixa' | 'bahiaalta' | 'creta' | 'navio' | 'naufragio' | 'malta';
-export const AREAS: IdArea[] = ['vale', 'cripta', 'deserto', 'meiodia', 'cidade', 'palacio', 'bahiabaixa', 'bahiaalta', 'creta', 'navio', 'naufragio', 'malta'];
+export type IdArea = 'vale' | 'cripta' | 'deserto' | 'meiodia' | 'cidade' | 'palacio' | 'bahiabaixa' | 'bahiaalta' | 'creta' | 'navio' | 'naufragio' | 'malta' | 'ermo';
+export const AREAS: IdArea[] = ['vale', 'cripta', 'deserto', 'meiodia', 'cidade', 'palacio', 'bahiabaixa', 'bahiaalta', 'creta', 'navio', 'naufragio', 'malta', 'ermo'];
 
 /** Um lugar jogável com chão, obstáculos e inimigos próprios. */
 export interface Area extends Fisica {
@@ -36,6 +36,16 @@ export interface Area extends Fisica {
   fonteMapa(): FonteMapa;
   /** A capela da região (confissão e Eucaristia), se houver. */
   readonly capela?: CapelaRegional;
+  /**
+   * O peregrino entrou na área (`true`) ou está só passando por perto, no mundo aberto (`false`): liga e desliga o
+   * que só faz sentido com ele dentro (o mar e a chuva da área, que o acompanham).
+   */
+  presente?(sim: boolean): void;
+  /**
+   * A história da região ainda não chegou (`true`) ou já chegou (`false`). Adormecida, ela não começa lutas nem
+   * cenas sozinha (o Jogo também não toca as dela); o resto da vida do lugar segue.
+   */
+  dormir?(sim: boolean): void;
   /** Quem vive na região (fauna do Veloren). */
   povoamento?(): Povoamento[];
 }

@@ -2,6 +2,8 @@
  * Minimapa no canto superior direito: um medalhão redondo com moldura de vitral.
  * O chão de cada área é desenhado uma vez (vista de cima, 2 px por metro) e depois só recortado
  * e girado em volta do peregrino. O mapa gira com a câmera: para cima é para onde ela olha.
+ * No mundo aberto há também o **fundo**: um quadrado do chão do mundo em volta do peregrino (pintado pela obra),
+ * desenhado por baixo da região. Assim a terra e o mar de fora dela aparecem, e no ermo só ele aparece.
  */
 
 export interface FonteMapa {
@@ -14,7 +16,7 @@ export interface FonteMapa {
   cor(x: number, z: number): number;
 }
 
-export type TipoMarca = 'lugar' | 'descanso' | 'pessoa' | 'sombra' | 'chefe' | 'saida';
+export type TipoMarca = 'lugar' | 'descanso' | 'pessoa' | 'sombra' | 'chefe' | 'saida' | 'barco';
 export interface Marca {
   x: number;
   z: number;
@@ -30,6 +32,7 @@ export class Minimapa {
   private nome: HTMLElement;
   private bases = new Map<string, { img: HTMLCanvasElement; f: FonteMapa }>();
   private atual: { img: HTMLCanvasElement; f: FonteMapa } | null = null;
+  private fundo: { img: HTMLCanvasElement; f: Omit<FonteMapa, 'cor'> } | null = null;
   private tam = 0;
 
   constructor() {
@@ -68,6 +71,33 @@ export class Minimapa {
     this.atual = b;
   }
 
+  /** Troca só o nome mostrado (a imagem fica a mesma até chegar outra). */
+  nomear(nome: string) {
+    this.nome.textContent = nome;
+  }
+
+  /**
+   * O fundo do mundo aberto: uma imagem já pintada (RGBA, 1 pixel por metro) do retângulo `f`, feita fora do
+   * thread do jogo. `null` tira o fundo (num interior).
+   */
+  definirFundo(f: Omit<FonteMapa, 'cor'> | null, px?: Uint8ClampedArray) {
+    if (!f || !px) {
+      this.fundo = null;
+      return;
+    }
+    const img = document.createElement('canvas');
+    img.width = Math.round(f.largura);
+    img.height = Math.round(f.profundidade);
+    img.getContext('2d')!.putImageData(new ImageData(px as Uint8ClampedArray<ArrayBuffer>, img.width, img.height), 0, 0);
+    this.fundo = { img, f };
+  }
+
+  /** Só o fundo (no ermo): nenhuma região por cima. */
+  soFundo(nome: string) {
+    this.nome.textContent = nome;
+    this.atual = null;
+  }
+
   /** Esquece a base de uma área (quando o chão dela muda, como a parede falsa que se abre). */
   esquecer(chave: string) {
     this.bases.delete(chave);
@@ -84,8 +114,8 @@ export class Minimapa {
    */
   desenhar(px: number, pz: number, guinada: number, rumo: number, marcas: Marca[], conselho: { alvo?: { x: number; z: number } | null; raio?: number } = {}) {
     const RAIO = conselho.raio ?? RAIO_VISTA;
-    const b = this.atual;
-    if (!b) return;
+    const b = this.atual, fundo = this.fundo;
+    if (!b && !fundo) return;
     const css = this.canvas.clientWidth || 160;
     const dpr = Math.min(2, devicePixelRatio || 1);
     const tam = Math.round(css * dpr);
@@ -110,7 +140,8 @@ export class Minimapa {
     c.scale(escala, escala);
     c.translate(-px, -pz);
     c.imageSmoothingEnabled = false;
-    c.drawImage(b.img, b.f.x0, b.f.z0, b.f.largura, b.f.profundidade);
+    if (fundo) c.drawImage(fundo.img, fundo.f.x0, fundo.f.z0, fundo.f.largura, fundo.f.profundidade);
+    if (b) c.drawImage(b.img, b.f.x0, b.f.z0, b.f.largura, b.f.profundidade);
 
     // marcas (desenhadas em pixels, sem girar o formato)
     for (const m of marcas) {
@@ -227,6 +258,19 @@ export class Minimapa {
         c.lineTo(-3.4 * d, 3 * d);
         c.closePath();
         c.fillStyle = '#ff9a40';
+        break;
+      case 'barco':
+        // o casco e a vela
+        c.moveTo(-4.5 * d, 1 * d);
+        c.lineTo(4.5 * d, 1 * d);
+        c.lineTo(3 * d, 4 * d);
+        c.lineTo(-3 * d, 4 * d);
+        c.closePath();
+        c.moveTo(0, 0);
+        c.lineTo(0, -6 * d);
+        c.lineTo(3.8 * d, 0);
+        c.closePath();
+        c.fillStyle = '#f2e6c8';
         break;
       case 'saida':
         c.rect(-3 * d, -3 * d, 6 * d, 6 * d);

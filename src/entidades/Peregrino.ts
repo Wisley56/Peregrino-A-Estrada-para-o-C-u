@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Modelo, variar } from '../voxel/Modelo';
 import { Visual, misturar } from '../core/Aparencia';
 import { lamparinaModelo } from '../mundo/Cenario';
+import type { Timoneiro } from './Barco';
 
 const S = 0.085; // tamanho do voxel do personagem (m)
 
@@ -23,6 +24,20 @@ export const PROFUNDIDADE_NADO = 1.3;
 /** Nadando, a altura dos pés abaixo da superfície: boiando parado (de pé na água) e nadando (deitado). */
 const AFUNDA_PARADO = 1.3;
 const AFUNDA_NADANDO = 0.95;
+
+/** Queda (m) que não fere: um pulo de um barranco de uns 3,5 m (o pulo sobe ~1,5 m). */
+export const QUEDA_SEGURA = 5;
+/** Acima da segura, meio coração a cada tantos metros (arredondando para cima). */
+export const QUEDA_POR_MEIO = 2.5;
+/** Daqui para cima a queda mata, com quantos corações houver. */
+export const QUEDA_FATAL = 30;
+
+/** Corações que uma queda de `altura` m tira (0 se não fere). */
+export function danoDeQueda(altura: number, coracoesMax: number) {
+  if (altura <= QUEDA_SEGURA) return 0;
+  if (altura >= QUEDA_FATAL) return coracoesMax;
+  return Math.ceil((altura - QUEDA_SEGURA) / QUEDA_POR_MEIO) * 0.5;
+}
 
 const FIXAS = {
   calca: 0x5b4a3a,
@@ -220,6 +235,8 @@ export class Peregrino {
   private tronco: THREE.Object3D;
   private cabeca: THREE.Object3D;
   readonly cajado: THREE.Object3D;
+  /** O cajado pendurado nas costas, em diagonal (no nado, quando as mãos estão nas braçadas). */
+  private cajadoCostas: THREE.Object3D;
 
   readonly pos = new THREE.Vector3();
   vy = 0;
@@ -241,6 +258,13 @@ export class Peregrino {
   private inclinaCurva = 0;
   /** Agachada ao cair de um pulo (1 = queda forte), some em ~0,3 s. */
   private impacto = 0;
+  /** O ponto mais alto desde que saiu do chão (m), para medir a queda. */
+  private picoNoAr = 0;
+  /**
+   * De que altura caiu no último pouso em terra (m, do ponto mais alto do salto ao chão): o `Jogo` lê, aplica o dano
+   * e zera. Cair na água funda não conta (a água freia), nem descer degraus andando.
+   */
+  queda = 0;
   private chapeu: THREE.Object3D | null = null;
   private molaChapeu = new Mola(160, 9);
   private molaCajado = new Mola(90, 7);
@@ -274,6 +298,12 @@ export class Peregrino {
     this.cajado = new THREE.Group();
     this.cajado.position.set(0, -6 * S, 0.5 * S);
     this.bracoD.add(this.cajado);
+    // nas costas: atravessado do ombro direito ao quadril esquerdo, por fora da capa
+    this.cajadoCostas = new THREE.Group();
+    this.cajadoCostas.position.set(0, 4.5 * S, -4.2 * S);
+    this.cajadoCostas.rotation.set(0, 0, -0.75);
+    this.cajadoCostas.visible = false;
+    this.tronco.add(this.cajadoCostas);
     this.corpo.add(this.pernaE, this.pernaD, this.tronco, this.cabeca, this.bracoE, this.bracoD);
     this.centro.position.y = 0.85;
     this.corpo.position.y = -0.85;
@@ -288,7 +318,7 @@ export class Peregrino {
     const r = construirRig(visual);
     const trocar = (junta: THREE.Object3D, ...malhas: (THREE.Mesh | null)[]) => {
       for (const filho of [...junta.children]) {
-        if (filho === this.cajado || filho === this.lamparina || filho === this.joelhoE || filho === this.joelhoD) continue;
+        if (filho === this.cajado || filho === this.cajadoCostas || filho === this.lamparina || filho === this.joelhoE || filho === this.joelhoD) continue;
         if ((filho as THREE.Mesh).isMesh) (filho as THREE.Mesh).geometry.dispose();
         junta.remove(filho);
       }
@@ -306,6 +336,7 @@ export class Peregrino {
     trocar(this.bracoE, r.braco());
     trocar(this.bracoD, r.braco());
     trocar(this.cajado, r.cajado);
+    trocar(this.cajadoCostas, new THREE.Mesh(r.cajado.geometry.clone(), r.cajado.material));
     this.raiz.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) o.castShadow = true;
     });
@@ -385,7 +416,7 @@ export class Peregrino {
 
   /**
    * Nadando: a água passa de `PROFUNDIDADE_NADO`. O peregrino boia com a onda, sem pulo nem cajado na mão (o cajado
-   * vai junto ao corpo); parado, fica de pé na água batendo as pernas; andando, nada de peito.
+   * vai pendurado nas costas); parado, fica de pé na água batendo as pernas; andando, nada de peito.
    */
   nadando = false;
   /** A superfície da água debaixo do peregrino (ou `null` em terra seca). */
@@ -397,6 +428,14 @@ export class Peregrino {
   /** 0 fora … 1 dentro da água funda (a pose de nado entra aos poucos) e o ritmo da braçada. */
   private aguaK = 0;
   private bracada = 0;
+
+  /**
+   * No barco: sentado no banco da popa, a mão do cajado na cana do leme e a outra na escota (o cajado vai nas
+   * costas). `null` fora do barco. Quem prende o boneco ao casco (que arfa e aderna) é o `Jogo`.
+   */
+  timoneiro: Timoneiro | null = null;
+  /** 0 de pé … 1 sentado ao leme (a pose entra aos poucos). */
+  private sentadoK = 0;
 
   /** O idoso anda mais devagar. */
   get fatorVelocidade() {
@@ -416,6 +455,8 @@ export class Peregrino {
     this.pos.set(x, y, z);
     this.yVisual = y;
     this.vy = 0;
+    this.picoNoAr = y;
+    this.queda = 0;
   }
 
   iniciar(acao: Acao, dir?: THREE.Vector3) {
@@ -492,6 +533,7 @@ export class Peregrino {
     // entra no nado quando o corpo chega à água funda (caindo de um pulo, só quando bate na água)
     const entrar = fundo && this.pos.y <= this.superficie! - AFUNDA_NADANDO + 0.2;
     if (fundo && (this.nadando || entrar)) {
+      this.picoNoAr = this.pos.y;
       if (!this.nadando) {
         this.nadando = true;
         this.mergulhou = this.vy < -3 || this.velocidadeHoriz > 1;
@@ -518,9 +560,12 @@ export class Peregrino {
     }
     this.vy -= 25 * dt;
     this.pos.y += this.vy * dt;
+    this.picoNoAr = this.noChao ? this.pos.y : Math.max(this.picoNoAr, this.pos.y);
     if (this.pos.y <= chao) {
       // degrau: sobe direto se estava no chão; vindo do ar, agacha conforme a força da queda
       if (!this.noChao && this.vy < -4) this.impacto = Math.max(this.impacto, Math.min(1, -this.vy / 16));
+      if (!this.noChao) this.queda = Math.max(this.queda, this.picoNoAr - chao);
+      this.picoNoAr = chao;
       this.pos.y = chao;
       this.vy = 0;
       this.noChao = true;
@@ -567,7 +612,7 @@ export class Peregrino {
 
     this.yVisual += (this.pos.y - this.yVisual) * Math.min(1, dt * 18);
     this.raiz.position.set(this.pos.x, this.yVisual, this.pos.z);
-    this.raiz.rotation.y = this.rumo;
+    this.raiz.rotation.set(0, this.rumo, 0);
 
     // pose base
     let pE = s * 0.8 * balanco, pD = -s * 0.8 * balanco;
@@ -621,7 +666,7 @@ export class Peregrino {
     }
 
     // nadando: parado, de pé na água pedalando e remando com as mãos; andando, deitado em nado de peito (os braços
-    // vão à frente juntos e abrem para os lados, as pernas encolhem e chutam). O cajado vai preso junto ao corpo.
+    // vão à frente juntos e abrem para os lados, as pernas encolhem e chutam). O cajado vai pendurado nas costas.
     this.aguaK += ((this.nadando ? 1 : 0) - this.aguaK) * Math.min(1, dt * 5);
     if (this.nadando) this.bracada += dt * (1.6 + this.velocidadeHoriz * 0.8);
     if (this.aguaK > 0.01) {
@@ -643,7 +688,37 @@ export class Peregrino {
       corpoY = mistura(corpoY, Math.sin(c * 0.7) * 0.03);
       cabecaRx = mistura(cabecaRx, entre(0, -1.0)); // deitado, ergue a cabeça para ver aonde vai
     }
-    this.cajado.visible = !this.cargaNasCostas && this.aguaK < 0.5;
+    // ao leme: sentado no banco, as coxas para a frente e as canelas para baixo; a mão direita segue a cana do leme,
+    // a esquerda segura a escota e dá um puxão de vez em quando; o corpo pende contra o adernamento e a cabeça às
+    // vezes sobe para a vela
+    let contrapeso = 0;
+    const tim = this.timoneiro;
+    this.sentadoK += ((tim ? 1 : 0) - this.sentadoK) * Math.min(1, dt * 6);
+    if (this.sentadoK > 0.01) {
+      const k = this.sentadoK;
+      const mistura = (de: number, para: number) => de + (para - de) * k;
+      const leme = tim?.leme ?? 0, puxa = (tim?.escota ?? 0) * (0.5 + 0.5 * Math.sin(this.respira * 0.9));
+      pE = mistura(pE, -1.42);
+      pD = mistura(pD, -1.38);
+      jE = mistura(jE, 1.25);
+      jD = mistura(jD, 1.32);
+      corpoY = mistura(corpoY, -0.2 + Math.sin(this.respira * 1.7) * 0.008);
+      corpoRx = mistura(corpoRx, 0.06 + puxa * 0.05);
+      corpoRy = mistura(corpoRy, -leme * 0.12);
+      bD = mistura(bD, -0.42 + Math.abs(leme) * 0.08);
+      bDz = mistura(bDz, -0.05 + leme * 0.55);
+      bE = mistura(bE, -0.6 - puxa * 0.22);
+      bEz = mistura(bEz, 0.32);
+      const olha = tim?.olharVela ?? 0;
+      cabecaRx = mistura(cabecaRx, -0.42 * olha);
+      cabecaRy = mistura(cabecaRy, olha * 0.5 * (tim?.ladoVela ?? 1) - leme * 0.15);
+      contrapeso = -(tim?.aderna ?? 0) * 0.6 * k;
+    }
+
+    // no nado e ao leme o cajado sai da mão e vai para as costas (com alguém carregado, as costas são da carga)
+    const costas = this.aguaK >= 0.5 || this.sentadoK >= 0.5;
+    this.cajado.visible = !this.cargaNasCostas && !costas;
+    this.cajadoCostas.visible = !this.cargaNasCostas && costas;
 
     // de joelhos: as coxas quase retas, as canelas deitadas para trás, o corpo curvado e as mãos postas; a cada
     // passo um joelho vai à frente e o quadril balança
@@ -755,7 +830,7 @@ export class Peregrino {
     lerp(this.cabeca, 'x', cabecaRx);
     this.cabeca.rotation.y += (cabecaRy - this.cabeca.rotation.y) * Math.min(1, dt * 5);
     this.corpo.rotation.y += (corpoRy - this.corpo.rotation.y) * suav;
-    this.centro.rotation.z = this.acao === 'esquiva' ? 0 : -this.inclinaCurva;
+    this.centro.rotation.z = this.acao === 'esquiva' ? 0 : -this.inclinaCurva + contrapeso;
     // movimento secundário: o cajado acompanha a mão com atraso, o chapéu balança no passo e na queda,
     // a lamparina pende como pêndulo (fica de pé enquanto o braço balança)
     this.cajado.rotation.x = this.molaCajado.passo(cajadoRx, dt);
