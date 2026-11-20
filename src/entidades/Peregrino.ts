@@ -239,6 +239,15 @@ export class Peregrino {
   private cajadoCostas: THREE.Object3D;
 
   readonly pos = new THREE.Vector3();
+  /**
+   * Onde desenhar o peregrino e para onde a câmera olha: `pos` interpolada entre o passo de física anterior e o
+   * atual (ver `interpolar` e `PassoFixo`). Sem interpolação, é a própria `pos`.
+   */
+  readonly posVisual = new THREE.Vector3();
+  private posAntes = new THREE.Vector3();
+  /** A posição da malha no passo anterior e no atual (com a altura suavizada), para a interpolação. */
+  private raizAntes = new THREE.Vector3();
+  private raizAgora = new THREE.Vector3();
   vy = 0;
   noChao = true;
   rumo = 0; // ângulo para onde olha (0 = +z)
@@ -453,10 +462,25 @@ export class Peregrino {
 
   teleportar(x: number, y: number, z: number) {
     this.pos.set(x, y, z);
+    // sem rastro: o passo anterior também fica no destino
+    this.posAntes.set(x, y, z);
+    this.posVisual.set(x, y, z);
+    this.raizAntes.set(x, y, z);
+    this.raizAgora.set(x, y, z);
+    this.raiz.position.set(x, y, z);
     this.yVisual = y;
     this.vy = 0;
     this.picoNoAr = y;
     this.queda = 0;
+  }
+
+  /**
+   * Desenha o peregrino a uma fração `k` (0 a 1) do caminho entre o passo de física anterior e o atual, para o
+   * movimento não tremer quando a tela roda mais quadros por segundo que a física (60 passos por segundo).
+   */
+  interpolar(k: number) {
+    this.raiz.position.lerpVectors(this.raizAntes, this.raizAgora, k);
+    this.posVisual.lerpVectors(this.posAntes, this.pos, k);
   }
 
   iniciar(acao: Acao, dir?: THREE.Vector3) {
@@ -473,6 +497,8 @@ export class Peregrino {
    * `olharPara` (opcional) mantém o rosto virado para o alvo travado.
    */
   atualizar(dt: number, fis: Fisica, desejo: THREE.Vector3, velocidade: number, pular: boolean, olharPara: THREE.Vector3 | null) {
+    this.posAntes.copy(this.pos);
+    this.raizAntes.copy(this.raizAgora);
     this.tempoAcao += dt;
     this.invulneravel = Math.max(0, this.invulneravel - dt);
 
@@ -612,6 +638,8 @@ export class Peregrino {
 
     this.yVisual += (this.pos.y - this.yVisual) * Math.min(1, dt * 18);
     this.raiz.position.set(this.pos.x, this.yVisual, this.pos.z);
+    this.raizAgora.copy(this.raiz.position);
+    this.posVisual.copy(this.pos);
     this.raiz.rotation.set(0, this.rumo, 0);
 
     // pose base
