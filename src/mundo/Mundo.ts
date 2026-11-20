@@ -54,7 +54,7 @@ function pegada(g: THREE.BufferGeometry) {
   return lista;
 }
 
-function folhas(base: number, variacao: number) {
+export function folhas(base: number, variacao: number) {
   const c = new THREE.Color(base);
   const hsl = { h: 0, s: 0, l: 0 };
   c.getHSL(hsl);

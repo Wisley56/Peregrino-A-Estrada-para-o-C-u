@@ -68,6 +68,8 @@ export interface InfoDev {
   mira: THREE.Vector3;
   peso: number;
   torpor: number;
+  /** O mundo aberto em carga: ladrilhos do chão e recheio do ermo (null fora dele). */
+  mundo: string | null;
 }
 
 export interface GanchosDev {

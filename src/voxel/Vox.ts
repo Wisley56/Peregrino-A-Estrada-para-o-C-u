@@ -62,6 +62,32 @@ export function lerVox(buf: ArrayBuffer, indice = 0): ModeloVox {
   return { tamanho, voxels, paleta };
 }
 
+/**
+ * O mesmo modelo com voxels `f` vezes maiores (para ver de longe): cada bloco de f × f × f vira um voxel, da cor
+ * mais comum nele, se tiver ao menos `minimo` voxels cheios. Use com a escala multiplicada por `f`.
+ */
+export function reduzirVox(m: ModeloVox, f: number, minimo = 2): ModeloVox {
+  const blocos = new Map<number, Map<number, number>>();
+  const chave = (x: number, y: number, z: number) => (x * 256 + y) * 256 + z;
+  for (const v of m.voxels) {
+    const k = chave(Math.floor(v.x / f), Math.floor(v.y / f), Math.floor(v.z / f));
+    let b = blocos.get(k);
+    if (!b) blocos.set(k, (b = new Map()));
+    b.set(v.i, (b.get(v.i) ?? 0) + 1);
+  }
+  const voxels: ModeloVox['voxels'] = [];
+  for (const [k, b] of blocos) {
+    let total = 0, i = 0, mais = 0;
+    for (const [ind, n] of b) {
+      total += n;
+      if (n > mais) [mais, i] = [n, ind];
+    }
+    if (total >= minimo) voxels.push({ x: Math.floor(k / 65536), y: Math.floor(k / 256) % 256, z: k % 256, i });
+  }
+  const [sx, sy, sz] = m.tamanho;
+  return { tamanho: [Math.ceil(sx / f), Math.ceil(sy / f), Math.ceil(sz / f)], voxels, paleta: m.paleta };
+}
+
 export interface OpcoesVox {
   escala: number;
   /** Deslocamento do Veloren (em voxels, coordenadas .vox). Padrão: centralizado na base. */

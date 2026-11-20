@@ -43,5 +43,6 @@ INCLUDE creta.ink
 INCLUDE navio.ink
 INCLUDE naufragio.ink
 INCLUDE malta.ink
+INCLUDE ermo.ink
 
 -> END

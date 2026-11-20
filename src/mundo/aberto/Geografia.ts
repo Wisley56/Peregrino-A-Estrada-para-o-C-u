@@ -118,6 +118,76 @@ export const PONTOS_DE_VIAGEM: readonly DefPontoDeViagem[] = [
   { id: 'creta_praia', nome: 'Bons Portos', area: 'creta', tipo: 'cais', principal: true },
   { id: 'malta_praia', nome: 'A praia do fogo, em Malta', area: 'malta', tipo: 'lugar', principal: true },
   { id: 'malta_porto', nome: 'O porto de Malta', area: 'malta', tipo: 'cais' },
+  // à beira das estradas do ermo (BEIRAS, abaixo)
+  { id: 'ermo_cruzeiro_oeste', nome: 'O cruzeiro da estrada do Deserto', area: 'ermo', tipo: 'cruzeiro' },
+  { id: 'ermo_cristovao', nome: 'A capelinha de São Cristóvão', area: 'ermo', tipo: 'capela' },
+  { id: 'ermo_cruzeiro_campos', nome: 'O cruzeiro dos campos', area: 'ermo', tipo: 'cruzeiro' },
+  { id: 'ermo_guia', nome: 'A capelinha de Nossa Senhora da Guia', area: 'ermo', tipo: 'capela' },
+  { id: 'ermo_boaviagem', nome: 'A capelinha de Nossa Senhora da Boa Viagem', area: 'ermo', tipo: 'capela' },
 ];
 
 export const pontoDeViagem = (id: string) => PONTOS_DE_VIAGEM.find((p) => p.id === id) ?? null;
+
+// ───────────── as estradas do ermo e o que fica à beira delas ─────────────
+
+/**
+ * As estradas da terra de ligação, de saída em saída das regiões (m do mundo). São só terra batida, um pouco mais
+ * lisa que o chão em volta: guiam quem anda sem prender ninguém. Cada uma sai reta da região antes de fazer curva,
+ * para cair no corte (corredor, passagem, porta) que a região abre na própria borda.
+ */
+export const ESTRADAS: readonly (readonly [number, number])[][] = [
+  // do Vale (a passagem do oeste) ao Deserto (o corredor do leste)
+  [[-80, 8], [-250, 30], [-520, -12], [-800, 28], [-1060, -10], [-1220, 0]],
+  // do Deserto (o corredor do sul) até diante da porta da Cidade Dourada, contornando a muralha pelo oeste
+  [[-1286, 80], [-1276, 380], [-1160, 760], [-1060, 1060], [-1040, 1310], [-960, 1350], [-900, 1345]],
+  // a estrada do mar: da porta da Cidade Dourada à Cidade Alta da Bahia, pelo norte da baía
+  [[-900, 1280], [-900, 1345], [-820, 1470], [-560, 1615], [-200, 1730], [220, 1760], [620, 1830], [880, 2040], [860, 2230], [760, 2300], [672, 2300]],
+];
+
+/** Um ponto de uma estrada: a posição a uma fração `t` (0 a 1) do comprimento dela, e a direção em que ela corre. */
+export function pontoNaEstrada(i: number, t: number) {
+  const e = ESTRADAS[i];
+  let total = 0;
+  for (let k = 0; k < e.length - 1; k++) total += Math.hypot(e[k + 1][0] - e[k][0], e[k + 1][1] - e[k][1]);
+  let falta = t * total;
+  for (let k = 0; k < e.length - 1; k++) {
+    const [ax, az] = e[k], [bx, bz] = e[k + 1];
+    const l = Math.hypot(bx - ax, bz - az);
+    if (falta <= l || k === e.length - 2) {
+      const u = Math.min(1, falta / l);
+      return { x: ax + (bx - ax) * u, z: az + (bz - az) * u, dx: (bx - ax) / l, dz: (bz - az) / l };
+    }
+    falta -= l;
+  }
+  return { x: e[0][0], z: e[0][1], dx: 1, dz: 0 };
+}
+
+/** A imagem de uma capelinha (devoções reais dos viajantes). */
+export type Devocao = 'cristovao' | 'guia' | 'boaviagem';
+
+/** Uma capelinha ou um cruzeiro de beira de estrada: em que estrada, a que fração dela e de que lado. */
+export interface DefBeira {
+  id: string;
+  tipo: 'capela' | 'cruzeiro';
+  estrada: number;
+  t: number;
+  /** 1: à direita de quem anda no sentido da estrada; -1: à esquerda. */
+  lado: 1 | -1;
+  devocao?: Devocao;
+}
+
+export const BEIRAS: readonly DefBeira[] = [
+  { id: 'ermo_cruzeiro_oeste', tipo: 'cruzeiro', estrada: 0, t: 0.52, lado: 1 },
+  { id: 'ermo_cristovao', tipo: 'capela', estrada: 1, t: 0.42, lado: -1, devocao: 'cristovao' },
+  { id: 'ermo_cruzeiro_campos', tipo: 'cruzeiro', estrada: 2, t: 0.18, lado: 1 },
+  { id: 'ermo_guia', tipo: 'capela', estrada: 2, t: 0.5, lado: 1, devocao: 'guia' },
+  { id: 'ermo_boaviagem', tipo: 'capela', estrada: 2, t: 0.8, lado: 1, devocao: 'boaviagem' },
+];
+
+/** Onde fica uma beira: a 4,5 m do eixo da estrada, de frente para ela. */
+export function lugarDaBeira(b: DefBeira) {
+  const p = pontoNaEstrada(b.estrada, b.t);
+  // a direita de quem anda para (dx, dz), com +z ao sul: (-dz, dx)
+  const nx = -p.dz * b.lado, nz = p.dx * b.lado;
+  return { x: p.x + nx * 4.5, z: p.z + nz * 4.5, rumo: Math.atan2(-nx, -nz) };
+}

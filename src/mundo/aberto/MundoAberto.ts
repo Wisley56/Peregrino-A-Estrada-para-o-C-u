@@ -5,6 +5,7 @@ import { Oceano } from '../Oceano';
 import type { Sombra } from '../../entidades/Sombra';
 import { Chunks } from './Chunks';
 import { NIVEL_MAR } from './Geografia';
+import { Recheio } from './Recheio';
 import type { TerrenoMundo } from './TerrenoMundo';
 
 /** Raio (m) do buraco do mar ao longe: dentro dele o mar é a grade com ondas do `Oceano`. */
@@ -24,6 +25,8 @@ export class Ermo implements Area {
   readonly grupo = new THREE.Group();
   readonly sombras: Sombra[] = [];
   readonly chunks: Chunks;
+  /** A vegetação, as capelinhas e os cruzeiros e os bichos da terra de ligação. */
+  readonly recheio: Recheio;
   readonly oceano = new Oceano(NIVEL_MAR, COR_MAR);
   /** O mar ao longe: um anel liso e opaco em volta da grade de ondas, até o horizonte. */
   private readonly marLonge: THREE.Mesh;
@@ -31,12 +34,13 @@ export class Ermo implements Area {
 
   constructor(readonly terreno: TerrenoMundo, private readonly regioes: Map<IdArea, Area>) {
     this.chunks = new Chunks(terreno);
+    this.recheio = new Recheio(terreno);
     const anel = new THREE.RingGeometry(RAIO_ONDAS, 9000, 48, 1);
     anel.rotateX(-Math.PI / 2);
     this.marLonge = new THREE.Mesh(anel, new THREE.MeshLambertMaterial({ color: COR_MAR, emissive: 0x03202a }));
     this.marLonge.position.y = NIVEL_MAR - 0.15;
     this.marLonge.frustumCulled = false;
-    this.grupo.add(this.chunks.grupo, this.marLonge, this.oceano.malha);
+    this.grupo.add(this.chunks.grupo, this.recheio.grupo, this.marLonge, this.oceano.malha);
   }
 
   /** A região que manda em (x, z), se houver. */
@@ -55,7 +59,9 @@ export class Ermo implements Area {
   }
 
   colidir(pos: THREE.Vector3, raio: number) {
-    this.regiaoEm(pos.x, pos.z)?.colidir(pos, raio);
+    const r = this.regiaoEm(pos.x, pos.z);
+    if (r) r.colidir(pos, raio);
+    else this.recheio.colidir(pos, raio);
   }
 
   nivelAgua(x: number, z: number) {
@@ -64,9 +70,10 @@ export class Ermo implements Area {
     return this.oceano.altura(x, z);
   }
 
-  /** Só o mar (as ondas e o anel do horizonte) acompanha quem está numa região; os chunks acompanham sempre. */
+  /** Os chunks, o recheio e o mar (as ondas e o anel do horizonte) acompanham o peregrino. */
   atualizar(dt: number, jogador: THREE.Vector3) {
     this.chunks.atualizar(jogador.x, jogador.z);
+    this.recheio.atualizar(dt, jogador.x, jogador.z);
     this.oceano.atualizar(dt, jogador);
     this.marLonge.position.x = this.oceano.malha.position.x;
     this.marLonge.position.z = this.oceano.malha.position.z;

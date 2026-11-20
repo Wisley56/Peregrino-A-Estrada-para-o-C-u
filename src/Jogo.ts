@@ -23,7 +23,7 @@ import { Criacao } from './ui/Criacao';
 import { Mundo } from './mundo/Mundo';
 import { Cripta } from './mundo/Cripta';
 import { Alvo, Area, IdArea } from './mundo/Area';
-import { ORIGENS, PONTOS_DE_VIAGEM, pontoDeViagem } from './mundo/aberto/Geografia';
+import { NIVEL_MAR, ORIGENS, PONTOS_DE_VIAGEM, pontoDeViagem } from './mundo/aberto/Geografia';
 import { pintarMapa } from './mundo/aberto/MapaDoTerreno';
 import { Ermo } from './mundo/aberto/MundoAberto';
 import { Carimbo, TerrenoMundo } from './mundo/aberto/TerrenoMundo';
@@ -715,6 +715,13 @@ export class Jogo {
         this.cena.add(fauna.grupo);
       }),
     );
+    // o ermo: a vegetação e os bichos da terra de ligação (que não entram no mar: o nível mínimo é o do mar)
+    const ermo = this.ermo;
+    const faunaDoErmo = new Fauna({ altura: (x, z) => ermo.altura(x, z), colidir: (q, r) => ermo.colidir(q, r), nivelMinimo: NIVEL_MAR + 0.2 });
+    faunaDoErmo.definirSitios(ermo.recheio.povoamento(), 7177);
+    await ermo.recheio.carregar();
+    this.faunas.set('ermo', faunaDoErmo);
+    this.cena.add(faunaDoErmo.grupo);
     this.criarInteracoes();
     this.aplicarAmbiente();
   }
@@ -723,6 +730,38 @@ export class Jogo {
   private interacoesDaFauna(id: IdArea): Interacao[] {
     const fauna = this.faunas.get(id);
     if (!fauna) return [];
+    // no ermo os bichos vêm e vão com o peregrino: uma interação só, com o bicho manso mais perto
+    if (id === 'ermo') {
+      const perto = () => {
+        const p = this.peregrino.pos;
+        let m: (typeof fauna.animais)[number] | null = null, dm = Infinity;
+        for (const b of fauna.animais) {
+          if (!b.ficha.carinho || !b.raiz.visible) continue;
+          const d = Math.hypot(b.pos.x - p.x, b.pos.z - p.z);
+          if (d < dm) [m, dm] = [b, d];
+        }
+        return m;
+      };
+      const longe = new THREE.Vector3(1e9, 0, 1e9);
+      return [{
+        pos: () => perto()?.pos ?? longe,
+        raio: 1.8,
+        rotulo: () => {
+          const b = perto();
+          return b ? `F: fazer carinho ${b.ficha.feminino ? 'na' : 'no'} ${b.ficha.nome}` : 'F: fazer carinho';
+        },
+        agir: () => {
+          const b = perto();
+          if (!b) return;
+          const per = this.peregrino;
+          per.rumo = Math.atan2(b.pos.x - per.pos.x, b.pos.z - per.pos.z);
+          per.carinhoAlto = anatomia(b.especie).corpo === 'quadruped_medium';
+          per.iniciar('carinho');
+          b.carinho = DURACAO_CARINHO;
+          if (b.ficha.voz) setTimeout(() => this.som.voz(b.ficha.voz!), 700);
+        },
+      }];
+    }
     return fauna.animais
       .filter((b) => b.ficha.carinho)
       .map((b) => ({
@@ -905,7 +944,8 @@ export class Jogo {
     const emMalta = this.area === this.malta;
     // as regiões ao ar livre e o ermo ficam para o fim (verRegioes), depois de a névoa dizer até onde se vê
     this.climaDeMalta = this.malta.clima;
-    for (const [id, fauna] of this.faunas) fauna.grupo.visible = id === this.area.id;
+    // os bichos do ermo andam na terra de ligação, que se vê de dentro das regiões também
+    for (const [id, fauna] of this.faunas) fauna.grupo.visible = id === this.area.id || (id === 'ermo' && this.aberto);
     this.ceu.visible = !naCripta;
     this.sol.visible = !naCripta;
     const fog = this.cena.fog as THREE.Fog;
@@ -1461,10 +1501,31 @@ export class Jogo {
     this.interacoes.navio = this.interacoesDoNavio();
     this.interacoes.naufragio = this.interacoesDoNaufragio();
     this.interacoes.malta = this.interacoesDeMalta();
+    this.interacoes.ermo = this.interacoesDoErmo();
     for (const id of Object.keys(this.interacoes) as IdArea[]) this.interacoes[id].push(...this.interacoesDaFauna(id));
   }
 
   /** Confessionário, sacrário e altar de uma capela de região. `noAltar`: o que o Espírito diz no altar. */
+  /** Para o painel de depuração (F3): o que o mundo aberto tem carregado e quanto custou montar. */
+  private medidaDoMundo() {
+    const e = this.ermoDoMundo!, c = e.chunks, r = e.recheio.medida;
+    const fe = this.faunas.get('ermo'), bichos = fe?.animais, bandos = fe?.contagemSitios;
+    const vivos = bichos ? bichos.filter((b) => b.raiz.visible).length : 0;
+    return `chão: ${c.total} ladrilhos (${c.pendentes} na fila; ${c.medida.feitos} feitos em ${c.medida.ms.toFixed(0)} ms)
+` +
+      `recheio: ${r.celulas} células montadas em ${r.ms.toFixed(0)} ms · ${r.pecas} peças em cena · bichos do ermo ${vivos} à vista, ${bichos?.length ?? 0} soltos (${bandos?.soltos ?? 0} de ${bandos?.total ?? 0} bandos)`;
+  }
+
+  /** Diante das capelinhas e dos cruzeiros de beira de estrada: contemplar (o Ink diz o que cada um é). */
+  private interacoesDoErmo(): Interacao[] {
+    return this.ermo.recheio.beiras.map((b): Interacao => ({
+      pos: () => b.pos,
+      raio: 3,
+      rotulo: b.def.tipo === 'capela' ? 'F: rezar diante da imagem' : 'F: contemplar o cruzeiro',
+      agir: () => this.dialogos.tocar(b.def.id),
+    }));
+  }
+
   private interacoesDaCapela(cap: CapelaRegional, noAltar: string): Interacao[] {
     return [
       {
@@ -1910,7 +1971,11 @@ export class Jogo {
       case 'creta_praia': return { area: this.creta, pos: this.creta.chegada.clone(), rumo: 0 };
       case 'malta_praia': return { area: this.malta, pos: this.malta.chegada.clone(), rumo: norte };
       case 'malta_porto': return { area: this.malta, pos: this.malta.cais.clone(), rumo: leste };
-      default: return null;
+      default: {
+        // as capelinhas e os cruzeiros de beira de estrada: diante deles, de frente para a imagem
+        const b = this.ermo.recheio.beiras.find((q) => q.def.id === id);
+        return b ? { area: this.ermo, pos: b.diante.clone(), rumo: b.rumoDiante } : null;
+      }
     }
   }
 
@@ -3707,6 +3772,7 @@ export class Jogo {
     this.atualizarCidade();
     this.atualizarBahia();
     this.faunas.get(this.area.id)?.atualizar(dt, per.pos, (v, d) => this.som.voz(v, 1 - d / 16));
+    if (this.aberto && this.area !== this.ermoDoMundo) this.faunas.get('ermo')?.atualizar(dt, per.pos, (v, d) => this.som.voz(v, 1 - d / 16));
     this.pomba.atualizar(dt, per.pos, per.rumo);
     this.atualizarColuna(dt);
 
@@ -4251,6 +4317,8 @@ export class Jogo {
 
   private oracaoDobrada() {
     const p = this.peregrino.pos;
+    // diante das capelinhas e dos cruzeiros das estradas
+    if (this.aberto && this.ermoDoMundo?.recheio.beiras.some((b) => Math.hypot(b.pos.x - p.x, b.pos.z - p.z) < 4)) return true;
     if (this.area === this.deserto) {
       const d = this.deserto;
       return p.distanceTo(d.cruz) < 4 || p.distanceTo(d.antao.pos) < 5 || d.capela.dentro(p);
@@ -4474,6 +4542,8 @@ export class Jogo {
         ponto('Povoado (o poço)', this.malta.povoado), ponto('Porto (o navio dos Dióscuros)', this.malta.cais, -oeste), ponto('Melite (a porta)', this.malta.portaMelite, oeste),
       ] },
       { id: 'naufragio', nome: NOMES_AREA.naufragio, pontos: [ponto('Proa do navio encalhado', this.naufragio.chegada, norte), ponto('Arena (água rasa)', this.naufragio.arenaEntrada, norte), ponto('Praia de Malta', this.naufragio.praia, sul)] },
+      // as capelinhas e os cruzeiros das estradas do ermo
+      { id: 'ermo', nome: NOMES_AREA.ermo, pontos: this.ermo.recheio.beiras.map((b) => ponto(pontoDeViagem(b.def.id)?.nome ?? b.def.id, b.diante, b.rumoDiante)) },
       { id: 'navio', nome: NOMES_AREA.navio, pontos: [ponto('Convés (junto ao mastro)', this.navio.chegada, sul), ponto('Popa (o bote)', this.navio.cabosDoBote.clone().add(v(0, 2)), norte), ponto('Proa (a sonda)', this.navio.proa.clone().add(v(0, -2)), sul)] },
     ];
     /** Desfaz uma vitória: tira a sombra das vencidas e as flags que ela deixou. */
@@ -4581,6 +4651,7 @@ export class Jogo {
           mira: this.miraPonto.clone(),
           peso: this.pesoEfetivo(),
           torpor: this.torpor,
+          mundo: this.ermoDoMundo ? this.medidaDoMundo() : null,
         };
       },
       irPara: (area, pos, rumo) => this.irPara(area, pos, rumo),

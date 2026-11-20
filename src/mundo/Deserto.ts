@@ -112,7 +112,7 @@ function distRastro(x: number, z: number) {
 // ───────────────────────────── modelos (arte por código) ─────────────────────────────
 
 /** Tamareira: tronco anelado e levemente inclinado, folhas caídas e cachos de tâmaras. */
-function palmeira(semente: number, material: THREE.Material = materialVoxel) {
+export function palmeira(semente: number, material: THREE.Material = materialVoxel) {
   const rnd = aleatorio(semente);
   const m = new Modelo();
   const alt = 20 + Math.floor(rnd() * 6);
@@ -135,7 +135,7 @@ function palmeira(semente: number, material: THREE.Material = materialVoxel) {
 }
 
 /** Marco de pedras empilhadas (o rastro dos peregrinos). */
-function marco(semente: number) {
+export function marco(semente: number) {
   const rnd = aleatorio(semente);
   const m = new Modelo();
   const pedra = (x: number, y: number, z: number) => variar(0x9a8a74, x, y, z, 0.08);
@@ -149,7 +149,7 @@ function marco(semente: number) {
 }
 
 /** Pedregulho de arenito. */
-function pedregulho(semente: number) {
+export function pedregulho(semente: number) {
   const rnd = aleatorio(semente);
   const m = new Modelo();
   const r = 3 + rnd() * 3;
@@ -163,7 +163,7 @@ function pedregulho(semente: number) {
 }
 
 /** Arbusto seco. */
-function arbusto(semente: number) {
+export function arbusto(semente: number) {
   const rnd = aleatorio(semente);
   const m = new Modelo();
   for (let g = 0; g < 7; g++) {

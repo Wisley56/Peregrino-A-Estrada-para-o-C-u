@@ -49,7 +49,7 @@ até lá.
 | Tecla | O que faz |
 |---|---|
 | F9 | Abre e fecha o painel (Esc também fecha). Aberto, o ponteiro fica solto e o jogo não pausa. |
-| F3 | Overlay de depuração: qps, draw calls e triângulos por quadro, posição, câmera, mira, chefão da área. |
+| F3 | Overlay de depuração: qps, draw calls e triângulos por quadro, posição, câmera, mira, chefão da área; no mundo aberto, os ladrilhos do chão e o recheio do ermo. |
 | F6 | Teleporta para onde a mira aponta (1 m antes do ponto). |
 | F7 | Congela e solta o tempo (a câmera continua livre). |
 | F8 | Avança um quadro com o tempo congelado. |
@@ -102,6 +102,9 @@ src/
   mundo/     Area (interface comum), Terreno, Oceano, Mundo (o Vale), Creta (com CretaModelos e NavioModelos), Cripta, Deserto, PocoMeioDia, Cidade (a Cidade Dourada),
              CidadeModelos (casas, palácio, São Damião, iscas), Capela (capela de região com interior, confessionário
              e CapelaRegional), Cenario (cruzeiro, céu, entrada da cripta, véu, lamparina)
+  mundo/aberto/ o mundo aberto: Geografia (onde fica cada região, estradas, pontos de viagem), TerrenoMundo (chão,
+             biomas e estradas de todo o mundo), Chunks/Ladrilho/Obra (o chão do ermo em ladrilhos, feito em workers),
+             MundoAberto (o Ermo e a física do mundo), Recheio (vegetação, capelinhas e bichos do ermo), ErmoModelos
   fauna/     Especies (fichas), Corpo (esqueletos do Veloren), Animal (comportamento), Fauna (povoamento por área)
   entidades/ Peregrino, Npc (base de quem conversa), Sombra, Guardiao (Mamom e a interface Chefe),
              Acedia, Antao e Francisco (fichas de NPC com modelo próprio), Romanos, Companheiros e GenteDeCreta, Pomba
@@ -622,11 +625,11 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
   da cor fica em `MapaDaBahia.depoisDaCor`, e as caixas que vêm com ele em `caixasDaCor` (desligadas antes, com
   `topo = -PAREDE`); as duas listas são acertadas em `reiniciar`.
 
-## Mundo aberto (reforma em andamento)
+## Mundo aberto
 
-O jogo está passando de áreas isoladas para um mundo único e contínuo. O plano tem oito fases; estão feitas a 0
-(bordas), a 1 (geografia e terreno global), a 2 (chunks e passagem livre), a 3 (história adormecida), a 4 (save
-da descoberta e viagem rápida), a 5 (mapa-múndi e minimapa do mundo) e a 6 (barco). **Anda-se de uma região a
+O jogo passou de áreas isoladas para um mundo único e contínuo, em oito fases: 0 (bordas), 1 (geografia e terreno
+global), 2 (chunks e passagem livre), 3 (história adormecida), 4 (save da descoberta e viagem rápida), 5 (mapa-múndi
+e minimapa do mundo), 6 (barco) e 7 (recheio do ermo e desempenho). **Anda-se de uma região a
 outra a pé, a nado ou de barco**, e não há mais troca por F entre regiões ao ar livre: uma região a que se chega
 antes da hora fica com a história adormecida. Pelo mapa (M) viaja-se aos lugares já descobertos.
 
@@ -739,8 +742,55 @@ antes da hora fica com a história adormecida. Pelo mapa (M) viaja-se aos lugare
     a esteira em V, a espuma da proa, os borrifos (correndo, ou ao encalhar) e a marola no costado do barco parado.
   - *Som* (`Som.navegar`, `panejar`, `jaibe`, `rangido`): a água correndo no casco conforme a velocidade, a vela
     batendo, o tranco do jaibe e o casco rangendo de vez em quando.
-- **Pendências conhecidas**: não há estradas nem vegetação no ermo (fase 7); a Cidade Alta usa as cores das casas
-  na parede da escarpa ao lado da Ladeira.
+- **Estradas** (`ESTRADAS` em `Geografia.ts`; `TerrenoMundo.estrada` e `distEstrada`): três estradas de terra
+  batida ligam as saídas das regiões: Vale (a passagem do oeste) → Deserto (o corredor do leste); Deserto (o
+  corredor do sul) → diante da porta da Cidade Dourada, contornando a muralha; e a estrada do mar, da porta da
+  Cidade à Cidade Alta da Bahia pelo norte da baía. O eixo é a linha das `ESTRADAS` entortada por ruído (até 9 m),
+  menos perto das pontas, que caem certinho no corte de cada região. Na estrada o chão perde os calombos miúdos e
+  ganha a cor de terra do bioma (vermelha na mata da Bahia), com a beira pontilhada sobre o mato; ela aparece no
+  minimapa e no mapa-múndi. Só pinta e alisa: não prende ninguém.
+- **Biomas** (`TerrenoMundo.bioma`): `prado` (vizinhança do Vale), `deserto`, `campos` (da Cidade Dourada),
+  `mata` (do litoral da Bahia), `praia`, `rocha` (acima de 46 m) e `mar`. O mesmo sorteio de fronteira dá a cor
+  do chão e o que nasce e vive ali.
+- **Recheio do ermo** (`src/mundo/aberto/Recheio.ts`, dono do `Ermo.recheio`):
+  - *Vegetação*, sorteada por célula de 48 m (semente = o lugar, sempre igual) numa grade de 4 m, conforme a
+    `receita` de cada bioma: no prado, árvores pequenas, álamos e pinheiros no alto, capim e flores; no deserto,
+    arbustos secos, pedregulhos, uma tamareira de vez em quando e os marcos de pedras empilhadas dos peregrinos à
+    beira da estrada; nos campos, oliveiras e ciprestes (em fila na beira da estrada, como na Úmbria); na mata,
+    árvores densas e coqueiros perto da costa; na praia, coqueiros e pedras; na rocha, pinheiros. Nada nasce dentro
+    das regiões (elas têm a sua), na estrada, na água, a menos de `CLAREIRA` m dos monumentos, nem (árvore) em chão
+    inclinado. Os modelos são os das regiões (`Deserto`, `CidadeModelos`, `BahiaModelos`) e os .vox do Veloren.
+  - *Desenho*: uma `InstancedMesh` por variante e por distância, refeitas de uma vez (`recompor`) quando as
+    células mudam: até `RAIO_PERTO` (36 m) com todos os voxels e sombra; até `RAIO_MEIO` (80 m) as árvores do
+    Veloren com voxels maiores (`reduzirVox`, 2 ou 3 vezes) e ainda com sombra; até `RAIO_LONGE` (250 m) só os
+    grandes, com voxels maiores e sem sombra. O miúdo (capim, flores, pedrinhas) só existe até 80 m. As células são
+    montadas no thread do jogo, `ORCAMENTO` ms por quadro (~2 ms cada). Com isso a mata densa custa ~1,7 milhão de
+    triângulos por quadro (eram 6,5 com tudo em resolução cheia).
+  - *Choque*: troncos, pedregulhos e marcos têm raio (`FICHAS`); `Ermo.colidir` empurra para fora deles (e das
+    capelinhas e cruzeiros) fora das regiões. Capim e flores se atravessam.
+  - *Capelinhas e cruzeiros de beira de estrada* (`BEIRAS` em `Geografia.ts`; modelos em `ErmoModelos.ts`): dois
+    cruzeiros e três capelinhas caiadas, com barrado azul, telha de barro e a imagem no nicho, cada uma de uma
+    devoção dos viajantes, na iconografia própria: São Cristóvão (túnica verde e manto vermelho, o Menino no ombro,
+    o tronco na mão e a água do rio nos pés), Nossa Senhora da Guia (manto azul, véu branco, o Menino no braço) e
+    Nossa Senhora da Boa Viagem (manto azul, coroa, o Menino e o barquinho). Ficam a 4,5 m do eixo de verdade da
+    estrada, de frente para ela. São pontos de viagem (área `ermo`, `Jogo.lugarDoPonto`: diante da imagem). F:
+    "contemplar o cruzeiro" ou "rezar diante da imagem" (nós `ermo_*` em `dialogos/ermo.ink`: na primeira vez o
+    Espírito conta o que é; depois, só a inscrição da Escritura). Junto deles a oração tem o dobro de força
+    (`oracaoDobrada`).
+  - *Bichos* (`Recheio.povoamento`): um bando a cada ~85 m de terra (grade com o lugar sorteado em cada quadra;
+    perto do mar, quase sempre bichos de praia) e mais uma passada fina pela costa, com as espécies do bioma
+    (ovelhas, cervos, coelhos, lebres, cavalos e raposas no prado; lagartixas, camelos, antílopes, hienas e a águia no
+    deserto; cabras, ovelhas, jumento, lebres e bois nos campos; esquilos, cervos, raposas, coelhos e sapos na mata;
+    cabras e águias na rocha; tartarugas, patos e gansos na praia). São ~870 bandos, então a `Fauna` os solta **sob
+    demanda** (`definirSitios`): um bando nasce quando o peregrino chega a 170 m do território e some a 260 m,
+    sempre igual (semente do bando). É uma `Fauna` própria (`faunas.get('ermo')`) sobre a física do mundo com
+    `nivelMinimo` no mar (os bichos não entram nele), vista e atualizada em todo o mundo aberto, também de dentro das
+    regiões. O carinho no ermo é uma interação só, com o bicho manso à vista mais perto.
+- **Desempenho no modo dev**: o overlay F3 mostra, no mundo aberto, os ladrilhos do chão (quantos, quantos na fila,
+  quantos feitos e em quanto tempo), as células do recheio (montadas e o tempo), as peças em cena e os bichos do
+  ermo (à vista, soltos e quantos bandos estão soltos). A aba "Ir" do painel (F9) tem "O Caminho", com as capelinhas e os cruzeiros.
+- **Pendências conhecidas**: a Cidade Alta usa as cores das casas na parede da escarpa ao lado da Ladeira. As
+  células do recheio ainda são montadas no thread do jogo (se pesar, vão para a obra, como os ladrilhos).
 - **Mapa do terreno** (`src/mundo/aberto/MapaDoTerreno.ts`): `pintarMapa` desenha o chão do mundo visto de cima
   num canvas (a mesma pintura que o mapa-múndi faz aos poucos). No modo dev: `jogo.ganchosDev().mapaDoMundo(x0, z0, x1, z1, passo)`.
 - **Bordas**: as paredes da borda de um mapa descem até `FUNDO_BORDA` (`Terreno.ts`), a superfície da água

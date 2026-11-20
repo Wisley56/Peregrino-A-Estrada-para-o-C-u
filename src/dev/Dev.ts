@@ -474,6 +474,7 @@ class PainelDev {
       `câmera guinada ${i.guinada.toFixed(2)} · arfagem ${i.arfagem.toFixed(2)} · mira ${fmt(i.mira)}`,
       `ação ${g.peregrino.acao} · chão ${g.peregrino.noChao ? 'sim' : 'não'} · travado ${i.travado ?? '—'}`,
       `chefe ${i.chefe ?? '—'}`,
+      ...(i.mundo ? [i.mundo] : []),
       `tempo ×${this.op.escalaTempo}${this.op.invencivel ? ' · invencível' : ''}${this.op.energiaInfinita ? ' · energia ∞' : ''}${this.op.velocidade !== 1 ? ` · vel ×${this.op.velocidade}` : ''}`,
     ].join('\n');
   }

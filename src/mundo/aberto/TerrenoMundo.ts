@@ -1,6 +1,6 @@
 import { Ruido } from '../../core/Ruido';
 import type { IdArea } from '../Area';
-import { NIVEL_MAR } from './Geografia';
+import { ESTRADAS, NIVEL_MAR } from './Geografia';
 
 /**
  * Uma região feita à mão, "carimbada" no mundo: dentro do retângulo vale o chão dela; numa faixa em volta, ele se
@@ -40,13 +40,30 @@ const ESPINHA: [number, number, number, number, number][] = [
   [1250, 2350, 1050, 2950, 420],
 ];
 
-/** Os biomas da terra de ligação: cada um é a vizinhança de uma região e tem as cores dela. */
-const BIOMAS: { x: number; z: number; alcance: number; cores: [number, number]; seco?: boolean }[] = [
-  { x: 0, z: 0, alcance: 1, cores: [0x6f9a4a, 0x7ba552] }, // os prados do Vale
-  { x: -1300, z: 0, alcance: 0.9, cores: [0xd9b77a, 0xcfa968], seco: true }, // as areias do Deserto
-  { x: -900, z: 1200, alcance: 0.9, cores: [0x94aa52, 0xa8a04a] }, // os campos dourados da Cidade
-  { x: 900, z: 2200, alcance: 1, cores: [0x5a9440, 0x6aa04a] }, // a mata do litoral da Bahia
+/** Os biomas da terra de ligação (cada um é a vizinhança de uma região), mais a praia, a rocha alta e o mar. */
+export type Bioma = 'prado' | 'deserto' | 'campos' | 'mata' | 'praia' | 'rocha' | 'mar';
+
+/** Os biomas de terra: cada um tem as cores da região de que é vizinho, e a cor da terra batida das estradas. */
+const BIOMAS: { nome: Bioma; x: number; z: number; alcance: number; cores: [number, number]; estrada: number; seco?: boolean }[] = [
+  { nome: 'prado', x: 0, z: 0, alcance: 1, cores: [0x6f9a4a, 0x7ba552], estrada: 0x9a8058 }, // os prados do Vale
+  { nome: 'deserto', x: -1300, z: 0, alcance: 0.9, cores: [0xd9b77a, 0xcfa968], estrada: 0xbf9a62, seco: true }, // as areias do Deserto
+  { nome: 'campos', x: -900, z: 1200, alcance: 0.9, cores: [0x94aa52, 0xa8a04a], estrada: 0xa88a5e }, // os campos dourados da Cidade
+  { nome: 'mata', x: 900, z: 2200, alcance: 1, cores: [0x5a9440, 0x6aa04a], estrada: 0x9a6a48 }, // a mata do litoral da Bahia (terra vermelha)
 ];
+
+/** Meia largura (m) da terra batida das estradas, e a largura da beira em que ela se desfaz no mato. */
+const ESTRADA_MEIA = 1.7, ESTRADA_BEIRA = 1.2;
+
+/** Os trechos das estradas, com a caixa de cada um (alargada) para descartar depressa os que estão longe. */
+const TRECHOS = ESTRADAS.flatMap((e) =>
+  e.slice(0, -1).map(([ax, az], k) => {
+    const [bx, bz] = e[k + 1], m = 24;
+    return { ax, az, bx, bz, x0: Math.min(ax, bx) - m, x1: Math.max(ax, bx) + m, z0: Math.min(az, bz) - m, z1: Math.max(az, bz) + m };
+  }),
+);
+/** As pontas das estradas (as saídas das regiões): ali a estrada não serpenteia, para cair certinho no corte. */
+const PONTAS = ESTRADAS.flatMap((e) => [e[0], e[e.length - 1]]);
+const CAIXA_ESTRADAS = TRECHOS.reduce((c, t) => [Math.min(c[0], t.x0), Math.min(c[1], t.z0), Math.max(c[2], t.x1), Math.max(c[3], t.z1)], [Infinity, Infinity, -Infinity, -Infinity]);
 /**
  * Inclinação (m de altura por m de distância) com que a borda de uma região desce ou sobe até o terreno do mundo.
  * Uma serra de borda vira encosta, e um corte (estrada, desfiladeiro) vira uma rampa que se abre na planície, em vez
@@ -120,6 +137,49 @@ export class TerrenoMundo {
     return [melhor, peso];
   }
 
+  /**
+   * Quanto (0 a 1) (x, z) é estrada: 1 na terra batida, caindo a 0 na beira. O eixo é a linha das `ESTRADAS`
+   * entortada por ruído, para as estradas serpentearem em vez de correr em linha reta de ponto a ponto.
+   */
+  estrada(x: number, z: number) {
+    return 1 - suave(ESTRADA_MEIA, ESTRADA_MEIA + ESTRADA_BEIRA, this.distEstrada(x, z));
+  }
+
+  /** A distância (m) de (x, z) ao eixo da estrada mais próxima (`Infinity` a mais de ~24 m de todas). */
+  distEstrada(x: number, z: number) {
+    if (x < CAIXA_ESTRADAS[0] || x > CAIXA_ESTRADAS[2] || z < CAIXA_ESTRADAS[1] || z > CAIXA_ESTRADAS[3]) return Infinity;
+    let ponta = Infinity;
+    for (const [px, pz] of PONTAS) ponta = Math.min(ponta, Math.hypot(x - px, z - pz));
+    const amp = 9 * suave(12, 90, ponta);
+    const qx = x + this.ruido.simplex(x / 110 + 11, z / 110) * amp, qz = z + this.ruido.simplex(x / 110, z / 110 + 23) * amp;
+    let d = Infinity;
+    for (const t of TRECHOS) if (qx >= t.x0 && qx <= t.x1 && qz >= t.z0 && qz <= t.z1) d = Math.min(d, distSegmento(qx, qz, t.ax, t.az, t.bx, t.bz));
+    return d;
+  }
+
+  /** O bioma de terra mais próximo de (x, z), com a fronteira recortada por ruído. */
+  private biomaDeTerra(x: number, z: number) {
+    const jx = this.ruidoCor.simplex(x / 150, z / 150) * 140, jz = this.ruidoCor.simplex(x / 150 + 30, z / 150) * 140;
+    let b = BIOMAS[0], melhor = Infinity;
+    for (const k of BIOMAS) {
+      const dist = Math.hypot(x + jx - k.x, z + jz - k.z) / k.alcance;
+      if (dist < melhor) {
+        melhor = dist;
+        b = k;
+      }
+    }
+    return b;
+  }
+
+  /** O bioma do chão natural em (x, z) (o que cresce e o que vive ali). */
+  bioma(x: number, z: number, h = this.alturaNatural(x, z)): Bioma {
+    const d = this.costa(x, z);
+    if (d <= 0 || h < NIVEL_MAR) return 'mar';
+    if (d < 12 || h < NIVEL_MAR + 1.5) return 'praia';
+    if (h > 46) return 'rocha';
+    return this.biomaDeTerra(x, z).nome;
+  }
+
   /** Quanto (m) se está terra adentro: positivo em terra, negativo no mar. */
   costa(x: number, z: number) {
     let d = -Infinity;
@@ -136,7 +196,9 @@ export class TerrenoMundo {
     const colinas = suave(20, 220, d) * (r.fbmSimplex(x / 280 + 3, z / 280, 4) * 0.5 + 0.5) * 16;
     // a serra do norte, atrás do Vale e do Deserto
     const serra = suave(-280, -560, z) * suave(60, 260, d) * r.cristas(x / 440, z / 440 + 5, 4) * 64;
-    return praia + colinas + serra + r.fbmSimplex(x / 26 + 7, z / 26, 2) * 0.9;
+    // na estrada o chão é batido: sem os calombos miúdos
+    const miudo = r.fbmSimplex(x / 26 + 7, z / 26, 2) * 0.9 * (1 - this.estrada(x, z));
+    return praia + colinas + serra + miudo;
   }
 
   /** A cor do chão natural (a terra de ligação e o fundo do mar). */
@@ -146,15 +208,10 @@ export class TerrenoMundo {
     if (d < 12 || h < NIVEL_MAR + 1.5) return misturar(AREIA, 0xcdbb86, n);
     if (h > 46) return misturar(ROCHA, ROCHA_ALTA, n);
     // o bioma é o da região mais próxima, com a fronteira recortada por ruído
-    const jx = this.ruidoCor.simplex(x / 150, z / 150) * 140, jz = this.ruidoCor.simplex(x / 150 + 30, z / 150) * 140;
-    let b = BIOMAS[0], melhor = Infinity;
-    for (const k of BIOMAS) {
-      const dist = Math.hypot(x + jx - k.x, z + jz - k.z) / k.alcance;
-      if (dist < melhor) {
-        melhor = dist;
-        b = k;
-      }
-    }
+    const b = this.biomaDeTerra(x, z);
+    // a estrada: terra batida, com a beira pontilhada sobre o mato
+    const e = this.estrada(x, z);
+    if (e > 0 && this.ruidoCor.valor(x * 1.3, z * 1.3) < e) return misturar(b.estrada, 0x7a6448, n * 0.5);
     const cor = misturar(b.cores[0], b.cores[1], n);
     return h > 30 && !b.seco ? misturar(cor, ROCHA, suave(30, 46, h)) : cor;
   }
@@ -191,6 +248,9 @@ export class TerrenoMundo {
     if (!c || w <= 0) return natural;
     const bx = Math.min(c.x1 - 0.5, Math.max(c.x0 + 0.5, x)), bz = Math.min(c.z1 - 0.5, Math.max(c.z0 + 0.5, z));
     const peso = this.borda(c, w, x, z, hn)[1];
+    // a estrada chega até a borda da região por cima da encosta dela
+    const e = this.estrada(x, z);
+    if (e > 0 && this.ruidoCor.valor(x * 1.3, z * 1.3) < e) return misturar(this.biomaDeTerra(x, z).estrada, 0x7a6448, this.ruidoCor.fbm(x * 0.07, z * 0.07, 3) * 0.5);
     // pontilhado em vez de cores intermediárias: voxels não têm meia cor
     return this.ruidoCor.valor(x * 0.9, z * 0.9) < peso ? c.cor(bx, bz) : natural;
   }
