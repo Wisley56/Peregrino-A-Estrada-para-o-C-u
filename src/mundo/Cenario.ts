@@ -81,19 +81,43 @@ export function construirEntradaCripta() {
   return m.malha(0.25, [7, 1, 6]);
 }
 
-/** Véu de trevas: muralha de névoa negra que só a Lamparina dissolve. */
-export function construirVeu(largura: number, altura: number) {
+/** O espaço que o véu de trevas ocupa, em volta do ponto dele (m): a garganta do desfiladeiro e as bordas dela. */
+export const VOLUME_VEU = { leste: 0.6, oeste: 5.4, meio: 10, teto: 15 };
+/** O brilho violeta do véu parado (pulsa em volta dele). */
+export const EMISSIVO_VEU = 0x1a0d33;
+
+/**
+ * Véu de trevas: um banco de névoa negra que só a Lamparina dissolve. Não é uma cortina (por cima e pelos lados
+ * de uma cortina se passa escalando a encosta): enche a garganta do desfiladeiro e transborda pelas bordas, assentado
+ * no chão (`chao`, em m acima do pé do véu) e subindo bem acima delas, com o alto e as pontas esgarçados.
+ * O ponto do véu é a face leste, a que o peregrino vê chegando do Vale.
+ *
+ * O material é opaco: transparente, o fundo vaza pela névoa (o céu aparece através dela). Só fica transparente ao se
+ * desfazer (`desfazendoVeu`, em `Mundo`).
+ */
+export function construirVeu(chao: (dx: number, dz: number) => number) {
   const m = new Modelo();
   const tons = [0x150f20, 0x21173a, 0x0d0a14, 0x2b1d4a];
-  for (let z = 0; z < largura * 2; z++)
-    for (let y = 0; y < altura * 2; y++)
-      for (let x = 0; x < 2; x++) {
-        const n = Math.sin(z * 1.3 + y * 0.7) + Math.cos(y * 1.1 - z * 0.4 + x);
-        if (y > altura * 2 - 3 && n < 0.2) continue; // topo esgarçado
-        m.ponto(x, y, z, tons[Math.abs(Math.round(n * 2)) % tons.length]);
+  const V = VOLUME_VEU, s = 0.5;
+  for (let ix = Math.round(-V.oeste / s); ix < Math.round(V.leste / s); ix++)
+    for (let iz = Math.round(-V.meio / s); iz < Math.round(V.meio / s); iz++) {
+      const dx = (ix + 0.5) * s, dz = (iz + 0.5) * s;
+      const g = chao(dx, dz);
+      // nas pontas e no fundo, a névoa rareia e baixa
+      const borda = Math.min(1, (V.meio - Math.abs(dz)) / 2.5, (dx + V.oeste) / 2);
+      const n = Math.sin(iz * 0.9 + ix * 1.7) + Math.cos(iz * 0.37 - ix * 0.8);
+      const teto = Math.max(g + 3, V.teto * (0.6 + 0.4 * borda)) + n * 0.6;
+      for (let iy = Math.floor((g - 0.5) / s); iy * s < teto; iy++) {
+        const k = Math.sin(iz * 1.3 + iy * 0.7) + Math.cos(iy * 1.1 - iz * 0.4 + ix);
+        if (iy * s > teto - 1.5 && k < 0.2) continue; // topo esgarçado
+        if (borda < 1 && (k + 2) / 4 > borda + 0.25) continue; // pontas ralas
+        m.ponto(ix, iy, iz, tons[Math.abs(Math.round(k * 2)) % tons.length]);
       }
-  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.88, emissive: 0x1a0d33, depthWrite: false });
-  return m.malha(0.5, [1, 0, largura], mat);
+    }
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: EMISSIVO_VEU });
+  const malha = m.malha(s, [0, 0, 0], mat);
+  malha.castShadow = false;
+  return malha;
 }
 
 /** Placa de madeira. */

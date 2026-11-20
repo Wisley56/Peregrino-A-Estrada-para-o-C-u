@@ -25,6 +25,20 @@ export const PROFUNDIDADE_NADO = 1.3;
 const AFUNDA_PARADO = 1.3;
 const AFUNDA_NADANDO = 0.95;
 
+/** Queda (m) que não fere: um pulo de um barranco de uns 3,5 m (o pulo sobe ~1,5 m). */
+export const QUEDA_SEGURA = 5;
+/** Acima da segura, meio coração a cada tantos metros (arredondando para cima). */
+export const QUEDA_POR_MEIO = 2.5;
+/** Daqui para cima a queda mata, com quantos corações houver. */
+export const QUEDA_FATAL = 30;
+
+/** Corações que uma queda de `altura` m tira (0 se não fere). */
+export function danoDeQueda(altura: number, coracoesMax: number) {
+  if (altura <= QUEDA_SEGURA) return 0;
+  if (altura >= QUEDA_FATAL) return coracoesMax;
+  return Math.ceil((altura - QUEDA_SEGURA) / QUEDA_POR_MEIO) * 0.5;
+}
+
 const FIXAS = {
   calca: 0x5b4a3a,
   meia: 0x6b5444,
@@ -244,6 +258,13 @@ export class Peregrino {
   private inclinaCurva = 0;
   /** Agachada ao cair de um pulo (1 = queda forte), some em ~0,3 s. */
   private impacto = 0;
+  /** O ponto mais alto desde que saiu do chão (m), para medir a queda. */
+  private picoNoAr = 0;
+  /**
+   * De que altura caiu no último pouso em terra (m, do ponto mais alto do salto ao chão): o `Jogo` lê, aplica o dano
+   * e zera. Cair na água funda não conta (a água freia), nem descer degraus andando.
+   */
+  queda = 0;
   private chapeu: THREE.Object3D | null = null;
   private molaChapeu = new Mola(160, 9);
   private molaCajado = new Mola(90, 7);
@@ -434,6 +455,8 @@ export class Peregrino {
     this.pos.set(x, y, z);
     this.yVisual = y;
     this.vy = 0;
+    this.picoNoAr = y;
+    this.queda = 0;
   }
 
   iniciar(acao: Acao, dir?: THREE.Vector3) {
@@ -510,6 +533,7 @@ export class Peregrino {
     // entra no nado quando o corpo chega à água funda (caindo de um pulo, só quando bate na água)
     const entrar = fundo && this.pos.y <= this.superficie! - AFUNDA_NADANDO + 0.2;
     if (fundo && (this.nadando || entrar)) {
+      this.picoNoAr = this.pos.y;
       if (!this.nadando) {
         this.nadando = true;
         this.mergulhou = this.vy < -3 || this.velocidadeHoriz > 1;
@@ -536,9 +560,12 @@ export class Peregrino {
     }
     this.vy -= 25 * dt;
     this.pos.y += this.vy * dt;
+    this.picoNoAr = this.noChao ? this.pos.y : Math.max(this.picoNoAr, this.pos.y);
     if (this.pos.y <= chao) {
       // degrau: sobe direto se estava no chão; vindo do ar, agacha conforme a força da queda
       if (!this.noChao && this.vy < -4) this.impacto = Math.max(this.impacto, Math.min(1, -this.vy / 16));
+      if (!this.noChao) this.queda = Math.max(this.queda, this.picoNoAr - chao);
+      this.picoNoAr = chao;
       this.pos.y = chao;
       this.vy = 0;
       this.noChao = true;

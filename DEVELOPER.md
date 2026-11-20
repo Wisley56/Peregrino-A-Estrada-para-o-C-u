@@ -210,6 +210,11 @@ Notas:
 
 - Começa com 5. Um golpe comum tira meio coração; a Corrente da Cobiça tira um inteiro.
 - Cada chefão vencido dá +1 coração e cura tudo.
+- **Queda:** o `Peregrino` mede a altura de cada queda (do ponto mais alto desde que saiu do chão até onde pousa) em
+  `queda`, e o `Jogo` (`cairDeAltura`) aplica `danoDeQueda`: até `QUEDA_SEGURA` (5 m, um pulo de um barranco de
+  3,5 m) não fere; acima, meio coração a cada `QUEDA_POR_MEIO` (2,5 m); de `QUEDA_FATAL` (30 m) para cima, mata.
+  Fere mesmo no tempo de graça de um golpe. Água funda freia a queda; descer degraus andando e encostas (cada
+  pouso zera a conta) e teleportes não contam. O modo invencível do painel dev também protege.
 
 **Sacramentos** (cada capela de região tem os dois)
 
@@ -264,7 +269,7 @@ os mantém (o save guarda o número do nível, não o nome).
 
 | Área | Arquivo | Destaques técnicos |
 |---|---|---|
-| O Vale | `mundo/Mundo.ts` | Terreno gerado, capela com interior, cruzeiro, fauna pastoril, jardim de Agostinho (`mundo/Jardim.ts`); a névoa a oeste exige a lamparina acesa |
+| O Vale | `mundo/Mundo.ts` | Terreno gerado, capela com interior, cruzeiro, fauna pastoril, jardim de Agostinho (`mundo/Jardim.ts`); a névoa a oeste exige a lamparina acesa: é um banco que enche a garganta do desfiladeiro e as bordas dela (`VOLUME_VEU`, em `Cenario.ts`), com a caixa de choque muito acima de onde se chega escalando e pulando |
 | Cripta dos Primeiros Peregrinos | `mundo/Cripta.ts` | Braseiros com chama de 14 s; arena de Mamom (`entidades/Guardiao.ts`) |
 | Deserto das Vozes | `mundo/Deserto.ts` | Miragens que viram sombras, vozes, rocha falsa revelada pela Ciência, capela de cúpulas |
 | Poço do Meio-Dia | `mundo/PocoMeioDia.ts` | A Acídia (`entidades/Acedia.ts`), reflexos que só a Ciência desfaz, torpor |

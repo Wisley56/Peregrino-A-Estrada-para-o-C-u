@@ -52,7 +52,7 @@ import { Barco } from './entidades/Barco';
 import { CAPELA } from './mundo/Terreno';
 import type { CapelaRegional } from './mundo/Capela';
 import { colunaDeLuz, construirCeu } from './mundo/Cenario';
-import { DURACAO_CARINHO, Peregrino } from './entidades/Peregrino';
+import { DURACAO_CARINHO, Peregrino, danoDeQueda } from './entidades/Peregrino';
 import { Pomba } from './entidades/Pomba';
 import { Sombra } from './entidades/Sombra';
 import { Preferencias } from './core/Preferencias';
@@ -3709,6 +3709,7 @@ export class Jogo {
     else {
       per.timoneiro = null;
       per.atualizar(dt, this.fisica, desejo, velocidade, pular, olharPara);
+      if (per.queda > 0) this.cairDeAltura(per.queda);
       if (this.barco.grupo.visible) this.barco.deriva(dt, this.ermo);
       this.som.navegar(0);
     }
@@ -4388,6 +4389,20 @@ export class Jogo {
   /** Ciência 5 (a verdade fere a mentira): +1 de dano com a Ciência ativa. */
   private bonusDaVerdade() {
     return this.tempoCiencia > 0 && this.estado.nivel('ciencia') >= 5 ? 1 : 0;
+  }
+
+  /**
+   * Dano de queda, pela altura caída (do alto do salto ao chão). Até `QUEDA_SEGURA` não fere (um pulo de um
+   * barranco de uns 3,5 m); daí, meio coração a cada `QUEDA_POR_MEIO` m; de `QUEDA_FATAL` para cima, cai morto.
+   * Água funda freia a queda (não chega aqui). Fere mesmo no tempo de graça de um golpe: o chão não erra.
+   */
+  private cairDeAltura(altura: number) {
+    const per = this.peregrino;
+    per.queda = 0;
+    const dano = danoDeQueda(altura, this.estado.coracoesMax);
+    if (dano <= 0 || this.morrendo || this.dev?.invencivel) return;
+    per.invulneravel = 0;
+    this.ferir(per.pos, dano, true);
   }
 
   private ferir(de: THREE.Vector3, dano = 0.5, semEmpurrao = false) {
