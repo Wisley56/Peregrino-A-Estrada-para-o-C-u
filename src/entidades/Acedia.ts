@@ -3,6 +3,7 @@ import { Modelo, variar } from '../voxel/Modelo';
 import { Fisica } from './Peregrino';
 import { ResultadoGolpe, Sombra } from './Sombra';
 import { Chefe, Impacto, InfoJogador } from './Guardiao';
+import { AJUSTES } from '../config/ajustes';
 
 /**
  * Acídia, o demônio do meio-dia (Sl 91,6: "nem o mal que devasta ao meio-dia"): chefão do Deserto das Vozes.
@@ -131,10 +132,6 @@ type Ataque =
   | { tipo: 'torpor'; t: number; nuvem: THREE.Vector3; viva: boolean }
   | { tipo: 'mormaco'; t: number; r: number; acertou: boolean }
   | { tipo: 'cansado'; t: number; duracao: number };
-
-const ESPERA_RAIO = 1.35;
-const VEL_ANEL = 7.5;
-const RAIO_MAX_ANEL = 15;
 
 export class Acedia extends FormaDoMeioDia implements Chefe {
   readonly efeitos = new THREE.Group();
@@ -319,7 +316,7 @@ export class Acedia extends FormaDoMeioDia implements Chefe {
           this.impactos.push({ dano: 0, de: this.pos.clone(), som: 'sol' });
         }
         for (const l of a.levas)
-          if (!l.caiu && a.t - l.inicio > ESPERA_RAIO) {
+          if (!l.caiu && a.t - l.inicio > AJUSTES.chefoes.acedia.esperaRaio) {
             l.caiu = true;
             this.impactos.push({ dano: 0, de: this.pos.clone(), som: 'raio' });
             if (!this.info.invulneravel)
@@ -329,7 +326,7 @@ export class Acedia extends FormaDoMeioDia implements Chefe {
                   break;
                 }
           }
-        if (a.levas.every((l) => l.caiu) && a.t - a.levas[a.levas.length - 1].inicio > ESPERA_RAIO + 0.5) this.cansar(0.9);
+        if (a.levas.every((l) => l.caiu) && a.t - a.levas[a.levas.length - 1].inicio > AJUSTES.chefoes.acedia.esperaRaio + 0.5) this.cansar(0.9);
         break;
 
       case 'torpor': {
@@ -358,7 +355,7 @@ export class Acedia extends FormaDoMeioDia implements Chefe {
         this.estado = 'preparar';
         this.alerta = 'Onda de mormaço: pule (Espaço)!';
         if (a.t > 0.6) {
-          a.r += dt * (this.fase2 ? VEL_ANEL * 1.2 : VEL_ANEL);
+          a.r += dt * (this.fase2 ? AJUSTES.chefoes.acedia.velAnel * 1.2 : AJUSTES.chefoes.acedia.velAnel);
           if (!a.acertou && !this.info.invulneravel && this.info.noChao) {
             const d = Math.hypot(this.info.pos.x - this.pos.x, this.info.pos.z - this.pos.z);
             if (Math.abs(d - a.r) < 0.6) {
@@ -366,7 +363,7 @@ export class Acedia extends FormaDoMeioDia implements Chefe {
               this.impactos.push({ dano: 0.5, de: this.pos.clone() });
             }
           }
-          if (a.r > RAIO_MAX_ANEL) this.cansar(0.8);
+          if (a.r > AJUSTES.chefoes.acedia.raioMaxAnel) this.cansar(0.8);
         } else if (a.t < 0.05) this.impactos.push({ dano: 0, de: this.pos.clone(), som: 'onda' });
         break;
 
@@ -398,10 +395,10 @@ export class Acedia extends FormaDoMeioDia implements Chefe {
           const chao = this.fis ? this.fis.altura(p.x, p.z) : p.y;
           marca.visible = true;
           marca.position.set(p.x, chao + 0.04, p.z);
-          const c = Math.min(1, t / ESPERA_RAIO);
-          (marca.material as THREE.MeshBasicMaterial).opacity = l.caiu ? Math.max(0, 0.7 - (t - ESPERA_RAIO) * 1.4) : 0.12 + c * 0.38 + Math.sin(t * 20) * 0.08 * c;
+          const c = Math.min(1, t / AJUSTES.chefoes.acedia.esperaRaio);
+          (marca.material as THREE.MeshBasicMaterial).opacity = l.caiu ? Math.max(0, 0.7 - (t - AJUSTES.chefoes.acedia.esperaRaio) * 1.4) : 0.12 + c * 0.38 + Math.sin(t * 20) * 0.08 * c;
           marca.scale.setScalar(0.5 + c * 0.5);
-          const q = t - ESPERA_RAIO;
+          const q = t - AJUSTES.chefoes.acedia.esperaRaio;
           raio.visible = q > -0.08 && q < 0.5;
           raio.position.set(p.x, chao, p.z);
           (raio.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.85 - Math.max(0, q) * 1.7);
@@ -425,7 +422,7 @@ export class Acedia extends FormaDoMeioDia implements Chefe {
     if (an) {
       this.anel.position.set(this.pos.x, (this.fis ? this.fis.altura(this.pos.x, this.pos.z) : this.pos.y) + 0.05, this.pos.z);
       this.anel.scale.setScalar(Math.max(0.1, an.r));
-      (this.anel.material as THREE.MeshBasicMaterial).opacity = 0.9 * Math.max(0, 1 - an.r / RAIO_MAX_ANEL);
+      (this.anel.material as THREE.MeshBasicMaterial).opacity = 0.9 * Math.max(0, 1 - an.r / AJUSTES.chefoes.acedia.raioMaxAnel);
     }
   }
 

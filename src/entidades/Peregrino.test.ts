@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { QUEDA_FATAL, QUEDA_POR_MEIO, QUEDA_SEGURA, danoDeQueda } from './Peregrino';
+import { danoDeQueda } from './Peregrino';
+import { AJUSTES } from '../config/ajustes';
+
+const { segura: QUEDA_SEGURA, porMeio: QUEDA_POR_MEIO, fatal: QUEDA_FATAL } = AJUSTES.queda;
 
 describe('danoDeQueda', () => {
   it('não fere até a queda segura', () => {

@@ -4,6 +4,7 @@ import { Fisica } from './Peregrino';
 import { ResultadoGolpe, Sombra } from './Sombra';
 import { Chefe, Impacto, InfoJogador } from './Guardiao';
 import type { LimitesArena } from './CoracaoDePedra';
+import { AJUSTES } from '../config/ajustes';
 
 /**
  * A Ira: o chefão do Mar da Tempestade, no naufrágio (At 27,41-44). Um vício capital (São Gregório Magno,
@@ -24,10 +25,6 @@ import type { LimitesArena } from './CoracaoDePedra';
  */
 
 const S = 0.1;
-const TEMPO_CANSADA = 5;
-const RAIO_PUNHO = 2.1;
-const VEL_ANEL = 7.5;
-const ANEL_MAX = 17;
 /** Abaixo disso a brasa não impede a mansidão. */
 export const BRASA_MANSA = 70;
 
@@ -182,9 +179,9 @@ export class Ira extends Sombra implements Chefe {
   private tFim = -1;
 
   constructor(id: string, casa: THREE.Vector3, private readonly lim: LimitesArena) {
-    super(id, casa, { escala: 2.6, vida: 60, adormecida: true, visao: 90 });
+    super(id, casa, { escala: AJUSTES.chefoes.ira.escala, vida: AJUSTES.chefoes.ira.vida, adormecida: true, visao: 90 });
     this.corpo.geometry = geo('tronco', tronco);
-    this.duracaoAtordoada = TEMPO_CANSADA;
+    this.duracaoAtordoada = AJUSTES.chefoes.ira.tempoCansada;
     this.cabecaM = new THREE.Mesh(geo('cabeca', cabeca), this.material);
     this.cabecaM.position.set(0, 20.5 * S, 0.8 * S);
     const be = new THREE.Mesh(geo('bracoE', () => braco(-1)), this.material);
@@ -212,8 +209,8 @@ export class Ira extends Sombra implements Chefe {
     const matMarca = new THREE.MeshBasicMaterial({ color: 0xffc8a0, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
     const matPunho = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x16303a });
     for (let i = 0; i < 5; i++) {
-      const marca = new THREE.Mesh(new THREE.RingGeometry(RAIO_PUNHO * 0.72, RAIO_PUNHO, 32).rotateX(-Math.PI / 2), matMarca.clone());
-      const miolo = new THREE.Mesh(new THREE.CircleGeometry(RAIO_PUNHO * 0.72, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff9a60, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending }));
+      const marca = new THREE.Mesh(new THREE.RingGeometry(AJUSTES.chefoes.ira.raioPunho * 0.72, AJUSTES.chefoes.ira.raioPunho, 32).rotateX(-Math.PI / 2), matMarca.clone());
+      const miolo = new THREE.Mesh(new THREE.CircleGeometry(AJUSTES.chefoes.ira.raioPunho * 0.72, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff9a60, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending }));
       marca.add(miolo);
       marca.visible = false;
       this.marcas.push(marca);
@@ -478,7 +475,7 @@ export class Ira extends Sombra implements Chefe {
     this.respingar(p, 18);
     this.impactos.push({ dano: 0, de: p.clone(), som: 'onda' });
     const d = Math.hypot(this.info.pos.x - p.x, this.info.pos.z - p.z);
-    if (d < RAIO_PUNHO && !this.info.invulneravel && !this.info.esquivando) {
+    if (d < AJUSTES.chefoes.ira.raioPunho && !this.info.invulneravel && !this.info.esquivando) {
       const fora = new THREE.Vector3(this.info.pos.x - p.x, 0, this.info.pos.z - p.z);
       if (fora.lengthSq() < 0.01) fora.set(1, 0, 0);
       this.impactos.push({ dano, de: p.clone(), empurrao: fora.normalize().multiplyScalar(6), brasa: 12 });
@@ -546,7 +543,7 @@ export class Ira extends Sombra implements Chefe {
           const fora = new THREE.Vector3(this.info.pos.x - this.pos.x, 0, this.info.pos.z - this.pos.z).normalize();
           this.impactos.push({ dano: 0.5, de: this.pos.clone(), empurrao: fora.multiplyScalar(8), brasa: 8 });
         }
-        if (r > ANEL_MAX) this.pausar(0.7);
+        if (r > AJUSTES.chefoes.ira.anelMax) this.pausar(0.7);
         break;
       }
       case 'provocar': {
@@ -569,7 +566,7 @@ export class Ira extends Sombra implements Chefe {
           this.impactos.push({ dano: 0, de: this.pos.clone(), som: 'raio' });
           for (const p of a.alvos) {
             this.respingar(p, 6);
-            if (Math.hypot(this.info.pos.x - p.x, this.info.pos.z - p.z) < RAIO_PUNHO * 0.75 && !this.info.invulneravel) {
+            if (Math.hypot(this.info.pos.x - p.x, this.info.pos.z - p.z) < AJUSTES.chefoes.ira.raioPunho * 0.75 && !this.info.invulneravel) {
               this.impactos.push({ dano: 0.5, de: p.clone(), brasa: 8 });
               break;
             }
@@ -587,7 +584,7 @@ export class Ira extends Sombra implements Chefe {
   }
 
   private raioAnel(t: number) {
-    return t < 0.9 ? 0 : 1.5 + (t - 0.9) * VEL_ANEL;
+    return t < 0.9 ? 0 : 1.5 + (t - 0.9) * AJUSTES.chefoes.ira.velAnel;
   }
 
   private respingar(p: THREE.Vector3, n: number) {

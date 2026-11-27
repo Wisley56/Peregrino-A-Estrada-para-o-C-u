@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Plugin } from 'vite';
 import { Compiler, CompilerOptions } from 'inkjs/full';
+import { foraDosRegistros } from '../src/historia/ConferirInk';
 
 /**
  * Compila roteiros Ink (.ink) no build, como os estúdios fazem com o inklecate:
@@ -12,6 +13,8 @@ import { Compiler, CompilerOptions } from 'inkjs/full';
  *   servidor de desenvolvimento, então editar uma fala recarrega o jogo.
  * - Erro de roteiro (nó inexistente, desvio quebrado, função não declarada) derruba o build
  *   com arquivo e linha; avisos aparecem no terminal.
+ * - Uma flag ou um evento fora dos registros (`src/historia/Flags.ts`, `EventosInk.ts`) também derruba o
+ *   build, com arquivo e linha.
  */
 export function ink(): Plugin {
   return {
@@ -28,7 +31,10 @@ export function ink(): Plugin {
         ResolveInkFilename: (nome: string) => path.resolve(pasta, nome),
         LoadInkFileContents: (caminho: string) => {
           incluidos.push(caminho);
-          return fs.readFileSync(caminho, 'utf8');
+          const texto = fs.readFileSync(caminho, 'utf8');
+          for (const { tipo, nome, linha } of foraDosRegistros(texto))
+            erros.push(`${path.basename(caminho)}:${linha}: ${tipo} "${nome}" não está no registro (src/historia/${tipo === 'flag' ? 'Flags' : 'EventosInk'}.ts)`);
+          return texto;
         },
       };
       const opcoes = new CompilerOptions(

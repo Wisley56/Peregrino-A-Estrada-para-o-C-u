@@ -50,7 +50,8 @@ O protótipo 2D anterior (Phaser) continua em `../jogo`, como referência de sis
   passo fixo, agenda). Rodam em Node, com um `localStorage` em memória (`tools/testes/armazenamento.ts`), então
   nunca tocam nos saves reais.
 - **Fumaça (Playwright, `testes/fumaca/`):** sobe o Vite na porta 5190 (o `?teste=` só existe no modo dev),
-  abre cada área e falha se o tempo do jogo parar, se o WebGL cair ou se houver erro no console. Localmente usa o
+  abre cada área, aplica uma a uma as etapas de progresso do modo dev (do começo a Malta), confere que todo ponto
+  de viagem tem lugar de chegada, e falha se o tempo do jogo parar, se o WebGL cair ou se houver erro no console. Localmente usa o
   Edge instalado; na CI, o Chromium. Não é teste de jogabilidade: serve para pegar quebras grosseiras.
 - **CI (`.github/workflows/ci.yml`):** a cada push e PR roda typecheck, lint, testes, build e a fumaça.
 
@@ -86,9 +87,13 @@ Abas do painel:
   luta, ir para a fase 2 e vencer. Vencer passa pelo mesmo caminho de uma vitória de verdade (`Sombra.derrotar()`
   e `Jogo.sombraVencida`): graças, coração e diálogo. Também vence as sombras comuns da área.
 - **Peregrino**: invencível, energia infinita, velocidade, curar, +10 graças e o nível de cada dom.
-- **Progresso**: etapas da história (`src/dev/Progresso.ts`, cumulativas: do começo à Gula vencida), cor do
-  Vale, flags (lidas do próprio código e dos `.ink`, com filtro) e sombras vencidas (clique para reviver).
+- **Progresso**: etapas da história (`src/dev/Progresso.ts`, cumulativas: do começo até a partida de Malta), cor do
+  Vale, flags (as do registro `src/historia/Flags.ts` e as ligadas no save, com filtro) e sombras vencidas (clique
+  para reviver).
 - **Tempo**: câmera lenta (×0,1 a ×4), tempo parado e avanço de 1, 10 ou 60 quadros.
+- **Ajustes**: os números de `src/config/ajustes.ts` (pulo, gravidade, dano, oração, câmera, fauna, chefões), editáveis
+  com o jogo rodando; os mudados ficam em destaque. "Copiar os mudados" põe na área de transferência a lista
+  `caminho: antes → depois` para levar ao arquivo. Nada disso é salvo.
 
 As opções de trapaça, a aba aberta e o overlay ficam lembrados em `localStorage` (`peregrino.dev`).
 
@@ -115,6 +120,33 @@ As opções de trapaça, a aba aberta e o overlay ficam lembrados em `localStora
   vida, fase, ataques ativos e a dica mostrada na barra do chefão.
 - Os ataques devolvem um **`Impacto`** com `dano` medido em corações (`0.5` = meio coração).
 
+### Dados da história e da jogabilidade
+
+O que é conteúdo ou número fica em dados tipados, não espalhado pelo código:
+
+- **Flags (`src/historia/Flags.ts`)**: o registro de todas as flags da história. As fixas ficam listadas por região;
+  as famílias são prefixos com um id depois (`dom_ciencia`, `navio_cabo_2`). O tipo `Flag` só aceita o que está no
+  registro: `Jogo.marcar`, `primeiraVez` e `estado.flags` não compilam com um erro de digitação. **Nunca renomeie
+  uma flag**: ela está gravada nos saves.
+- **Eventos do Ink (`src/historia/EventosInk.ts`)**: o mesmo para os `~ evento("nome")` dos roteiros.
+- **O build confere o Ink**: o plugin `tools/vite-plugin-ink.ts` passa cada `.ink` por `foraDosRegistros`
+  (`src/historia/ConferirInk.ts`); uma flag ou um evento fora dos registros derruba o build com arquivo e linha. Os
+  testes fazem a mesma conferência.
+- **Regiões (`src/historia/Regioes.ts`)**: a ficha de cada área: nome, rótulo da barra de cor, ambiente (luz,
+  névoa e céu, das predefinições `AMBIENTES`), tempestade, som de fundo, quando a história acorda (`acorda`, um
+  `Requisito` de flags, chefões vencidos ou o véu), a flag de entrada, a fala de chegada a pé e a flag que pinta a
+  região no mapa-múndi. Região nova = ficha nova aqui.
+- **Ajustes (`src/config/ajustes.ts`)**: os números de jogabilidade. O código lê `AJUSTES` na hora de usar, por
+  isso o painel do modo dev muda o jogo ao vivo. A vida e a escala dos chefões valem quando eles são criados.
+- **Pontos de viagem (`PONTOS_DE_VIAGEM`, `Geografia.ts`)**: cada um diz onde se chega (`lugar`: um marco da área,
+  um desvio e o rumo). Os da beira das estradas do ermo vêm da própria beira.
+- **Interações**: cada uma traz o `tipo` da marca no minimapa (`MARCA.lugar`, `pessoa`, `saida`, `descanso` ou
+  `nenhum`).
+- **Eventos do jogo (`src/core/Eventos.ts`)**: um barramento tipado (`jogo.eventos`) com `flagMarcada`,
+  `sombraVencida`, `entrouNaArea`, `eventoInk`, `morreu` e `voltouAoTitulo`. É por ele que os sistemas da divisão
+  do `Jogo.ts` vão se falar. Por enquanto só `Jogo.marcar` emite `flagMarcada`: as flags gravadas direto em
+  `estado.flags` ainda não passam por ele.
+
 ## Estrutura de pastas
 
 ```
@@ -133,7 +165,9 @@ src/
   entidades/ Peregrino, Npc (base de quem conversa), Sombra, Guardiao (Mamom e a interface Chefe),
              Acedia, Antao e Francisco (fichas de NPC com modelo próprio), Romanos, Companheiros e GenteDeCreta, Pomba
   core/      Aparencia (identidade e paletas), Camera, Entrada (teclado, mouse e controle), Controle (gamepad),
-             Estado (save), Dons, Preferencias, Ruido, Som
+             Estado (save), Dons, Preferencias, Ruido, Som, PassoFixo, Agenda, Eventos
+  historia/  registros da história: Flags, EventosInk, ConferirInk (conferência dos .ink) e Regioes (fichas)
+  config/    ajustes (os números de jogabilidade)
   fx/        Efeitos (pós-processamento)
   ui/        Hud, Criacao, Menu, Minimapa, Pausa, Configuracoes, Dons (rosácea), IconesDons, Vitral, creditos,
              NavegacaoControle (menus pelo controle), Rotulos (nomes dos botões e troca das dicas)
@@ -165,7 +199,7 @@ tools/verificar-build.mjs confere que o modo dev não foi para o build
 - **Descoberta do mundo** (separada das flags `*_entrou` da história): `visitadas` (áreas por onde se passou,
   marcadas em `Jogo.visitar`), `pontos` (pontos de viagem descobertos) e `mapaVisto` (quadras de `QUADRA_MAPA` =
   64 m pisadas no mundo aberto, chave `quadraDoMapa(x, z)`, para o mapa-múndi). Um save sem esses campos recebe as
-  `visitadas` deduzidas das flags de entrada (`FLAG_DE_ENTRADA`, mais a área do checkpoint) e o ponto `principal`
+  `visitadas` deduzidas das flags de entrada (`entrou` na ficha de cada região, mais a área do checkpoint) e o ponto `principal`
   de cada região visitada. `mapaVisto` começa vazio. A `versao` continua 2: os campos ausentes bastam para saber.
 
 **Preferências** (`src/core/Preferencias.ts`) valem para todos os saves e ficam em `peregrino-preferencias`:

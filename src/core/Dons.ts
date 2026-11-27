@@ -1,3 +1,4 @@
+import type { Flag } from '../historia/Flags';
 /**
  * Os sete dons do Espírito Santo (Is 11,2-3) e a árvore de cada um (GDD, seção 5):
  * 5 níveis por dom; o nível 1 é recebido na região do santo e os seguintes custam graças
@@ -9,14 +10,14 @@ export interface NivelDom {
   nome: string;
   texto: string;
   /** Nível que só se abre mais adiante na história: a flag que o abre e o aviso na árvore enquanto está fechado. */
-  trava?: { flag: string; texto: string };
+  trava?: { flag: Flag; texto: string };
 }
 
 /** A Piedade 4 e 5: Francisco planta, Irmã Dulce faz florescer (docs/regioes/01-ruas-da-bahia.md, seção 7). */
-const PELA_DULCE = { flag: 'bahia_piedade_aperfeicoada', texto: 'Aperfeiçoado nas Ruas da Bahia, com Irmã Dulce.' };
+const PELA_DULCE: { flag: Flag; texto: string } = { flag: 'bahia_piedade_aperfeicoada', texto: 'Aperfeiçoado nas Ruas da Bahia, com Irmã Dulce.' };
 
 /** O Conselho 4 e 5: Paulo dá o dom no mar; São Carlo Acutis o aperfeiçoa no Mundo Digital (GDD, as regiões). */
-const PELO_CARLO = { flag: 'digital_conselho_aperfeicoado', texto: 'Aperfeiçoado no Mundo Digital, com São Carlo Acutis.' };
+const PELO_CARLO: { flag: Flag; texto: string } = { flag: 'digital_conselho_aperfeicoado', texto: 'Aperfeiçoado no Mundo Digital, com São Carlo Acutis.' };
 
 export interface Dom {
   id: IdDom;

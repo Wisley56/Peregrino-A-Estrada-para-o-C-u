@@ -3,6 +3,7 @@ import { Modelo, variar } from '../voxel/Modelo';
 import { Fisica } from './Peregrino';
 import { ResultadoGolpe, Sombra } from './Sombra';
 import { Chefe, Impacto, InfoJogador } from './Guardiao';
+import { AJUSTES } from '../config/ajustes';
 
 /**
  * Gula, "O Banquete sem fim": chefão da Cidade Dourada (Fl 3,19: "o deus deles é o ventre").
@@ -95,10 +96,6 @@ type Ataque =
   | { tipo: 'barrigada'; t: number; r: number; caiu: boolean; acertou: boolean }
   | { tipo: 'cansado'; t: number; duracao: number };
 
-const ESPERA_PRATO = 1.3;
-const DURACAO_ASPIRAR = 2.6;
-const VEL_ONDA = 7;
-const RAIO_MAX_ONDA = 16;
 /** Quanto tempo ela fica faminta (vulnerável) depois de as mesas ficarem vazias. */
 export const TEMPO_FAMINTA = 7.5;
 
@@ -125,7 +122,7 @@ export class Gula extends Sombra implements Chefe {
   private migalhas: THREE.Mesh[] = [];
 
   constructor(id: string, casa: THREE.Vector3) {
-    super(id, casa, { escala: 2.1, vida: 32, adormecida: true, visao: 60 });
+    super(id, casa, { escala: AJUSTES.chefoes.gula.escala, vida: AJUSTES.chefoes.gula.vida, adormecida: true, visao: 60 });
     this.corpo.geometry = geometriaGula();
     this.olhos[0].position.set(-1.2 * S, 21.4 * S, 4.6 * S);
     this.olhos[1].position.set(1.8 * S, 21.4 * S, 4.6 * S);
@@ -237,7 +234,7 @@ export class Gula extends Sombra implements Chefe {
     } else {
       this.corpo.rotation.x = 0;
       if (this.ataque?.tipo === 'devorar' && !this.ataque.mordeu) {
-        const k = Math.min(1, this.ataque.t / DURACAO_ASPIRAR);
+        const k = Math.min(1, this.ataque.t / AJUSTES.chefoes.gula.duracaoAspirar);
         this.corpo.scale.set(1 + k * 0.12, 1 + k * 0.05, 1 + k * 0.12);
       }
     }
@@ -337,7 +334,7 @@ export class Gula extends Sombra implements Chefe {
           this.impactos.push({ dano: 0, de: this.pos.clone(), som: 'moedas' });
         }
         for (const l of a.levas)
-          if (!l.caiu && a.t - l.inicio > ESPERA_PRATO) {
+          if (!l.caiu && a.t - l.inicio > AJUSTES.chefoes.gula.esperaPrato) {
             l.caiu = true;
             this.impactos.push({ dano: 0, de: this.pos.clone(), som: 'raio' });
             if (!this.info.invulneravel && !this.info.esquivando)
@@ -347,7 +344,7 @@ export class Gula extends Sombra implements Chefe {
                   break;
                 }
           }
-        if (a.levas.every((l) => l.caiu) && a.t - a.levas[a.levas.length - 1].inicio > ESPERA_PRATO + 0.6) this.cansar(0.9);
+        if (a.levas.every((l) => l.caiu) && a.t - a.levas[a.levas.length - 1].inicio > AJUSTES.chefoes.gula.esperaPrato + 0.6) this.cansar(0.9);
         break;
 
       case 'devorar': {
@@ -363,13 +360,13 @@ export class Gula extends Sombra implements Chefe {
             const forca = (2.1 + (this.info.peso ?? 0) * 0.7) * rapido * Math.min(1, (a.t - 0.5) * 2);
             this.impactos.push({ dano: 0, de: this.pos.clone(), arrasto: para.normalize().multiplyScalar(forca * dt) });
           }
-          if (a.t > DURACAO_ASPIRAR) {
+          if (a.t > AJUSTES.chefoes.gula.duracaoAspirar) {
             a.mordeu = true;
             this.impactos.push({ dano: 0, de: this.pos.clone(), som: 'corrente' });
             if (d < 1.4 * this.escala && !this.info.invulneravel && !this.info.esquivando)
               this.impactos.push({ dano: 1, de: this.pos.clone(), sussurro: 'Que gosto bom você tem.' });
           }
-        } else if (a.t > DURACAO_ASPIRAR + 0.8) this.cansar(1.1);
+        } else if (a.t > AJUSTES.chefoes.gula.duracaoAspirar + 0.8) this.cansar(1.1);
         vel.copy(paraJogador).multiplyScalar(dist > 3 ? 0.3 : 0);
         break;
       }
@@ -389,7 +386,7 @@ export class Gula extends Sombra implements Chefe {
             if (dist < this.raioContato + 0.6 && !this.info.invulneravel) this.impactos.push({ dano: 1, de: this.pos.clone() });
           }
         } else {
-          a.r += dt * VEL_ONDA * rapido;
+          a.r += dt * AJUSTES.chefoes.gula.velOnda * rapido;
           if (!a.acertou && !this.info.invulneravel && this.info.noChao) {
             const d = Math.hypot(this.info.pos.x - this.pos.x, this.info.pos.z - this.pos.z);
             if (Math.abs(d - a.r) < 0.6) {
@@ -397,7 +394,7 @@ export class Gula extends Sombra implements Chefe {
               this.impactos.push({ dano: 0.5, de: this.pos.clone() });
             }
           }
-          if (a.r > RAIO_MAX_ONDA) this.cansar(0.8);
+          if (a.r > AJUSTES.chefoes.gula.raioMaxOnda) this.cansar(0.8);
         }
         break;
 
@@ -428,14 +425,14 @@ export class Gula extends Sombra implements Chefe {
           const marca = this.marcas[k], prato = this.pratos[k];
           k++;
           const y = chao(p);
-          const c = Math.min(1, t / ESPERA_PRATO);
+          const c = Math.min(1, t / AJUSTES.chefoes.gula.esperaPrato);
           marca.visible = true;
           marca.position.set(p.x, y + 0.04, p.z);
           marca.scale.setScalar(0.5 + c * 0.5);
-          (marca.material as THREE.MeshBasicMaterial).opacity = l.caiu ? Math.max(0, 0.6 - (t - ESPERA_PRATO) * 1.2) : 0.12 + c * 0.4 + Math.sin(t * 18) * 0.07 * c;
+          (marca.material as THREE.MeshBasicMaterial).opacity = l.caiu ? Math.max(0, 0.6 - (t - AJUSTES.chefoes.gula.esperaPrato) * 1.2) : 0.12 + c * 0.4 + Math.sin(t * 18) * 0.07 * c;
           // o prato cai nos últimos 0,45 s e fica um instante no chão
-          const q = t - (ESPERA_PRATO - 0.45);
-          prato.visible = q > 0 && t < ESPERA_PRATO + 0.5;
+          const q = t - (AJUSTES.chefoes.gula.esperaPrato - 0.45);
+          prato.visible = q > 0 && t < AJUSTES.chefoes.gula.esperaPrato + 0.5;
           prato.position.set(p.x, y + Math.max(0, (1 - q / 0.45)) * 9, p.z);
           prato.rotation.y = p.x * 3.1;
         }
@@ -448,7 +445,7 @@ export class Gula extends Sombra implements Chefe {
     if (on) {
       this.onda.position.set(this.pos.x, chao(this.pos) + 0.05, this.pos.z);
       this.onda.scale.setScalar(Math.max(0.1, on.r));
-      (this.onda.material as THREE.MeshBasicMaterial).opacity = 0.9 * Math.max(0, 1 - on.r / RAIO_MAX_ONDA);
+      (this.onda.material as THREE.MeshBasicMaterial).opacity = 0.9 * Math.max(0, 1 - on.r / AJUSTES.chefoes.gula.raioMaxOnda);
     }
 
     // migalhas voando para a boca enquanto ela aspira

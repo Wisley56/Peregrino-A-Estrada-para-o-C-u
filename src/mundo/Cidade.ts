@@ -162,7 +162,7 @@ interface Caixa { x0: number; x1: number; z0: number; z1: number; topo: number }
 
 /** Uma isca da Gula largada na rua. */
 export interface Isca {
-  id: string;
+  id: `cidade_isca_${number}`;
   tipo: TipoIsca;
   pos: THREE.Vector3;
   malha: THREE.Mesh;
