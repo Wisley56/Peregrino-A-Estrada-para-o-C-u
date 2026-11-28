@@ -82,7 +82,8 @@ até lá.
 Abas do painel:
 
 - **Ir**: os pontos de cada área (chegadas, arenas, NPCs), a posição atual (copia como `THREE.Vector3`), pular o
-  diálogo aberto e começar uma sessão de teste numa área.
+  diálogo aberto e começar uma sessão de teste numa área. "Descobrir todos os pontos" libera a viagem rápida pelo
+  mapa (M) para todo lugar; "Esquecer todos" volta ao zero para testar a descoberta.
 - **Chefões**: lutar agora (desfaz a vitória, cumpre o que a arena pede e põe o peregrino na entrada), reiniciar a
   luta, ir para a fase 2 e vencer. Vencer passa pelo mesmo caminho de uma vitória de verdade (`Sombra.derrotar()`
   e `SistemaCombate.sombraVencida`): graças, coração e diálogo. Também vence as sombras comuns da área.

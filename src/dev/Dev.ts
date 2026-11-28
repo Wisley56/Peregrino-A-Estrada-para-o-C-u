@@ -14,6 +14,7 @@ import { ganchosDoJogo } from './Ganchos';
 import { DONS, type IdDom } from '../core/Dons';
 import { CHEFOES } from '../core/Estado';
 import { AREAS, type IdArea } from '../mundo/Area';
+import { PONTOS_DE_VIAGEM } from '../mundo/aberto/Geografia';
 import type { ChefeDev, GanchosDev, OpcoesDev } from './tipos';
 import { ETAPAS, aplicarEtapa } from './Progresso';
 import { FLAGS_FIXAS, ehFlag, type Flag } from '../historia/Flags';
@@ -218,6 +219,11 @@ class PainelDev {
       }
       case 'mira':
         return this.acao(() => this.irParaMira());
+      case 'pontos':
+        return this.acao(() => {
+          if (d.op === 'todos') for (const p of PONTOS_DE_VIAGEM) g.estado.pontos.add(p.id);
+          else g.estado.pontos.clear();
+        });
       case 'copiar': {
         const p = g.peregrino.pos;
         void navigator.clipboard?.writeText(`new THREE.Vector3(${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})`);
@@ -401,6 +407,9 @@ class PainelDev {
     return `
       <section><div class="linha"><span>Posição <code>${fmt(g.peregrino.pos)}</code></span><button data-acao="copiar" title="Copia como THREE.Vector3">copiar</button></div>
       <div class="chips"><button data-acao="mira">Ir para a mira (F6)</button><button data-acao="dialogo">Pular diálogo</button></div></section>
+      <section><h3>Viagem rápida (mapa: M)</h3><div class="chips">
+        <button data-acao="pontos" data-op="todos">Descobrir todos os pontos (${g.estado.pontos.size}/${PONTOS_DE_VIAGEM.length})</button>
+        <button data-acao="pontos" data-op="nenhum" ${g.estado.pontos.size ? '' : 'disabled'}>Esquecer todos</button></div></section>
       ${areas}
       <section><h3>Sessão de teste (nada é salvo)</h3><div class="chips">${g
         .areas().map((a) => `<button data-acao="teste" data-area="${a.id}">${esc(a.nome)}</button>`).join('')}</div>
