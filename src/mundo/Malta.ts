@@ -22,6 +22,7 @@ import { BORDA_PAREDE, CABINE, MASTRO, MEIO_COMPRIMENTO, anfora, bordaEm, conves
 import { Oceano } from './Oceano';
 import { blocosDeColunas } from './Terreno';
 import { NIVEL_MAR, ORIGENS } from './aberto/Geografia';
+import type { TemFlag } from '../historia/Flags';
 
 /** Canto de Malta no mundo (longe das outras áreas). */
 export const ORIGEM_MALTA = ORIGENS.malta;
@@ -92,7 +93,7 @@ const PATIO: [number, number] = [CASA_PUBLIO.x, CASA_PUBLIO.z + VILLA.patio.z1 -
  * partida, três meses depois.
  */
 export type EtapaMalta = 'fogo' | 'vibora' | 'boatos' | 'publio' | 'pai' | 'enfermos' | 'honras' | 'partida';
-export function etapaDeMalta(tem: (flag: string) => boolean): EtapaMalta {
+export function etapaDeMalta(tem: TemFlag): EtapaMalta {
   if (!tem('malta_fogo')) return 'fogo';
   if (!tem('malta_vibora')) return 'vibora';
   if (!tem('malta_boatos')) return 'boatos';
@@ -650,7 +651,7 @@ export class Malta implements Area {
   // ───────────── a história ─────────────
 
   /** Põe cada um no seu lugar conforme a história (ao entrar, ao carregar e depois de cada passo). */
-  arrumar(tem: (flag: string) => boolean) {
+  arrumar(tem: TemFlag) {
     const e = etapaDeMalta(tem);
     this.caminhos.clear();
     this.pauloImpondo = false;
@@ -792,7 +793,7 @@ export class Malta implements Area {
   }
 
   /** Todos os avisados já chegaram ao pátio (e há quatro). */
-  enfermosNoPatio(tem: (flag: string) => boolean) {
+  enfermosNoPatio(tem: TemFlag) {
     for (const [id, x] of this.enfermos) if (!tem(`malta_enfermo_${id}`) || !x.chegou) return false;
     return true;
   }
@@ -830,7 +831,7 @@ export class Malta implements Area {
   }
 
   /** O próximo passo do caminho (para a rosa dos ventos do Conselho). */
-  rumo(tem: (flag: string) => boolean, jogador: THREE.Vector3): THREE.Vector3 | null {
+  rumo(tem: TemFlag, jogador: THREE.Vector3): THREE.Vector3 | null {
     const perto = (lista: THREE.Vector3[]) => lista.reduce<THREE.Vector3 | null>((a, p) => (!a || p.distanceToSquared(jogador) < a.distanceToSquared(jogador) ? p : a), null);
     switch (etapaDeMalta(tem)) {
       case 'fogo':

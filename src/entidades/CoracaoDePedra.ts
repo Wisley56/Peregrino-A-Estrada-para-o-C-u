@@ -3,6 +3,7 @@ import { Modelo, variar } from '../voxel/Modelo';
 import { Fisica } from './Peregrino';
 import { ResultadoGolpe, Sombra } from './Sombra';
 import { Chefe, Impacto, InfoJogador } from './Guardiao';
+import { AJUSTES } from '../config/ajustes';
 
 /**
  * O Coração de Pedra, a Dureza de Coração: chefão das Ruas da Bahia (docs/regioes/01-ruas-da-bahia.md, seção 3).
@@ -24,11 +25,6 @@ import { Chefe, Impacto, InfoJogador } from './Guardiao';
 
 const S = 0.1;
 const OLHOS = 0xd8e4ec; // cinza-gelo: sem cor nenhuma
-const TEMPO_EXPOSTO = 8;
-const RAIO_OLHAR = 14;
-const ABERTURA_OLHAR = 0.5; // meio ângulo do cone (rad)
-const VEL_PEDRAS = 6.5;
-const VEL_ONDA = 7.5;
 
 export interface LimitesArena {
   x0: number;
@@ -171,9 +167,9 @@ export class CoracaoDePedra extends Sombra implements Chefe {
   private tFim = -1;
 
   constructor(id: string, casa: THREE.Vector3, private readonly lim: LimitesArena) {
-    super(id, casa, { escala: 2.3, vida: 30, adormecida: true, visao: 60 });
+    super(id, casa, { escala: AJUSTES.chefoes.coracao.escala, vida: AJUSTES.chefoes.coracao.vida, adormecida: true, visao: 60 });
     this.corpo.geometry = geo('corpo', corpoColosso);
-    this.duracaoAtordoada = TEMPO_EXPOSTO;
+    this.duracaoAtordoada = AJUSTES.chefoes.coracao.tempoExposto;
     this.cabeca = new THREE.Mesh(geo('mascara', mascara), this.material);
     this.cabeca.position.y = 18.5 * S;
     this.bracoBaixo = new THREE.Mesh(geo('bracoBaixo', () => bracoDireito(false)), this.material);
@@ -197,7 +193,7 @@ export class CoracaoDePedra extends Sombra implements Chefe {
 
     // o olhar em cone, rente ao chão
     this.cone = new THREE.Mesh(
-      new THREE.CircleGeometry(RAIO_OLHAR, 28, -ABERTURA_OLHAR, ABERTURA_OLHAR * 2).rotateX(-Math.PI / 2),
+      new THREE.CircleGeometry(AJUSTES.chefoes.coracao.raioOlhar, 28, -AJUSTES.chefoes.coracao.aberturaOlhar, AJUSTES.chefoes.coracao.aberturaOlhar * 2).rotateX(-Math.PI / 2),
       new THREE.MeshBasicMaterial({ color: 0x4a5058, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }),
     );
     this.cone.visible = false;
@@ -452,7 +448,7 @@ export class CoracaoDePedra extends Sombra implements Chefe {
         if (a.t > mira && !a.pegou && !this.info.invulneravel) {
           const para = this.info.pos.clone().sub(this.pos).setY(0);
           const d = para.length();
-          if (d < RAIO_OLHAR && d > 0.01 && para.normalize().dot(a.dir) > Math.cos(ABERTURA_OLHAR) && !this.protegido(this.info.pos)) {
+          if (d < AJUSTES.chefoes.coracao.raioOlhar && d > 0.01 && para.normalize().dot(a.dir) > Math.cos(AJUSTES.chefoes.coracao.aberturaOlhar) && !this.protegido(this.info.pos)) {
             a.pegou = true;
             this.impactos.push({ dano: 0, de: this.pos.clone(), indiferenca: 4, sussurro: frase() });
           }
@@ -466,7 +462,7 @@ export class CoracaoDePedra extends Sombra implements Chefe {
         this.alerta = 'Pedras rolando: brechas ou pulo!';
         const largura = this.lim.x1 - this.lim.x0 + 3;
         for (const l of a.linhas) {
-          const x = this.lim.x1 - (a.t - l.inicio) * VEL_PEDRAS;
+          const x = this.lim.x1 - (a.t - l.inicio) * AJUSTES.chefoes.coracao.velPedras;
           if (a.t < l.inicio || l.acertou || x < this.lim.x0 - 2) continue;
           const p = this.info.pos;
           if (Math.abs(p.x - x) < 0.55 && this.info.noChao && !this.info.invulneravel && !this.info.esquivando && !l.brechas.some((b) => Math.abs(p.z - b) < 1.25)) {
@@ -475,7 +471,7 @@ export class CoracaoDePedra extends Sombra implements Chefe {
           }
         }
         const ultima = a.linhas[a.linhas.length - 1];
-        if (a.t - ultima.inicio > largura / VEL_PEDRAS) this.cansar(0.8);
+        if (a.t - ultima.inicio > largura / AJUSTES.chefoes.coracao.velPedras) this.cansar(0.8);
         vel.copy(paraJogador).multiplyScalar(dist > 6 ? 0.5 : 0);
         break;
       }
@@ -489,7 +485,7 @@ export class CoracaoDePedra extends Sombra implements Chefe {
           a.acertou = true;
           this.impactos.push({ dano: 0.5, de: new THREE.Vector3(this.info.pos.x, this.info.pos.y, z) });
         }
-        if (a.t > aviso + (this.lim.z1 - this.lim.z0) / VEL_ONDA) this.cansar(0.9);
+        if (a.t > aviso + (this.lim.z1 - this.lim.z0) / AJUSTES.chefoes.coracao.velOnda) this.cansar(0.9);
         break;
       }
       case 'cansado':
@@ -501,7 +497,7 @@ export class CoracaoDePedra extends Sombra implements Chefe {
   }
 
   private zOnda(a: { t: number; deNorte: boolean }) {
-    const andou = Math.max(0, a.t - 1) * VEL_ONDA;
+    const andou = Math.max(0, a.t - 1) * AJUSTES.chefoes.coracao.velOnda;
     return a.deNorte ? this.lim.z0 + andou : this.lim.z1 - andou;
   }
 
@@ -532,7 +528,7 @@ export class CoracaoDePedra extends Sombra implements Chefe {
     if (pd) {
       const mat = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), um = new THREE.Vector3(1, 1, 1);
       for (const l of pd.linhas) {
-        const x = this.lim.x1 - (pd.t - l.inicio) * VEL_PEDRAS;
+        const x = this.lim.x1 - (pd.t - l.inicio) * AJUSTES.chefoes.coracao.velPedras;
         if (pd.t < l.inicio || x < this.lim.x0 - 2) continue;
         for (let z = this.lim.z0 + 0.4; z < this.lim.z1 - 0.3 && n < this.pedras.instanceMatrix.count; z += 0.7) {
           if (l.brechas.some((b) => Math.abs(z - b) < 1.25)) continue;

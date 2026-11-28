@@ -7,15 +7,16 @@
  */
 import type { Estado } from '../core/Estado';
 import type { IdArea } from '../mundo/Area';
+import type { Flag } from '../historia/Flags';
 
-const ids = (prefixo: string, n: number) => Array.from({ length: n }, (_, i) => `${prefixo}${i + 1}`);
+const ids = <P extends string>(prefixo: P, n: number) => Array.from({ length: n }, (_, i) => `${prefixo}${i + 1}` as `${P}${number}`);
 
 interface Etapa {
   id: string;
   nome: string;
   sombras: string[];
   chefoes: string[];
-  flags: string[];
+  flags: Flag[];
   /** Onde o peregrino aparece depois de aplicar a etapa. */
   area: IdArea;
   ponto: number;
@@ -51,8 +52,29 @@ export const ETAPAS: Etapa[] = [
     area: 'cidade', ponto: 2,
   },
   {
-    id: 'tudo', nome: 'Gula vencida (tudo até aqui)', sombras: [], chefoes: ['palacio_gula'],
+    id: 'tudo', nome: 'Gula vencida', sombras: [], chefoes: ['palacio_gula'],
     flags: ['palacio_entrou', 'palacio_dica', 'gula_vencida', 'cidade_restaurada'], area: 'palacio', ponto: 1,
+  },
+  {
+    // a Bahia até o Largo do Cruzeiro: só o que a luta com o Coração pede (o hospital e os enfermos ficam por fazer)
+    id: 'coracao', nome: 'Coração de Pedra vencido', sombras: [], chefoes: ['bahiaalta_coracao'],
+    flags: ['peregrino_adulto', 'bahia_entrou', 'bahia_alta_entrou', 'bahia_enfermaria', 'bahia_coracao_dica', 'bahia_coracao_vencido'],
+    area: 'bahiaalta', ponto: 0,
+  },
+  {
+    // o navio na ordem de etapaDoNavio (Tempestade.ts) e o naufrágio na de etapaDoNaufragio
+    id: 'ira', nome: 'Ira vencida (navio e naufrágio)', sombras: [], chefoes: ['naufragio_ira'],
+    flags: [
+      'creta_entrou', 'navio_entrou', 'navio_bote', 'navio_cintado', 'navio_carga', 'navio_brigas', 'navio_anjo', 'navio_sonda',
+      'navio_ancoras', 'navio_fuga', 'navio_pao', 'naufragio_encalhou', 'naufragio_presos', 'naufragio_ira_dica', 'naufragio_ira_vencida',
+    ],
+    area: 'naufragio', ponto: 2,
+  },
+  {
+    // Malta na ordem de etapaDeMalta (Malta.ts), até a partida
+    id: 'malta', nome: 'Malta: partida (tudo até aqui)', sombras: [], chefoes: [],
+    flags: ['malta_entrou', 'malta_fogo', 'malta_vibora', 'malta_boatos', 'malta_publio', 'dom_conselho', 'malta_pai_curado', 'malta_curas', 'mar_restaurado', 'malta_tres_meses'],
+    area: 'malta', ponto: 0,
   },
 ];
 

@@ -12,6 +12,7 @@ import { Chuva } from './Chuva';
 import { BORDA_PAREDE, CABINE, MASTRO, MEIO_COMPRIMENTO, anfora, ancora, bote, bordaEm, convesEm, meiaLarguraConves, navioAlexandrino, sacoDeTrigo } from './NavioModelos';
 import { Oceano } from './Oceano';
 import { ORIGENS } from './aberto/Geografia';
+import type { Flag, TemFlag } from '../historia/Flags';
 
 /** Onde fica o navio no mundo (longe das outras áreas). O navio não sai do lugar: é o mar que corre por ele. */
 export const ORIGEM_NAVIO = ORIGENS.navio;
@@ -28,11 +29,11 @@ const VELOCIDADE = 3.4;
  * que falta.
  */
 export type EtapaNavio = 'bote' | 'cintar' | 'carga' | 'brigas' | 'anjo' | 'sonda' | 'ancoras' | 'fuga' | 'pao' | 'amanhecer';
-const ORDEM: [EtapaNavio, string][] = [
+const ORDEM: [EtapaNavio, Flag][] = [
   ['bote', 'navio_bote'], ['cintar', 'navio_cintado'], ['carga', 'navio_carga'], ['brigas', 'navio_brigas'], ['anjo', 'navio_anjo'],
   ['sonda', 'navio_sonda'], ['ancoras', 'navio_ancoras'], ['fuga', 'navio_fuga'], ['pao', 'navio_pao'],
 ];
-export function etapaDoNavio(tem: (flag: string) => boolean): EtapaNavio {
+export function etapaDoNavio(tem: TemFlag): EtapaNavio {
   for (const [etapa, flag] of ORDEM) if (!tem(flag)) return etapa;
   return 'amanhecer';
 }
@@ -229,7 +230,7 @@ export class Tempestade implements Area {
   // ───────────── a história ─────────────
 
   /** Cada coisa e cada um no seu lugar, conforme a etapa. */
-  arrumar(tem: (flag: string) => boolean) {
+  arrumar(tem: TemFlag) {
     const etapa = etapaDoNavio(tem);
     const i = ORDEM.findIndex(([e]) => e === etapa);
     const passou = (e: EtapaNavio) => i === -1 || ORDEM.findIndex(([x]) => x === e) < i;

@@ -16,6 +16,7 @@ import { BORDA_PAREDE, CABINE, MASTRO, MEIO_COMPRIMENTO, bordaEm, convesEm, meia
 import { Oceano } from './Oceano';
 import { blocosDeColunas } from './Terreno';
 import { NIVEL_MAR, ORIGENS } from './aberto/Geografia';
+import type { TemFlag } from '../historia/Flags';
 
 /** Canto da enseada no mundo (longe das outras áreas). */
 export const ORIGEM_NAUFRAGIO = ORIGENS.naufragio;
@@ -59,7 +60,7 @@ const ILHOTA = { x: 74, z: 22, r: 9 };
 
 /** A ordem do naufrágio (At 27,41-44; 28,1): os presos, a Ira, a praia. */
 export type EtapaNaufragio = 'presos' | 'ira' | 'praia';
-export function etapaDoNaufragio(tem: (flag: string) => boolean): EtapaNaufragio {
+export function etapaDoNaufragio(tem: TemFlag): EtapaNaufragio {
   if (!tem('naufragio_presos')) return 'presos';
   if (!tem('naufragio_ira_vencida')) return 'ira';
   return 'praia';
@@ -304,15 +305,15 @@ export class Naufragio implements Area {
   // ───────────── a história ─────────────
 
   /** Põe cada um no seu lugar da etapa da história (e, se a enseada dorme, some com tudo de novo). */
-  arrumar(tem: (flag: string) => boolean) {
+  arrumar(tem: TemFlag) {
     this.tem = tem;
     this.arrumarEtapa(tem);
     if (this.dormindo) this.esconderTudo();
   }
 
-  private tem: (flag: string) => boolean = () => false;
+  private tem: TemFlag = () => false;
 
-  private arrumarEtapa(tem: (flag: string) => boolean) {
+  private arrumarEtapa(tem: TemFlag) {
     this.etapa = etapaDoNaufragio(tem);
     this.vencido = this.etapa === 'praia';
     this.escuridao = { presos: 0.55, ira: 0.62, praia: 0.12 }[this.etapa];
@@ -377,7 +378,7 @@ export class Naufragio implements Area {
   }
 
   /** A luta: a Ira dorme no fundo da enseada até o peregrino entrar na água. */
-  reiniciar(vencidas: Set<string>, tem: (flag: string) => boolean) {
+  reiniciar(vencidas: Set<string>, tem: TemFlag) {
     this.descartarLuta();
     this.vencido = vencidas.has(ID_IRA);
     if (!this.vencido) this.criarChefe();

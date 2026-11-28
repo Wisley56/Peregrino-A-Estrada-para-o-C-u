@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Fisica } from '../entidades/Peregrino';
 import { Animal } from './Animal';
 import type { IdEspecie, VozAnimal } from './Especies';
+import { AJUSTES } from '../config/ajustes';
 
 /** Um grupo de bichos de uma espécie numa parte da região. */
 export interface Povoamento {
@@ -12,13 +13,6 @@ export interface Povoamento {
   /** Raio do território (m). */
   raio: number;
 }
-
-/** A partir desta distância o bicho some e para de pensar; entre ATIVO e VISIVEL ele só fica parado. */
-const DIST_ATIVO = 55;
-const DIST_VISIVEL = 95;
-/** Bandos sob demanda: nascem quando o peregrino chega a esta distância do território e somem além de SITIO_SAI. */
-const SITIO_ENTRA = 170;
-const SITIO_SAI = 260;
 
 /** Um bando sob demanda: o território e os bichos dele, quando existem. */
 interface Sitio {
@@ -75,8 +69,8 @@ export class Fauna {
   }
 
   /**
-   * Povoamento sob demanda, para um mundo grande: cada bando só existe com o peregrino perto (SITIO_ENTRA) e some
-   * longe (SITIO_SAI). O lugar de cada bicho sai da semente do bando, então ele volta sempre do mesmo jeito.
+   * Povoamento sob demanda, para um mundo grande: cada bando só existe com o peregrino perto (AJUSTES.fauna.sitioEntra) e some
+   * longe (AJUSTES.fauna.sitioSai). O lugar de cada bicho sai da semente do bando, então ele volta sempre do mesmo jeito.
    */
   definirSitios(povoamento: Povoamento[], semente = 1) {
     this.sitios = povoamento.map((p, i) => ({ p, semente: (semente + i * 7919) >>> 0, bichos: null, carregando: false }));
@@ -92,8 +86,8 @@ export class Fauna {
     for (const s of this.sitios) {
       const [cx, cz] = Array.isArray(s.p.centro) ? s.p.centro : [s.p.centro.x, s.p.centro.z];
       const d = Math.hypot(cx - jogador.x, cz - jogador.z) - s.p.raio;
-      if (d < SITIO_ENTRA && !s.bichos && !s.carregando) void this.soltar(s);
-      else if (d > SITIO_SAI && s.bichos) {
+      if (d < AJUSTES.fauna.sitioEntra && !s.bichos && !s.carregando) void this.soltar(s);
+      else if (d > AJUSTES.fauna.sitioSai && s.bichos) {
         for (const b of s.bichos) {
           this.grupo.remove(b.raiz);
           const i = this.animais.indexOf(b);
@@ -158,8 +152,8 @@ export class Fauna {
     let dPerto = Infinity;
     for (const b of this.animais) {
       const d = Math.hypot(b.pos.x - jogador.x, b.pos.z - jogador.z);
-      b.raiz.visible = d < DIST_VISIVEL;
-      if (d > DIST_ATIVO) continue;
+      b.raiz.visible = d < AJUSTES.fauna.distVisivel;
+      if (d > AJUSTES.fauna.distAtivo) continue;
       b.atualizar(dt, this.fis, jogador);
       if (b.ficha.voz && d < dPerto) {
         dPerto = d;

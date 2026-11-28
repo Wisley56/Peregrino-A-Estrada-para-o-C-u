@@ -3,6 +3,7 @@ import { Modelo, variar } from '../voxel/Modelo';
 import { Visual, misturar } from '../core/Aparencia';
 import { lamparinaModelo } from '../mundo/Cenario';
 import type { Timoneiro } from './Barco';
+import { AJUSTES } from '../config/ajustes';
 
 const S = 0.085; // tamanho do voxel do personagem (m)
 
@@ -14,29 +15,16 @@ export interface Fisica {
   nivelMinimo?: number;
   /**
    * A superfície da água em (x, z), com as ondas, ou `null` onde não há água. Sem esta função, vale `nivelMinimo`.
-   * Onde a água passa de `PROFUNDIDADE_NADO`, o peregrino nada.
+   * Onde a água passa de `AJUSTES.nado.profundidade`, o peregrino nada.
    */
   nivelAgua?(x: number, z: number): number | null;
 }
 
-/** A partir desta profundidade (m) o peregrino deixa de vadear e nada (a água bate no peito). */
-export const PROFUNDIDADE_NADO = 1.3;
-/** Nadando, a altura dos pés abaixo da superfície: boiando parado (de pé na água) e nadando (deitado). */
-const AFUNDA_PARADO = 1.3;
-const AFUNDA_NADANDO = 0.95;
-
-/** Queda (m) que não fere: um pulo de um barranco de uns 3,5 m (o pulo sobe ~1,5 m). */
-export const QUEDA_SEGURA = 5;
-/** Acima da segura, meio coração a cada tantos metros (arredondando para cima). */
-export const QUEDA_POR_MEIO = 2.5;
-/** Daqui para cima a queda mata, com quantos corações houver. */
-export const QUEDA_FATAL = 30;
-
 /** Corações que uma queda de `altura` m tira (0 se não fere). */
 export function danoDeQueda(altura: number, coracoesMax: number) {
-  if (altura <= QUEDA_SEGURA) return 0;
-  if (altura >= QUEDA_FATAL) return coracoesMax;
-  return Math.ceil((altura - QUEDA_SEGURA) / QUEDA_POR_MEIO) * 0.5;
+  if (altura <= AJUSTES.queda.segura) return 0;
+  if (altura >= AJUSTES.queda.fatal) return coracoesMax;
+  return Math.ceil((altura - AJUSTES.queda.segura) / AJUSTES.queda.porMeio) * 0.5;
 }
 
 const FIXAS = {
@@ -424,7 +412,7 @@ export class Peregrino {
   private joelhosK = 0;
 
   /**
-   * Nadando: a água passa de `PROFUNDIDADE_NADO`. O peregrino boia com a onda, sem pulo nem cajado na mão (o cajado
+   * Nadando: a água passa de `AJUSTES.nado.profundidade`. O peregrino boia com a onda, sem pulo nem cajado na mão (o cajado
    * vai pendurado nas costas); parado, fica de pé na água batendo as pernas; andando, nada de peito.
    */
   nadando = false;
@@ -505,18 +493,19 @@ export class Peregrino {
     let vx = 0, vz = 0;
     const travadoNaAcao = this.acao === 'rezando' || this.acao === 'luz' || this.acao === 'ferido' || this.acao === 'carinho';
     if (this.acao === 'esquiva') {
-      const k = Math.max(0, 1 - this.tempoAcao / 0.45);
-      vx = this.dirEsquiva.x * 10 * (0.4 + k);
-      vz = this.dirEsquiva.z * 10 * (0.4 + k);
-      if (this.tempoAcao > 0.45) this.acao = 'livre';
+      const P = AJUSTES.peregrino;
+      const k = Math.max(0, 1 - this.tempoAcao / P.esquivaDuracao);
+      vx = this.dirEsquiva.x * P.esquivaVelocidade * (0.4 + k);
+      vz = this.dirEsquiva.z * P.esquivaVelocidade * (0.4 + k);
+      if (this.tempoAcao > P.esquivaDuracao) this.acao = 'livre';
     } else if (!travadoNaAcao) {
-      const fator = this.acao === 'golpe' ? 0.35 : 1;
+      const fator = this.acao === 'golpe' ? AJUSTES.peregrino.lentidaoNoGolpe : 1;
       vx = desejo.x * velocidade * fator;
       vz = desejo.z * velocidade * fator;
     }
-    if (this.acao === 'golpe' && this.tempoAcao > 0.38) this.acao = 'livre';
-    if (this.acao === 'luz' && this.tempoAcao > 0.35) this.acao = 'livre';
-    if (this.acao === 'ferido' && this.tempoAcao > 0.3) this.acao = 'livre';
+    if (this.acao === 'golpe' && this.tempoAcao > AJUSTES.peregrino.golpeDuracao) this.acao = 'livre';
+    if (this.acao === 'luz' && this.tempoAcao > AJUSTES.peregrino.luzDuracao) this.acao = 'livre';
+    if (this.acao === 'ferido' && this.tempoAcao > AJUSTES.peregrino.feridoDuracao) this.acao = 'livre';
     if (this.acao === 'carinho' && this.tempoAcao > DURACAO_CARINHO) this.acao = 'livre';
 
     // na água: vadeando, mais devagar; nadando, bem mais devagar (correr vira nadar com força)
@@ -536,7 +525,7 @@ export class Peregrino {
     this.velocidadeHoriz = Math.hypot(vx, vz);
 
     // movimento por eixo, com degrau de até 1 bloco. Nadando, sobe-se à margem que fique até 0,6 m acima da água.
-    const raio = 0.32;
+    const raio = AJUSTES.peregrino.raio;
     const base = this.nadando && this.superficie !== null ? Math.max(this.pos.y, this.superficie - 0.45) : this.pos.y;
     const tentar = (dx: number, dz: number) => {
       const nx = this.pos.x + dx, nz = this.pos.z + dz;
@@ -544,7 +533,7 @@ export class Peregrino {
         fis.altura(nx + Math.sign(dx) * raio, nz + Math.sign(dz) * raio),
         fis.altura(nx, nz),
       );
-      if (h > base + 1.05) return; // parede
+      if (h > base + AJUSTES.peregrino.degrau) return; // parede
       this.pos.x = nx;
       this.pos.z = nz;
     };
@@ -555,9 +544,9 @@ export class Peregrino {
     // água funda: nada, boiando com a onda (a margem baixa é chão: lá ele sai andando)
     const chao = fis.altura(this.pos.x, this.pos.z);
     this.superficie = fis.nivelAgua ? fis.nivelAgua(this.pos.x, this.pos.z) : fis.nivelMinimo ?? null;
-    const fundo = this.superficie !== null && this.superficie - chao > PROFUNDIDADE_NADO;
+    const fundo = this.superficie !== null && this.superficie - chao > AJUSTES.nado.profundidade;
     // entra no nado quando o corpo chega à água funda (caindo de um pulo, só quando bate na água)
-    const entrar = fundo && this.pos.y <= this.superficie! - AFUNDA_NADANDO + 0.2;
+    const entrar = fundo && this.pos.y <= this.superficie! - AJUSTES.nado.afundaNadando + 0.2;
     if (fundo && (this.nadando || entrar)) {
       this.picoNoAr = this.pos.y;
       if (!this.nadando) {
@@ -566,7 +555,7 @@ export class Peregrino {
         this.ajoelhado = false;
       }
       this.nadoK += ((this.velocidadeHoriz > 0.3 ? 1 : 0) - this.nadoK) * Math.min(1, dt * 3);
-      const alvo = this.superficie! - (AFUNDA_PARADO + (AFUNDA_NADANDO - AFUNDA_PARADO) * this.nadoK);
+      const alvo = this.superficie! - (AJUSTES.nado.afundaParado + (AJUSTES.nado.afundaNadando - AJUSTES.nado.afundaParado) * this.nadoK);
       // a queda é freada pela água e o corpo volta à tona aos poucos
       this.vy = this.vy * Math.max(0, 1 - dt * 6) + (alvo - this.pos.y) * dt * 30;
       this.pos.y += this.vy * dt;
@@ -581,10 +570,10 @@ export class Peregrino {
 
     // gravidade e pulo
     if (pular && this.noChao && !travadoNaAcao && !this.ajoelhado && this.acao !== 'esquiva' && this.forcaPulo > 0) {
-      this.vy = 8.6 * this.forcaPulo;
+      this.vy = AJUSTES.peregrino.pulo * this.forcaPulo;
       this.noChao = false;
     }
-    this.vy -= 25 * dt;
+    this.vy -= AJUSTES.peregrino.gravidade * dt;
     this.pos.y += this.vy * dt;
     this.picoNoAr = this.noChao ? this.pos.y : Math.max(this.picoNoAr, this.pos.y);
     if (this.pos.y <= chao) {
@@ -595,7 +584,7 @@ export class Peregrino {
       this.pos.y = chao;
       this.vy = 0;
       this.noChao = true;
-    } else if (this.noChao && this.pos.y - chao < 1.05 && this.vy <= 0) {
+    } else if (this.noChao && this.pos.y - chao < AJUSTES.peregrino.degrau && this.vy <= 0) {
       this.pos.y = chao; // desce degraus sem "voar"
       this.vy = 0;
     } else {

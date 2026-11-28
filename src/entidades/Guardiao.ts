@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Modelo } from '../voxel/Modelo';
 import { Fisica } from './Peregrino';
 import { ResultadoGolpe, Sombra } from './Sombra';
+import { AJUSTES } from '../config/ajustes';
 
 /**
  * Mamom, o Guardião da Avareza: chefão da cripta (Mt 6,24 — "não podeis servir a Deus e a Mamom").
@@ -69,10 +70,7 @@ type Ataque =
   | { tipo: 'cansado'; t: number; duracao: number };
 
 const OURO = 0xd8b45a;
-const ALCANCE_CORRENTE = 15;
 const ELOS = 26;
-const VEL_ONDA = 8.5;
-const RAIO_MAX_ONDA = 13;
 
 function geometriaCoroa() {
   const m = new Modelo();
@@ -117,7 +115,7 @@ export class Guardiao extends Sombra implements Chefe {
   private moedas: THREE.Group[] = [];
 
   constructor(id: string, casa: THREE.Vector3) {
-    super(id, casa, { escala: 2, vida: 30, blindada: true, adormecida: true, visao: 0 });
+    super(id, casa, { escala: AJUSTES.chefoes.guardiao.escala, vida: AJUSTES.chefoes.guardiao.vida, blindada: true, adormecida: true, visao: 0 });
     const coroa = new THREE.Mesh(geometriaCoroa(), new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x2a1e04 }));
     coroa.castShadow = true;
     this.corpo.add(coroa);
@@ -346,7 +344,7 @@ export class Guardiao extends Sombra implements Chefe {
           }
         } else {
           this.alerta = 'Pule a onda (Espaço)!';
-          for (let i = 0; i < a.ondas.length; i++) a.ondas[i] += dt * VEL_ONDA;
+          for (let i = 0; i < a.ondas.length; i++) a.ondas[i] += dt * AJUSTES.chefoes.guardiao.velOnda;
           if (!a.acertou && !this.info.invulneravel) {
             const d = Math.hypot(this.info.pos.x - this.pos.x, this.info.pos.z - this.pos.z);
             for (const r of a.ondas)
@@ -355,7 +353,7 @@ export class Guardiao extends Sombra implements Chefe {
                 this.impactos.push({ dano: 0.5, de: this.pos.clone() });
               }
           }
-          if (a.ondas.every((r) => r > RAIO_MAX_ONDA)) this.cansar(0.9);
+          if (a.ondas.every((r) => r > AJUSTES.chefoes.guardiao.raioMaxOnda)) this.cansar(0.9);
         }
         break;
 
@@ -372,7 +370,7 @@ export class Guardiao extends Sombra implements Chefe {
           }
         } else if (a.fase === 'lancar') {
           this.estado = 'preparar';
-          a.alcance = Math.min(ALCANCE_CORRENTE, a.alcance + dt * 24);
+          a.alcance = Math.min(AJUSTES.chefoes.guardiao.alcanceCorrente, a.alcance + dt * 24);
           const ponta = peito.clone().addScaledVector(a.dir, a.alcance);
           const bateuNaParede = this.fis ? this.fis.altura(ponta.x, ponta.z) > ponta.y : false;
           const d = ponta.distanceTo(this.info.pos.clone().add(new THREE.Vector3(0, 0.9, 0)));
@@ -383,7 +381,7 @@ export class Guardiao extends Sombra implements Chefe {
             this.vida = Math.min(this.vidaMax, this.vida + 1);
             a.fase = 'recolher';
             a.t = 0;
-          } else if (a.alcance >= ALCANCE_CORRENTE || bateuNaParede) {
+          } else if (a.alcance >= AJUSTES.chefoes.guardiao.alcanceCorrente || bateuNaParede) {
             a.fase = 'recolher';
             a.t = 0;
           }
@@ -446,9 +444,9 @@ export class Guardiao extends Sombra implements Chefe {
       this.onda.visible = r > 0;
       this.onda.position.set(this.pos.x, this.pos.y - 0.3, this.pos.z);
       this.onda.scale.setScalar(Math.max(0.1, r));
-      (this.onda.material as THREE.MeshBasicMaterial).opacity = 0.85 * Math.max(0, 1 - r / RAIO_MAX_ONDA);
+      (this.onda.material as THREE.MeshBasicMaterial).opacity = 0.85 * Math.max(0, 1 - r / AJUSTES.chefoes.guardiao.raioMaxOnda);
       // segunda onda: usa a mesma malha, piscando, quando a primeira já passou
-      if (a.ondas.length > 1 && a.ondas[0] > RAIO_MAX_ONDA && a.ondas[1] > 0) this.onda.scale.setScalar(a.ondas[1]);
+      if (a.ondas.length > 1 && a.ondas[0] > AJUSTES.chefoes.guardiao.raioMaxOnda && a.ondas[1] > 0) this.onda.scale.setScalar(a.ondas[1]);
     } else this.onda.visible = false;
 
     // corrente da cobiça
@@ -458,12 +456,12 @@ export class Guardiao extends Sombra implements Chefe {
     if (corrente && corrente.fase === 'mirar') {
       this.mira.position.copy(peito);
       this.mira.lookAt(peito.clone().add(corrente.dir));
-      this.mira.scale.set(1, 1, ALCANCE_CORRENTE);
+      this.mira.scale.set(1, 1, AJUSTES.chefoes.guardiao.alcanceCorrente);
       (this.mira.material as THREE.MeshBasicMaterial).opacity = corrente.t > 0.85 ? 0.4 + 0.4 * Math.abs(Math.sin(corrente.t * 30)) : 0.3;
     }
     for (let i = 0; i < ELOS; i++) {
       const e = this.elos[i];
-      const dist = (i / ELOS) * ALCANCE_CORRENTE;
+      const dist = (i / ELOS) * AJUSTES.chefoes.guardiao.alcanceCorrente;
       e.visible = !!corrente && corrente.fase !== 'mirar' && dist < corrente.alcance;
       if (e.visible && corrente) {
         e.position.copy(peito).addScaledVector(corrente.dir, dist);

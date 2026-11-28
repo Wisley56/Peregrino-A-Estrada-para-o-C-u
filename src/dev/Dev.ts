@@ -15,10 +15,12 @@ import { CHEFOES } from '../core/Estado';
 import { AREAS, type IdArea } from '../mundo/Area';
 import type { ChefeDev, GanchosDev, OpcoesDev } from './tipos';
 import { ETAPAS, aplicarEtapa } from './Progresso';
+import { FLAGS_FIXAS, ehFlag, type Flag } from '../historia/Flags';
+import { AJUSTES, AJUSTES_PADRAO } from '../config/ajustes';
 
 const CHAVE = 'peregrino.dev';
-type Aba = 'ir' | 'chefoes' | 'peregrino' | 'progresso' | 'tempo';
-const ABAS: [Aba, string][] = [['ir', 'Ir'], ['chefoes', 'Chefões'], ['peregrino', 'Peregrino'], ['progresso', 'Progresso'], ['tempo', 'Tempo']];
+type Aba = 'ir' | 'chefoes' | 'peregrino' | 'progresso' | 'tempo' | 'ajustes';
+const ABAS: [Aba, string][] = [['ir', 'Ir'], ['chefoes', 'Chefões'], ['peregrino', 'Peregrino'], ['progresso', 'Progresso'], ['tempo', 'Tempo'], ['ajustes', 'Ajustes']];
 const ESCALAS = [0, 0.1, 0.25, 0.5, 1, 2, 4];
 const VELOCIDADES = [1, 1.5, 2, 3];
 
@@ -42,16 +44,24 @@ function lembrar(): Lembrado {
 const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const fmt = (v: THREE.Vector3) => `${v.x.toFixed(1)}, ${v.y.toFixed(1)}, ${v.z.toFixed(1)}`;
 
-/** Todas as flags que o código e os diálogos usam, lidas do próprio fonte (só no modo dev). */
-async function flagsConhecidas(): Promise<string[]> {
-  const fontes = import.meta.glob(['/src/**/*.ts', '/src/**/*.ink', '!/src/dev/**'], { query: '?raw', import: 'default' });
-  const achadas = new Set<string>();
-  const re = /(?:marcar|primeiraVez|primeira|tem|atoDePiedade|flags\.(?:has|add|delete))\(\s*['"`]([a-z][a-z0-9_]*)['"`]/g;
-  for (const carregar of Object.values(fontes)) {
-    const texto = (await carregar()) as string;
-    for (const m of texto.matchAll(re)) achadas.add(m[1]);
-  }
-  return [...achadas].sort();
+/** As flags fixas do registro (src/historia/Flags.ts); as de família aparecem quando ligadas no save. */
+const FLAGS_DO_REGISTRO: string[] = Object.values(FLAGS_FIXAS).flat();
+
+/** Os números de `AJUSTES` como pares [caminho, valor], na ordem do arquivo ("peregrino.pulo", 8.6). */
+function folhasDosAjustes(o: object = AJUSTES, prefixo = ''): [string, number][] {
+  return Object.entries(o).flatMap(([k, v]) => (typeof v === 'number' ? [[prefixo + k, v] as [string, number]] : folhasDosAjustes(v as object, `${prefixo}${k}.`)));
+}
+
+/** O valor de fábrica de um caminho de `AJUSTES`. */
+function padraoDoAjuste(caminho: string): number {
+  return caminho.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown>)[k], AJUSTES_PADRAO) as number;
+}
+
+/** Muda um valor de `AJUSTES` pelo caminho (o jogo lê na hora de usar, então vale já). */
+function definirAjuste(caminho: string, valor: number) {
+  const partes = caminho.split('.');
+  const dono = partes.slice(0, -1).reduce<unknown>((o, k) => (o as Record<string, unknown>)[k], AJUSTES) as Record<string, number>;
+  dono[partes[partes.length - 1]] = valor;
 }
 
 export function instalarDev(jogo: Jogo) {
@@ -76,7 +86,6 @@ class PainelDev {
   private overlay = document.createElement('pre');
   private seloEl = document.createElement('div');
   private conteudo!: HTMLElement;
-  private flags: string[] | null = null;
   private filtro = '';
   private ultimaRenderizacao = '';
   /** Botão do mouse apertado no painel: não redesenhar agora, senão o clique se perde. */
@@ -242,7 +251,7 @@ class PainelDev {
         return this.etapa(d.etapa!);
       case 'flag':
         return this.acao(() => {
-          const f = d.flag!;
+          const f = d.flag! as Flag;
           if (g.estado.flags.has(f)) g.estado.flags.delete(f);
           else g.estado.flags.add(f);
           g.recarregarProgresso();
@@ -259,6 +268,14 @@ class PainelDev {
           this.op.escalaTempo = 0;
           this.op.passos += Number(d.n);
         });
+      case 'ajustes-copiar': {
+        const linhas = folhasDosAjustes().filter(([c, v]) => v !== padraoDoAjuste(c)).map(([c, v]) => `${c}: ${padraoDoAjuste(c)} → ${v}`);
+        void navigator.clipboard?.writeText(linhas.join('\n') || '(nada mudou)');
+        return;
+      }
+      case 'ajustes-padrao':
+        for (const [c] of folhasDosAjustes()) definirAjuste(c, padraoDoAjuste(c));
+        return this.renderizar(true);
     }
   }
 
@@ -278,10 +295,20 @@ class PainelDev {
       case 'filtro':
         this.filtro = el.value.trim().toLowerCase();
         return this.renderizar(true);
+      case 'ajuste': {
+        const v = Number(el.value);
+        if (ev.type === 'change' && el.value.trim() !== '' && Number.isFinite(v)) {
+          definirAjuste(el.dataset.caminho!, v);
+          this.renderizar(true);
+        }
+        return;
+      }
       case 'nova-flag':
         if (ev.type !== 'change' || !el.value.trim()) return;
         this.acao(() => {
-          g.estado.flags.add(el.value.trim());
+          const f = el.value.trim();
+          if (ehFlag(f)) g.estado.flags.add(f);
+          else console.warn(`[dev] "${f}" não está no registro de flags (src/historia/Flags.ts)`);
           g.recarregarProgresso();
         });
         el.value = '';
@@ -358,6 +385,8 @@ class PainelDev {
         return this.htmlProgresso();
       case 'tempo':
         return this.htmlTempo();
+      case 'ajustes':
+        return this.htmlAjustes();
     }
   }
 
@@ -426,14 +455,7 @@ class PainelDev {
 
   private htmlProgresso() {
     const e = this.g.estado;
-    if (!this.flags) {
-      this.flags = [];
-      void flagsConhecidas().then((f) => {
-        this.flags = f;
-        this.renderizar(true);
-      });
-    }
-    const todas = [...new Set([...this.flags, ...e.flags])].sort();
+    const todas = [...new Set([...FLAGS_DO_REGISTRO, ...e.flags])].sort();
     const visiveis = todas.filter((f) => !this.filtro || f.includes(this.filtro));
     const etapas = ETAPAS.map((x) => `<button data-acao="etapa" data-etapa="${x.id}">${esc(x.nome)}</button>`).join('');
     const vencidas = [...e.sombrasVencidas].sort().map((id) => `<button data-acao="vencida" data-id="${id}" title="Reviver">${id} ✕</button>`).join('');
@@ -443,7 +465,7 @@ class PainelDev {
       <section><h3>Cor do Vale</h3><input type="range" min="0" max="1" step="0.05" value="${e.cor}" data-campo="cor"> <code>${e.cor.toFixed(2)}</code></section>
       <section><h3>Flags (${e.flags.size} ligadas)</h3>
         <input type="text" placeholder="filtrar…" value="${esc(this.filtro)}" data-campo="filtro">
-        <div class="flags">${visiveis.map((f) => `<button data-acao="flag" data-flag="${f}" class="${e.flags.has(f) ? 'on' : ''}">${f}</button>`).join('')}</div>
+        <div class="flags">${visiveis.map((f) => `<button data-acao="flag" data-flag="${f}" class="${e.flags.has(f as Flag) ? 'on' : ''}">${f}</button>`).join('')}</div>
         <input type="text" placeholder="nova flag + Enter" data-campo="nova-flag" list="dev-flags">
         <datalist id="dev-flags">${todas.map((f) => `<option value="${f}">`).join('')}</datalist>
       </section>
@@ -460,6 +482,25 @@ class PainelDev {
       <section><h3>Avançar</h3><div class="chips">
         <button data-acao="passo" data-n="1">1 quadro</button><button data-acao="passo" data-n="10">10 quadros</button><button data-acao="passo" data-n="60">1 segundo</button>
       </div></section>`;
+  }
+
+  /** Os números de jogabilidade (src/config/ajustes.ts), editáveis com o jogo rodando. */
+  private htmlAjustes() {
+    const grupos = new Map<string, [string, number][]>();
+    for (const [c, v] of folhasDosAjustes()) {
+      const g = c.slice(0, c.lastIndexOf('.'));
+      grupos.set(g, [...(grupos.get(g) ?? []), [c, v]]);
+    }
+    const mudados = folhasDosAjustes().filter(([c, v]) => v !== padraoDoAjuste(c)).length;
+    const secoes = [...grupos].map(([g, itens]) => `
+      <section><h3>${esc(g)}</h3>${itens.map(([c, v]) => {
+        const mudou = v !== padraoDoAjuste(c);
+        return `<label class="ajuste${mudou ? ' mudou' : ''}" title="padrão: ${padraoDoAjuste(c)}"><span>${esc(c.slice(g.length + 1))}</span><input type="number" step="any" value="${v}" data-campo="ajuste" data-caminho="${c}"></label>`;
+      }).join('')}</section>`).join('');
+    return `
+      <section><div class="chips"><button data-acao="ajustes-copiar">Copiar os mudados (${mudados})</button><button data-acao="ajustes-padrao">Voltar ao padrão</button></div>
+        <small>Valem na hora. Não ficam salvos: copie os mudados e leve para src/config/ajustes.ts. Vida e escala dos chefões só pegam ao recarregar a região.</small></section>
+      ${secoes}`;
   }
 
   private atualizarOverlay() {
@@ -508,6 +549,10 @@ const CSS = `
 #dev-painel input[type=text],#dev-painel select{font:inherit;color:inherit;background:#0006;border:1px solid #ffffff22;border-radius:4px;padding:3px 6px;width:100%;box-sizing:border-box}
 #dev-painel select{width:auto}
 #dev-painel input[type=range]{width:70%;vertical-align:middle}
+#dev-painel label.ajuste{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:2px 0}
+#dev-painel label.ajuste input{font:inherit;color:inherit;background:#0006;border:1px solid #ffffff22;border-radius:4px;padding:2px 4px;width:90px;text-align:right}
+#dev-painel label.ajuste.mudou span{color:#e8c46a}
+#dev-painel label.ajuste.mudou input{border-color:#e8c46a}
 #dev-painel code{color:#d8c79a}
 #dev-painel small{color:#8a8478;display:block;margin-top:4px}
 #dev-painel .barra{height:5px;background:#ffffff14;border-radius:3px;overflow:hidden;margin:4px 0}

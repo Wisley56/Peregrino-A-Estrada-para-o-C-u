@@ -18,6 +18,7 @@ import { BORDA_PAREDE, CABINE, MASTRO, MEIO_COMPRIMENTO, anfora, bote, bordaEm, 
 import { Oceano } from './Oceano';
 import { blocosDeColunas } from './Terreno';
 import { NIVEL_MAR, ORIGENS } from './aberto/Geografia';
+import type { TemFlag } from '../historia/Flags';
 
 /** Canto do mapa de Creta no mundo (longe das outras áreas). */
 export const ORIGEM_CRETA = ORIGENS.creta;
@@ -549,7 +550,7 @@ export class Creta implements Area {
   }
 
   /** Põe cada um no seu lugar conforme a história (ao carregar o jogo ou depois de um evento). */
-  arrumar(tem: (flag: string) => boolean) {
+  arrumar(tem: TemFlag) {
     this.caminhoPaulo = [];
     const [cx, cd, , cf] = CASAS[0];
     const cz = costa(cx) - cd + cf / 2 + 2.6;

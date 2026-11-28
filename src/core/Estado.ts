@@ -2,6 +2,8 @@ import { Identidade, normalizar } from './Aparencia';
 import { AREAS, IdArea } from '../mundo/Area';
 import { PONTOS_DE_VIAGEM, pontoDaV1 } from '../mundo/aberto/Geografia';
 import { CUSTO_NIVEL, DONS, IdDom, domPorId } from './Dons';
+import type { Flag } from '../historia/Flags';
+import { REGIOES } from '../historia/Regioes';
 
 const areaValida = (a: unknown): IdArea => (AREAS.includes(a as IdArea) ? (a as IdArea) : 'vale');
 
@@ -52,17 +54,12 @@ export interface DadosSalvos {
 export const QUADRA_MAPA = 64;
 export const quadraDoMapa = (x: number, z: number) => `${Math.floor(x / QUADRA_MAPA)},${Math.floor(z / QUADRA_MAPA)}`;
 
-/** A flag que diz que já se entrou em cada área (para trazer `visitadas` de um save de antes dela). */
-const FLAG_DE_ENTRADA: Partial<Record<IdArea, string>> = {
-  cripta: 'cripta_entrou', deserto: 'deserto_entrou', meiodia: 'meiodia_entrou', cidade: 'cidade_entrou', palacio: 'palacio_entrou',
-  bahiabaixa: 'bahia_entrou', bahiaalta: 'bahia_alta_entrou', creta: 'creta_entrou', navio: 'navio_entrou',
-  naufragio: 'naufragio_encalhou', malta: 'malta_entrou',
-};
 
 /** As áreas visitadas segundo as flags da história (saves de antes do registro de visitas). */
-function visitadasPelasFlags(flags: Set<string>, onde: IdArea): Set<IdArea> {
+function visitadasPelasFlags(flags: ReadonlySet<string>, onde: IdArea): Set<IdArea> {
   const v = new Set<IdArea>(['vale']);
-  for (const [a, f] of Object.entries(FLAG_DE_ENTRADA)) if (flags.has(f)) v.add(a as IdArea);
+  // a flag `entrou` de cada região diz que já se esteve lá
+  for (const [a, def] of Object.entries(REGIOES)) if (def.entrou && flags.has(def.entrou)) v.add(a as IdArea);
   if (onde !== 'ermo') v.add(onde);
   return v;
 }
@@ -118,7 +115,8 @@ export class Estado {
   checkpoint: [number, number, number] = [0, 0, 0];
   checkpointArea: IdArea = 'vale';
   sombrasVencidas = new Set<string>();
-  flags = new Set<string>();
+  /** As flags da história (ver `src/historia/Flags.ts`). Um save antigo pode trazer alguma já aposentada. */
+  flags = new Set<Flag>();
   /** null até o jogador passar pela criação do personagem. */
   identidade: Identidade | null = null;
   /** Espaço de jogo (1..3). Sem espaço (null), nada é salvo. */
@@ -212,7 +210,7 @@ export class Estado {
     this.cor = d.cor;
     this.gracas = d.gracas;
     this.sombrasVencidas = new Set(d.sombrasVencidas);
-    this.flags = new Set(d.flags);
+    this.flags = new Set(d.flags as Flag[]);
     this.dons = { ...(d.dons ?? {}) };
     // chefões vencidos antes da "graça grande" (3 em vez de 1) recebem a diferença
     for (const id of CHEFOES)

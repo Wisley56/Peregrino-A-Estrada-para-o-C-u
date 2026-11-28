@@ -97,27 +97,39 @@ export type TipoPontoDeViagem = 'capela' | 'cruzeiro' | 'cais' | 'lugar';
  * no chão vem da própria região (`Jogo.lugarDoPonto`). O ponto `principal` de uma região é o que se dá como
  * descoberto a quem já tinha passado por ela antes de os pontos existirem (saves antigos).
  */
+/**
+ * Onde se chega ao viajar para o ponto: perto de um marco da área (uma posição que a área expõe com esse nome, ou
+ * `capela` = diante da porta da capela da região), afastado `desvio` [x, z] m, olhando para `rumo`.
+ */
+export interface LugarDoPonto {
+  marco: 'capela' | 'cruzeiro' | 'poco' | 'estradaDoMar' | 'saveiro' | 'chegada' | 'cais';
+  desvio?: readonly [number, number];
+  rumo: 'norte' | 'sul' | 'leste' | 'oeste';
+}
+
 export interface DefPontoDeViagem {
   id: string;
   nome: string;
   area: IdArea;
   tipo: TipoPontoDeViagem;
   principal?: boolean;
+  /** Onde se chega. Os pontos à beira das estradas do ermo não têm: a chegada vem da própria beira. */
+  lugar?: LugarDoPonto;
 }
 
 export const PONTOS_DE_VIAGEM: readonly DefPontoDeViagem[] = [
-  { id: 'vale_cruzeiro', nome: 'O cruzeiro do Vale', area: 'vale', tipo: 'cruzeiro', principal: true },
-  { id: 'vale_capela', nome: 'A capela do Vale', area: 'vale', tipo: 'capela' },
-  { id: 'deserto_capela', nome: 'A capela do Deserto', area: 'deserto', tipo: 'capela', principal: true },
-  { id: 'deserto_poco', nome: 'O poço do Deserto', area: 'deserto', tipo: 'lugar' },
-  { id: 'cidade_capela', nome: 'A capela da Cidade Dourada', area: 'cidade', tipo: 'capela', principal: true },
-  { id: 'cidade_estrada', nome: 'A porta da estrada do mar', area: 'cidade', tipo: 'lugar' },
-  { id: 'bahia_cais', nome: 'O cais do saveiro', area: 'bahiabaixa', tipo: 'cais', principal: true },
-  { id: 'bahia_bonfim', nome: 'A igreja do Bonfim', area: 'bahiabaixa', tipo: 'capela' },
-  { id: 'bahia_praca', nome: 'A Praça Tomé de Sousa', area: 'bahiaalta', tipo: 'lugar', principal: true },
-  { id: 'creta_praia', nome: 'Bons Portos', area: 'creta', tipo: 'cais', principal: true },
-  { id: 'malta_praia', nome: 'A praia do fogo, em Malta', area: 'malta', tipo: 'lugar', principal: true },
-  { id: 'malta_porto', nome: 'O porto de Malta', area: 'malta', tipo: 'cais' },
+  { id: 'vale_cruzeiro', nome: 'O cruzeiro do Vale', area: 'vale', tipo: 'cruzeiro', principal: true, lugar: { marco: 'cruzeiro', desvio: [0, 2.5], rumo: 'norte' } },
+  { id: 'vale_capela', nome: 'A capela do Vale', area: 'vale', tipo: 'capela', lugar: { marco: 'capela', rumo: 'norte' } },
+  { id: 'deserto_capela', nome: 'A capela do Deserto', area: 'deserto', tipo: 'capela', principal: true, lugar: { marco: 'capela', rumo: 'norte' } },
+  { id: 'deserto_poco', nome: 'O poço do Deserto', area: 'deserto', tipo: 'lugar', lugar: { marco: 'poco', desvio: [3, 0], rumo: 'oeste' } },
+  { id: 'cidade_capela', nome: 'A capela da Cidade Dourada', area: 'cidade', tipo: 'capela', principal: true, lugar: { marco: 'capela', rumo: 'norte' } },
+  { id: 'cidade_estrada', nome: 'A porta da estrada do mar', area: 'cidade', tipo: 'lugar', lugar: { marco: 'estradaDoMar', desvio: [0, -3], rumo: 'norte' } },
+  { id: 'bahia_cais', nome: 'O cais do saveiro', area: 'bahiabaixa', tipo: 'cais', principal: true, lugar: { marco: 'saveiro', desvio: [0, -2.5], rumo: 'norte' } },
+  { id: 'bahia_bonfim', nome: 'A igreja do Bonfim', area: 'bahiabaixa', tipo: 'capela', lugar: { marco: 'capela', rumo: 'norte' } },
+  { id: 'bahia_praca', nome: 'A Praça Tomé de Sousa', area: 'bahiaalta', tipo: 'lugar', principal: true, lugar: { marco: 'chegada', rumo: 'leste' } },
+  { id: 'creta_praia', nome: 'Bons Portos', area: 'creta', tipo: 'cais', principal: true, lugar: { marco: 'chegada', rumo: 'sul' } },
+  { id: 'malta_praia', nome: 'A praia do fogo, em Malta', area: 'malta', tipo: 'lugar', principal: true, lugar: { marco: 'chegada', rumo: 'norte' } },
+  { id: 'malta_porto', nome: 'O porto de Malta', area: 'malta', tipo: 'cais', lugar: { marco: 'cais', rumo: 'leste' } },
   // à beira das estradas do ermo (BEIRAS, abaixo)
   { id: 'ermo_cruzeiro_oeste', nome: 'O cruzeiro da estrada do Deserto', area: 'ermo', tipo: 'cruzeiro' },
   { id: 'ermo_cristovao', nome: 'A capelinha de São Cristóvão', area: 'ermo', tipo: 'capela' },
