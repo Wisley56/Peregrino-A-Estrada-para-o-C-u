@@ -10,7 +10,7 @@ const IGNORAR = [/GPU stall due to ReadPixels/i, /swiftshader/i, /Automatic fall
 const ETAPAS = ['comeco', 'vale', 'mamom', 'deserto', 'acidia', 'cidade', 'tudo', 'coracao', 'ira', 'malta'];
 
 type Janela = {
-  jogo: { estado: { tempo: number }; area: { id: string }; lugarDoPonto(id: string): unknown };
+  jogo: { estado: { tempo: number }; area: { id: string }; lugarDoPonto(id: string): unknown; ctx: { renderer: { info: { render: { frame: number } } } } };
   dev: { etapa(id: string): void };
   perdeuWebgl?: boolean;
 };
@@ -25,15 +25,36 @@ function vigiarErros(page: import('@playwright/test').Page) {
   return erros;
 }
 
-/** O tempo de jogo continua andando por 3 s. */
+/**
+ * O tempo de jogo continua andando (alguns quadros) e a tela continua sendo desenhada. Espera até 30 s: na CI não
+ * há placa de vídeo e o Chromium desenha por software, a poucos quadros por segundo (às vezes menos de um).
+ */
 async function continuaRodando(page: import('@playwright/test').Page) {
-  const tempo = () => page.evaluate(() => (window as unknown as Janela).jogo.estado.tempo);
-  const antes = await tempo();
-  await page.waitForTimeout(3000);
-  expect(await tempo(), 'o tempo de jogo parou').toBeGreaterThan(antes);
+  const ler = () =>
+    page.evaluate(() => {
+      const j = (window as unknown as Janela).jogo;
+      return { tempo: j.estado.tempo, quadros: j.ctx.renderer.info.render.frame };
+    });
+  const antes = await ler();
+  const andou = await page
+    .waitForFunction(
+      (a) => {
+        const j = (window as unknown as Janela).jogo;
+        return j.estado.tempo >= a.tempo + 0.1 && j.ctx.renderer.info.render.frame > a.quadros;
+      },
+      antes,
+      { timeout: 30_000 },
+    )
+    .then(() => true, () => false);
+  const depois = await ler();
+  expect(depois.tempo, 'o tempo de jogo parou').toBeGreaterThan(antes.tempo);
+  expect(depois.quadros, 'o jogo anda mas a tela não é desenhada').toBeGreaterThan(antes.quadros);
+  expect(andou, `o jogo quase não andou em 30 s (tempo ${antes.tempo.toFixed(2)} → ${depois.tempo.toFixed(2)})`).toBe(true);
 }
 
 test('as etapas de progresso aplicam e o jogo segue rodando', async ({ page }) => {
+  // dez etapas, cada uma pode levar até 30 s para andar na CI
+  test.setTimeout(10 * 60_000);
   const erros = vigiarErros(page);
   await page.goto('/?teste=vale');
   await page.waitForFunction(() => ((window as unknown as Partial<Janela>).jogo?.estado?.tempo ?? 0) > 0.5, undefined, { timeout: 90_000 });
