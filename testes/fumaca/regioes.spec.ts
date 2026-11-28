@@ -10,7 +10,7 @@ const IGNORAR = [/GPU stall due to ReadPixels/i, /swiftshader/i, /Automatic fall
 const ETAPAS = ['comeco', 'vale', 'mamom', 'deserto', 'acidia', 'cidade', 'tudo', 'coracao', 'ira', 'malta'];
 
 type Janela = {
-  jogo: { estado: { tempo: number }; area: { id: string }; lugarDoPonto(id: string): unknown };
+  jogo: { estado: { tempo: number }; area: { id: string }; lugarDoPonto(id: string): unknown; ctx: { renderer: { info: { render: { frame: number } } } } };
   dev: { etapa(id: string): void };
   perdeuWebgl?: boolean;
 };
@@ -25,12 +25,14 @@ function vigiarErros(page: import('@playwright/test').Page) {
   return erros;
 }
 
-/** O tempo de jogo continua andando por 3 s. */
+/** O tempo de jogo continua andando por 3 s, e a tela continua sendo desenhada. */
 async function continuaRodando(page: import('@playwright/test').Page) {
   const tempo = () => page.evaluate(() => (window as unknown as Janela).jogo.estado.tempo);
-  const antes = await tempo();
+  const quadros = () => page.evaluate(() => (window as unknown as Janela).jogo.ctx.renderer.info.render.frame);
+  const antes = await tempo(), desenhados = await quadros();
   await page.waitForTimeout(3000);
   expect(await tempo(), 'o tempo de jogo parou').toBeGreaterThan(antes);
+  expect(await quadros(), 'o jogo anda mas a tela não é desenhada').toBeGreaterThan(desenhados);
 }
 
 test('as etapas de progresso aplicam e o jogo segue rodando', async ({ page }) => {

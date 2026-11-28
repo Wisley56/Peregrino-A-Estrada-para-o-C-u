@@ -10,6 +10,7 @@
  */
 import * as THREE from 'three';
 import type { Jogo } from '../Jogo';
+import { ganchosDoJogo } from './Ganchos';
 import { DONS, type IdDom } from '../core/Dons';
 import { CHEFOES } from '../core/Estado';
 import { AREAS, type IdArea } from '../mundo/Area';
@@ -65,7 +66,7 @@ function definirAjuste(caminho: string, valor: number) {
 }
 
 export function instalarDev(jogo: Jogo) {
-  const g = jogo.ganchosDev();
+  const g = ganchosDoJogo(jogo.ctx, jogo);
   const lemb = lembrar();
   const op: OpcoesDev = { painelAberto: false, invencivel: lemb.invencivel, energiaInfinita: lemb.energiaInfinita, velocidade: lemb.velocidade, escalaTempo: 1, passos: 0 };
   jogo.dev = op;

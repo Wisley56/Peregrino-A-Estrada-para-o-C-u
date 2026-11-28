@@ -61,10 +61,10 @@ O protótipo 2D anterior (Phaser) continua em `../jogo`, como referência de sis
   quadro), então o pulo e a queda dão o mesmo resultado a 30, 60 ou 144 qps. O peregrino e a câmera são desenhados
   interpolados entre os dois últimos passos (`Peregrino.interpolar`, `posVisual`). Um pulo apertado num quadro
   sem passo espera o passo seguinte. O resto do jogo ainda segue o quadro.
-- **Agenda (`src/core/Agenda.ts`):** cenas com atraso usam `this.agenda.depois(seg, fn)`, nunca `setTimeout`. A
+- **Agenda (`src/core/Agenda.ts`):** cenas com atraso usam `this.ctx.agenda.depois(seg, fn)`, nunca `setTimeout`. A
   agenda conta o tempo do jogo: para na pausa, obedece à câmera lenta do modo dev e é limpa ao voltar ao título e
-  ao abrir outro jogo. (Ainda há dois `setTimeout` em `Deserto.ts` e `Tempestade.ts`, que saem na divisão do
-  `Jogo.ts`.)
+  ao abrir outro jogo. (Ainda há dois `setTimeout`, em `Deserto.ts` e `Tempestade.ts`: saem quando o conteúdo das regiões
+  passar a ser carregado sob demanda.)
 
 ## Modo desenvolvedor
 
@@ -85,7 +85,7 @@ Abas do painel:
   diálogo aberto e começar uma sessão de teste numa área.
 - **Chefões**: lutar agora (desfaz a vitória, cumpre o que a arena pede e põe o peregrino na entrada), reiniciar a
   luta, ir para a fase 2 e vencer. Vencer passa pelo mesmo caminho de uma vitória de verdade (`Sombra.derrotar()`
-  e `Jogo.sombraVencida`): graças, coração e diálogo. Também vence as sombras comuns da área.
+  e `SistemaCombate.sombraVencida`): graças, coração e diálogo. Também vence as sombras comuns da área.
 - **Peregrino**: invencível, energia infinita, velocidade, curar, +10 graças e o nível de cada dom.
 - **Progresso**: etapas da história (`src/dev/Progresso.ts`, cumulativas: do começo até a partida de Malta), cor do
   Vale, flags (as do registro `src/historia/Flags.ts` e as ligadas no save, com filtro) e sombras vencidas (clique
@@ -100,20 +100,38 @@ As opções de trapaça, a aba aberta e o overlay ficam lembrados em `localStora
 **Segurança**
 
 - Só existe no modo dev. O `main.ts` importa `src/dev/Dev.ts` dentro de `if (import.meta.env.DEV)`; o Vite troca
-  isso por `false` no build e o módulo some. `Jogo.ganchosDev()` vira só um `throw` em produção.
+  isso por `false` no build e o módulo some, e com ele `src/dev/Ganchos.ts`.
 - O `npm run build` termina com `tools/verificar-build.mjs`, que falha se achar algum texto do painel em `dist/`.
 - O save fica protegido. A primeira ação do painel num espaço de jogo liga `Estado.semSalvar`: nada mais é gravado
   até alguém clicar em "liberar" no selo DEV (canto inferior direito), com confirmação. A sessão de teste (`?teste`
   ou o botão do painel) não tem espaço de jogo e nunca salva.
-- O painel não mexe em campos privados do `Jogo`. Ele usa `Jogo.ganchosDev()`, um contrato pequeno descrito em
-  `src/dev/tipos.ts`. Para um chefão ou área nova, acrescente-o em `ganchosDev()` (pontos em `areas`, luta em
+- O painel não mexe direto nos sistemas. Ele usa `ganchosDoJogo(ctx, jogo)` (`src/dev/Ganchos.ts`), um contrato
+  pequeno descrito em `src/dev/tipos.ts`. Para um chefão ou área nova, acrescente-o lá (pontos em `areas`, luta em
   `chefes`) e, se mudar a história, a etapa em `Progresso.ts`.
 
 ## Arquitetura
 
 - **`src/main.ts`** cria o `Jogo` e o `Menu` da tela inicial.
-- **`src/Jogo.ts`** é o laço principal. Ele guarda a área atual, o peregrino, a câmera, o HUD, os efeitos e as
-  regras: dano, cura, graças, dons, checkpoints e troca de área.
+- **`src/Jogo.ts`** é o orquestrador. Cria o renderizador e o `Contexto`, liga a tela e o controle e, a cada
+  quadro, roda os sistemas numa ordem explícita (`Jogo.ordem`). Não conhece nenhuma região.
+- **`Contexto`** (`src/jogo/Contexto.ts`): o que todos compartilham. São os serviços (estado, HUD, som, diálogos,
+  câmera, agenda, eventos), as áreas, o estado do momento (a área atual, `transitando`, `morrendo`, `parado`) e os
+  próprios sistemas (`ctx.combate`, `ctx.regioes`…). Cada sistema e cada módulo recebe o mesmo `ctx`.
+- **Sistemas** (`src/sistemas/`): cada um cuida de uma parte do jogo. São eles: o controle do peregrino, o combate,
+  as regiões (qual está acordada e a troca de área), o ambiente, as interações, a conversa com o Ink, a viagem, o
+  barco, a oração, a graça, os sacramentos, os dons, os mapas, a fauna, os menus e as câmeras. Os que têm algo a
+  desfazer numa queda ou na volta ao título implementam `aoMorrer` / `aoVoltarAoTitulo` (`interface Sistema`) e
+  entram em `ctx.sistemas`.
+- **Módulos de região** (`src/regioes/<id>/historia.ts`, interface `ModuloRegiao` em `src/regioes/Modulo.ts`):
+  a história de cada região. Cada módulo traz as interações, os eventos e os valores do Ink, as cenas de cada
+  etapa, o chefão (a barra, o que ele sente, o desfecho da vitória), a cor, o rumo do Conselho e o que se desfaz
+  numa queda. Os sistemas percorrem `ctx.modulos` e perguntam; todos os ganchos são opcionais. Os que dependem
+  da área (`cor`, `chefe`, `rumo`, `oracaoDobrada`) só são chamados quando ela é uma das `areas` do módulo.
+- **Região nova**: a ficha em `src/historia/Regioes.ts`, a pasta `src/regioes/<id>/` com o módulo, e o registro
+  dele em `Contexto` (`historias` e `modulos`). O `Jogo.ts` não muda.
+- Ainda há casos de região dentro dos sistemas: o telhado do galinheiro e o balanço do navio na câmera, o jardim
+  do Vale no controle, o saveiro no barco, e as listas de áreas em `SistemaRegioes`. Eles saem quando o conteúdo
+  das regiões passar a ser carregado sob demanda.
 - Toda região implementa a interface **`Area`** (`src/mundo/Area.ts`): terreno, colisão, pontos de descanso,
   sombras, saídas e `fonteMapa()`, que alimenta o minimapa.
 - Todo chefão implementa **`Chefe`** (`src/entidades/Guardiao.ts`). O jogo só conversa com essa interface:
@@ -126,7 +144,7 @@ O que é conteúdo ou número fica em dados tipados, não espalhado pelo código
 
 - **Flags (`src/historia/Flags.ts`)**: o registro de todas as flags da história. As fixas ficam listadas por região;
   as famílias são prefixos com um id depois (`dom_ciencia`, `navio_cabo_2`). O tipo `Flag` só aceita o que está no
-  registro: `Jogo.marcar`, `primeiraVez` e `estado.flags` não compilam com um erro de digitação. **Nunca renomeie
+  registro: `Contexto.marcar`, `primeiraVez` e `estado.flags` não compilam com um erro de digitação. **Nunca renomeie
   uma flag**: ela está gravada nos saves.
 - **Eventos do Ink (`src/historia/EventosInk.ts`)**: o mesmo para os `~ evento("nome")` dos roteiros.
 - **O build confere o Ink**: o plugin `tools/vite-plugin-ink.ts` passa cada `.ink` por `foraDosRegistros`
@@ -142,9 +160,9 @@ O que é conteúdo ou número fica em dados tipados, não espalhado pelo código
   um desvio e o rumo). Os da beira das estradas do ermo vêm da própria beira.
 - **Interações**: cada uma traz o `tipo` da marca no minimapa (`MARCA.lugar`, `pessoa`, `saida`, `descanso` ou
   `nenhum`).
-- **Eventos do jogo (`src/core/Eventos.ts`)**: um barramento tipado (`jogo.eventos`) com `flagMarcada`,
-  `sombraVencida`, `entrouNaArea`, `eventoInk`, `morreu` e `voltouAoTitulo`. É por ele que os sistemas da divisão
-  do `Jogo.ts` vão se falar. Por enquanto só `Jogo.marcar` emite `flagMarcada`: as flags gravadas direto em
+- **Eventos do jogo (`src/core/Eventos.ts`)**: um barramento tipado (`ctx.eventos`) com `flagMarcada`,
+  `sombraVencida`, `entrouNaArea`, `eventoInk`, `morreu` e `voltouAoTitulo`. É por ele que os sistemas podem se
+  falar sem se conhecer. Por enquanto só `Contexto.marcar` emite `flagMarcada`: as flags gravadas direto em
   `estado.flags` ainda não passam por ele.
 
 ## Estrutura de pastas
@@ -171,8 +189,14 @@ src/
   fx/        Efeitos (pós-processamento)
   ui/        Hud, Criacao, Menu, Minimapa, Pausa, Configuracoes, Dons (rosácea), IconesDons, Vitral, creditos,
              NavegacaoControle (menus pelo controle), Rotulos (nomes dos botões e troca das dicas)
-  dev/       modo desenvolvedor (só no npm run dev): Dev (painel F9, overlay F3), Progresso (etapas), tipos
-  Jogo.ts    laço principal e regras
+  dev/       modo desenvolvedor (só no npm run dev): Dev (painel F9, overlay F3), Ganchos (o que o painel usa do jogo),
+             Progresso (etapas), tipos
+  jogo/      Contexto (os serviços, as áreas e os sistemas que todos compartilham)
+  sistemas/  Sistema (a base), Controle, Combate, Regioes, Ambiente, Interacoes, Conversa, Viagem, Navegacao (o barco),
+             Oracao, Graca, Sacramentos, Dons, Mapas, Fauna, Menus, Cameras
+  regioes/   Modulo (a interface ModuloRegiao) e uma pasta por região com a história dela (historia.ts): vale, deserto,
+             cidade, bahia, creta, navio, naufragio, malta
+  Jogo.ts    o orquestrador: cria o Contexto e roda os sistemas a cada quadro
 public/assets/veloren/   modelos .vox do Veloren (GPL-3.0)
 docs/FONTES-DE-ASSETS.md sites com assets livres e regras de licença
 docs/imagens/            banner e capturas de tela do README (1920×1080, gráficos no Ultra)
@@ -197,7 +221,7 @@ tools/verificar-build.mjs confere que o modo dev não foi para o build
   `pontoDaV1` (`Geografia.ts`) o traz para o lugar novo, e uma cópia do save original fica em
   `peregrino3d.slot.<n>.v1`.
 - **Descoberta do mundo** (separada das flags `*_entrou` da história): `visitadas` (áreas por onde se passou,
-  marcadas em `Jogo.visitar`), `pontos` (pontos de viagem descobertos) e `mapaVisto` (quadras de `QUADRA_MAPA` =
+  marcadas em `SistemaRegioes.visitar`), `pontos` (pontos de viagem descobertos) e `mapaVisto` (quadras de `QUADRA_MAPA` =
   64 m pisadas no mundo aberto, chave `quadraDoMapa(x, z)`, para o mapa-múndi). Um save sem esses campos recebe as
   `visitadas` deduzidas das flags de entrada (`entrou` na ficha de cada região, mais a área do checkpoint) e o ponto `principal`
   de cada região visitada. `mapaVisto` começa vazio. A `versao` continua 2: os campos ausentes bastam para saber.
@@ -313,7 +337,7 @@ os mantém (o save guarda o número do nível, não o nome).
 
 **Peso** (`Estado.peso`, gravado no save)
 
-- Cada isca da Gula pega soma 1. A pedra de São Damião no ombro soma 2 (`Jogo.pesoEfetivo`).
+- Cada isca da Gula pega soma 1. A pedra de São Damião no ombro soma 2 (`SistemaControle.pesoEfetivo`).
 - A velocidade cai 10% por ponto (até 45%) e o pulo, 12% (até 55%). Com a pedra, não há pulo.
 - O peso aparece num saco de ouro na cintura (`Peregrino.mostrarPeso`) e no HUD (`#peso`).
 - Dar o ouro a um pobre (`~ evento("doar_x")`) tira 1 de peso.
@@ -357,7 +381,7 @@ os mantém (o save guarda o número do nível, não o nome).
 
 - Chega-se pelo saveiro da Bahia depois do Coração de Pedra (`bahia_coracao_vencido`): o nó `bahia_saveiro` oferece
   Creta sempre (é a viagem da história) e os outros portos já descobertos. O roteiro marca a escolha com
-  `~ evento("viajar_<ponto>")` (`viajar_creta_praia`, `viajar_cidade_estrada`…), e `Jogo.fazerViagem` chama
+  `~ evento("viajar_<ponto>")` (`viajar_creta_praia`, `viajar_cidade_estrada`…), e `SistemaViagem.fazerViagem` chama
   `viajarPara` quando a conversa fecha. A primeira chegada (`creta_entrou`) toca `creta_chegada`. O barco de pesca
   no fim da praia leva de volta aos portos descobertos. As opções desses menus são `+` (ficam para sempre); com `*`
   o Ink as gastaria na primeira escolha.
@@ -374,7 +398,7 @@ os mantém (o save guarda o número do nível, não o nome).
   borda falsa uma parede (aberta onde chega a prancha) e da cabine um bloco. A borda tem só 0,75 m e o peregrino
   sobe degraus de até 1,05 m, por isso as três áreas do navio somam `BORDA_PAREDE` (0,35 m) à altura física dela:
   a borda vista continua baixa, mas não se passa por cima andando.
-- **A gente** (`Creta.npcs`, interações em `Jogo.interacoesDeCreta`): Júlio, o centurião, e os soldados
+- **A gente** (`Creta.npcs`, interações em `HistoriaDeCreta.interacoesDeCreta`): Júlio, o centurião, e os soldados
   (`entidades/Romanos.ts`, modelo próprio: crista transversa, fáleras, grevas, vara de videira; pilo e escudo);
   São Lucas e Santo Aristarco (`entidades/Companheiros.ts`, `montarApostolico`, que também servirá a São Paulo);
   o piloto, o dono do navio, marinheiros, presos, o pescador, a mulher do forno, a gente de Laseia e o pastor
@@ -392,7 +416,7 @@ os mantém (o save guarda o número do nível, não o nome).
      ou calar (`creta_conselho_manso`, `_ira`, `_calado`, para usar adiante). O desfecho é o de Atos: o centurião
      confia no piloto e no dono, e partem com o vento sul brando.
   3. O evento `conselho` marca `creta_conselho`; Paulo, Lucas e Aristarco passam para o convés, e a prancha
-     oferece "embarcar com Paulo" (`creta_embarcar`), e `Jogo.embarcar` leva à área `navio`.
+     oferece "embarcar com Paulo" (`creta_embarcar`), e `HistoriaDoNavio.embarcar` leva à área `navio`.
 
 **O navio na tempestade** (Mar da Tempestade, At 27,14-38; `mundo/Tempestade.ts`, `dialogos/navio.ink`)
 
@@ -401,16 +425,16 @@ os mantém (o save guarda o número do nível, não o nome).
   repete, para a física e a natação baterem com o que se vê. A câmera joga e arfa com o mar
   (`Tempestade.balancar(cam)`, chamado depois de `atualizarConversa`).
 - **O céu**: `Tempestade.escuridao` (0 a 1, por etapa) e `relampago` (o clarão que decai) entram no ramo
-  `noNavio` de `Jogo.aplicarAmbiente`, que mistura névoa, luz e céu. A chuva é um `LineSegments` de 1400 gotas
+  `noNavio` de `SistemaAmbiente.aplicarAmbiente`, que mistura névoa, luz e céu. A chuva é um `LineSegments` de 1400 gotas
   que segue o jogador (`mundo/Chuva.ts`, a mesma do naufrágio). Som: `Som.ambienteDe('tempestade')` (drones graves e vento com rajadas), `trovao()` e
   `vagalhao()`.
 - **As ondas no convés**: de 16 a 28 s, com aviso 2,2 s antes (`aoAvisarOnda`), uma onda quebra de um bordo
   (`aoQuebrarOnda(lado)`) e empurra o peregrino por `Peregrino.empurrao`, uma velocidade de fora que se desfaz
   sozinha e passa pela colisão normal (a borda falsa o segura). Agarrado ao mastro (até 2,4 m) não é empurrado.
-  Quem cai no mar é tirado da água depois de 1,6 s (`Jogo.atualizarNavio`). Nada disso corre durante conversa
+  Quem cai no mar é tirado da água depois de 1,6 s (`HistoriaDoNavio.atualizarNavio`). Nada disso corre durante conversa
   ou transição (`Tempestade.pausa`).
 - **As etapas** (`EtapaNavio`, `etapaDoNavio(tem)` lê as flags em ordem), e `Tempestade.arrumar` põe cada um no
-  lugar quando `Jogo.navioArrumado` cai para `false`:
+  lugar quando `HistoriaDoNavio.navioArrumado` cai para `false`:
   1. `bote`: puxar o bote que vem a reboque (`navio_bote`, At 27,16).
   2. `cintar`: passar os três cabos por baixo do casco (`navio_cintado`, At 27,17).
   3. `carga`: levar os cinco sacos de trigo (`CARGAS`) até a borda e lançá-los (`navio_carga`, At 27,18-19).
@@ -422,9 +446,9 @@ os mantém (o save guarda o número do nível, não o nome).
   8. `fuga`: os marinheiros descem o bote para fugir; falar com Paulo leva ao aviso a Júlio e aos soldados que
      cortam os cabos (`Tempestade.soltarBote`, `navio_fuga`, At 27,30-32).
   9. `pao`: todos em roda do mastro; Paulo dá graças e parte o pão (`navio_pao`, At 27,33-38), que restaura a vida.
-  10. `amanhecer`: com o pão partido, `Jogo.encalhar` marca `naufragio_encalhou` e leva à área `naufragio`.
+  10. `amanhecer`: com o pão partido, `HistoriaDoNaufragio.encalhar` marca `naufragio_encalhou` e leva à área `naufragio`.
 - Os nós que tocam sozinhos (`navio_anjo`, `navio_fuga_vista`, `navio_pao`) tocam uma vez cada
-  (`primeiraVez(no + '_tocou')`). Os eventos do roteiro chegam a `Jogo.eventoDoNavio`.
+  (`primeiraVez(no + '_tocou')`). Os eventos do roteiro chegam a `HistoriaDoNavio.eventoDoNavio`.
 
 **O naufrágio e a Ira** (Mar da Tempestade, At 27,39-44; `mundo/Naufragio.ts`, `entidades/Ira.ts`, `dialogos/naufragio.ink`)
 
@@ -440,9 +464,9 @@ os mantém (o save guarda o número do nível, não o nome).
   2. `ira`: a gente vai para a praia e os náufragos derivam em tábuas. A luta começa quando o peregrino entra na
      arena fora do navio (`naArena`).
   3. `praia`: depois da vitória (`naufragio_ira_vencida`), todos em roda de Paulo na praia (`naufragio_praia`,
-     At 28,1). O mar se acalma e a chuva afina. Ao fechar a conversa, `Jogo.irParaMalta` leva à área `malta`; depois,
+     At 28,1). O mar se acalma e a chuva afina. Ao fechar a conversa, `HistoriaDeMalta.irParaMalta` leva à área `malta`; depois,
      a praia tem também "F: subir ao fogo dos moradores".
-- **A brasa da ira** (`Jogo.brasa`, 0 a 100, barra "Brasa da ira" no HUD): sobe quando o peregrino bate na Ira
+- **A brasa da ira** (`HistoriaDoNaufragio.brasa`, 0 a 100, barra "Brasa da ira" no HUD): sobe quando o peregrino bate na Ira
   fora da hora (+8, a luz +5), quando é atingido (o `Impacto.brasa` de cada ataque) e quando a Ira o provoca sem
   que ele esteja rezando. Esfria 2,5 por segundo sozinha e 22 rezando (R). Cheia, deixa o peregrino `irado` até
   baixar de 50: cada golpe seu cura a Ira. A luta começa com +15 para cada vez que ele respondeu com raiva antes
@@ -480,7 +504,7 @@ os mantém (o save guarda o número do nível, não o nome).
   4. `publio`: `hospedar` marca `malta_publio` e leva Públio, o criado, Paulo e os companheiros pela estrada até
      a casa (`Malta.subirParaACasa`).
   5. `pai`: `rezar_pai` marca `malta_pai_rezar`. Segurar R a até 3,4 m do leito enche a barra "Rezando com Paulo"
-     (`Hud.mostrarOracao`) em 6 s, e ela baixa sozinha. Cheia, `Jogo.paiCurado` marca `malta_pai_curado` (+1 graça).
+     (`Hud.mostrarOracao`) em 6 s, e ela baixa sozinha. Cheia, `HistoriaDeMalta.paiCurado` marca `malta_pai_curado` (+1 graça).
   6. `enfermos`: a mulher do poço, o pescador da muleta, o velho cego de Melite e a mãe do menino (`ENFERMOS_MALTA`).
      Convidados, vão à casa (`enfermo_<id>`, `malta_enfermo_<id>`, `Malta.mandarParaACasa`). Com os quatro no
      pátio (`valorDialogo('malta_no_patio')`), falar com Paulo toca `malta_curas`, e o evento `curas` marca
@@ -488,7 +512,7 @@ os mantém (o save guarda o número do nível, não o nome).
   7. `honras`: Júlio espera no porto. `tres_meses` escurece a tela e leva ao cais (checkpoint e `malta_partida`).
   8. `partida`: todos no cais com as provisões. A prancha (`malta_embarque`) diz que Roma é a próxima região.
 - **O clima** (`Malta.clima`): chuva até a víbora, nublado até as curas, e depois a luz de Creta.
-  `Jogo.aplicarAmbiente` roda de novo quando o clima muda (`climaDeMalta`).
+  `SistemaAmbiente.aplicarAmbiente` roda de novo quando o clima muda (`climaDeMalta`).
 - **Viagens**: o barqueiro (`malta_barco`) leva à Bahia, a Creta e à Cidade Dourada, e o saveiro da Bahia leva a
   Malta depois de `mar_restaurado`. O barqueiro fica fora da lista genérica de conversas, senão a conversa sem
   viagem tomaria a vez.
@@ -496,7 +520,7 @@ os mantém (o save guarda o número do nível, não o nome).
   - nível 1, discernir os caminhos: nas conversas, a escolha marcada mostra o fruto dela (`Hud.caixaFruto`). O
     roteiro põe a tag dentro dos colchetes, `* [Texto #fruto: o fruto]`. `Dialogos.frutos` só a lê com
     `nivel('conselho') >= 1`;
-  - nível 2, a rosa dos ventos: o minimapa marca o próximo passo com uma estrela azul (`Jogo.rumoDoCaminho`, para
+  - nível 2, a rosa dos ventos: o minimapa marca o próximo passo com uma estrela azul (`SistemaMapas.rumoDoCaminho`, para
     Malta, o naufrágio, o navio e Creta);
   - nível 3, prudência: o minimapa enxerga 60 m;
   - níveis 4 e 5 (conselho ao irmão, luz para os passos) ficam travados até o Mundo Digital (`PELO_CARLO`, flag
@@ -517,12 +541,12 @@ os mantém (o save guarda o número do nível, não o nome).
   `Mundo.pequeno`, e a colisão ignora as caixas `baixa` quando ele está pequeno. Debaixo da verga
   (`JardimDeAgostinho.tetoBaixo`) ninguém se levanta; a margem é menor que o raio do peregrino, para que ele não
   fique de joelhos sem querer.
-- Ao entrar pela primeira vez (`vale_porta_estreita`), recebe uma graça (`Jogo.receberGraca`) e ouve o "Toma e lê".
+- Ao entrar pela primeira vez (`vale_porta_estreita`), recebe uma graça (`SistemaGraca.receberGraca`) e ouve o "Toma e lê".
 - **Santo Agostinho** (`entidades/Agostinho.ts`): bispo, de hábito agostiniano preto, capa pluvial dourada, mitra,
   báculo e o coração em chamas trespassado por uma seta. As falas (`dialogos/vale.ink`, nós `agostinho*` e
   `vale_livro`) são traduções nossas das Confissões e de Rm 13,13-14.
 
-**A idade do peregrino**: `Jogo.idadeDaHistoria` decide pela história. O peregrino é jovem até embarcar na estrada do
+**A idade do peregrino**: `SistemaRegioes.idadeDaHistoria` decide pela história. O peregrino é jovem até embarcar na estrada do
 mar para a Bahia (flag `peregrino_adulto`, ou `bahia_entrou` em saves antigos), e adulto daí em diante. A troca é
 feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a idade em teste.
 
@@ -532,7 +556,7 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
 - Dentro dos muros: praça dourada com fonte (descanso), 21 casas, o mercado, a capela da cidade (Frei Leão) e o
   palácio da Gula (o Salão do Banquete, abaixo). Fora: olivais, trigo, São Damião em ruínas, a pedreira, o casebre do
   leproso e a toca do lobo.
-- A cor da cidade volta com as 4 sombras (`cidade_sombra_N`) e os 6 atos de piedade (`ATOS_CIDADE` em `Jogo.ts`):
+- A cor da cidade volta com as 4 sombras (`cidade_sombra_N`) e os 6 atos de piedade (`ATOS_CIDADE` em `regioes/cidade/historia.ts`):
   - curar o leproso;
   - ajudar Tomás, Rita e Beppo (socorrer ou dar o ouro);
   - fazer as pazes com o lobo;
@@ -543,7 +567,7 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
 - O lobo (`Animal` com `semFuga` e `seguir`) segue o peregrino depois do pacto. Quando os dois estão dentro dos
   muros, ele passa a morar na praça (`mudarCasa`).
 - As iscas da Gula (cálice, prato, moedas, taça e coroa) dão um alívio na hora (coração ou energia) e 1 de peso.
-- Os nós Ink ficam em `dialogos/cidade.ink`, e os efeitos em `Jogo.eventoDaCidade`.
+- Os nós Ink ficam em `dialogos/cidade.ink`, e os efeitos em `HistoriaDaCidade.eventoDaCidade`.
 
 **Mamom, o Guardião da Avareza**
 
@@ -574,7 +598,7 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
   - iguarias: pratos caem 1,3 s depois da marca. Não ferem, mas dão peso (`Impacto.peso`, até 8);
   - devorar: aspira o peregrino para a boca por 2,6 s (`Impacto.arrasto`, mais forte quanto mais peso), e morde de perto;
   - barrigada: salta e solta um anel de vinho que se pula.
-- O peso (`Jogo.pesoBanquete`) some ao repartir com um pobre (F perto dele; com Piedade 3, cada um devolve um
+- O peso (`HistoriaDaCidade.pesoBanquete`) some ao repartir com um pobre (F perto dele; com Piedade 3, cada um devolve um
   coração uma vez por luta) ou rezando (jejum: −1 a cada 2,2 s).
 - Vencida: as travessas viram pão, os pobres sentam à mesa (descanso) e conta como mais um passo na cor da cidade.
 - Os nós Ink ficam em `dialogos/palacio.ink`.
@@ -599,19 +623,19 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
   cabeça gesticula. São dois `Npc` no mesmo lugar (`DULCE` e `DULCE_COM_MENINO`); `BahiaBaixa.dulceEmCena` diz
   qual está visível (o menino sai do colo com `bahia_menino_abrigado`).
 - A primeira cena: na calçada da avenida, diante de uma porta fechada. Ela chama o peregrino quando ele chega a
-  6,5 m (`Jogo.atualizarBahia`, flag `bahia_dulce_chamou`); o nó `dulce` marca `bahia_dulce_conheceu`.
+  6,5 m (`HistoriaDaBahia.atualizarBahia`, flag `bahia_dulce_chamou`); o nó `dulce` marca `bahia_dulce_conheceu`.
 - Os diálogos ficam em `dialogos/bahia.ink`. A cor volta com a flag `bahia_restaurada`.
 - **A procura do abrigo** (o primeiro ato de piedade). As flags, na ordem: `bahia_casa_aberta` (o peregrino força a
   porta pregada da casa abandonada junto ao cais, `casaAbandonada(aberta)` em `BahiaModelos.ts`; a porta é a caixa
   `portaCasa`, aberta com `topo = -PAREDE`), `bahia_casa_expulsos` (ele deita o menino na esteira, o dono chega,
   nó `bahia_dono`, e os põe para fora) e `bahia_menino_abrigado` (o menino dorme na esteira à porta do Convento de
-  Santo Antônio, nó `bahia_convento`; dá uma graça via `Jogo.atoDaBahia`). `BahiaBaixa.reiniciar(flags)` põe
+  Santo Antônio, nó `bahia_convento`; dá uma graça via `HistoriaDaBahia.atoDaBahia`). `BahiaBaixa.reiniciar(flags)` põe
   Dulce, o menino, o dono e a porta no lugar de cada etapa ao carregar o jogo.
 - **Carregar alguém**: `Peregrino.carregar(obj, 'costas')` (a pedra de São Damião usa `'ombro'`). Com carga o
-  peregrino fica mais lento e não pula; com o menino (`Jogo.meninoComPeregrino`) também não usa o cajado, mas reza.
+  peregrino fica mais lento e não pula; com o menino (`HistoriaDaBahia.meninoComPeregrino`) também não usa o cajado, mas reza.
   O menino não vai para o save: se a carga cai (troca de área, recarga), ele volta para os braços de Dulce.
   `menino('costas' | 'deitado')` em `Dulce.ts` monta o menino em cada pose. Os eventos Ink são
-  `carregar_menino` e `expulsos` (`Jogo.eventoDaBahia`).
+  `carregar_menino` e `expulsos` (`HistoriaDaBahia.eventoDaBahia`).
 - **NPCs que andam**: `Npc.andarPara(destino, dt, chao, vel)` anda em linha reta (quem chama escolhe um caminho livre)
   e `Npc.colocar(p, rumo)` teletransporta. Dulce segue `CAMINHOS_DULCE` (`BahiaBaixa.dulceIr`), mais depressa
   quando está longe do peregrino, para nunca deixar o jogador esperando.
@@ -680,9 +704,9 @@ feita em `trocarArea`. O idoso fica para o final. `?idade=` continua forçando a
   `bahia_leito_largo`), e há o médico voluntário (`bahia_medico`). Na primeira entrada, Irmã Dulce chama
   (`bahia_hospital_entrou`; o nó `dulce` vai para `no_hospital` e `o_dom`): o evento `piedade_aperfeicoada` abre a
   Piedade 4 e 5, marca `bahia_restaurada` (uma graça), o sino do Bonfim toca três vezes (`Som.sino`) e vem
-  `bahia_restaurada`. A **cor da Bahia** (`Jogo.corDaBahia`) volta aos poucos com a provação (até a metade: os
+  `bahia_restaurada`. A **cor da Bahia** (`HistoriaDaBahia.corDaBahia`) volta aos poucos com a provação (até a metade: os
   recolhidos, o menino, a doação, a enfermaria) e toda com a vitória; a cor na tela segue o alvo devagar
-  (`Jogo.corVisivel`). As galinhas foram para o quintal, a oeste. Com a vitória a cidade também se enfeita:
+  (`SistemaAmbiente.corVisivel`). As galinhas foram para o quintal, a oeste. Com a vitória a cidade também se enfeita:
   as mesinhas com guarda-sol vermelho nos dois lados do Largo do Pelourinho (`mesaComGuardaSol`) e, nas
   palafitas dos Alagados, os varais de roupa e os vasos de flor (`enfeitesDaPalafita`). O que só aparece depois
   da cor fica em `MapaDaBahia.depoisDaCor`, e as caixas que vêm com ele em `caixasDaCor` (desligadas antes, com
@@ -726,7 +750,7 @@ antes da hora fica com a história adormecida. Pelo mapa (M) viaja-se aos lugare
   principal. O build precisa de `worker: { format: 'es' }` no `vite.config.ts`.
 - **Ermo** (`src/mundo/aberto/MundoAberto.ts`): a área `ermo` ("O Caminho") é a terra de ligação e o mar aberto
   (os chunks, o `Oceano` do mundo e um anel de mar liso até o horizonte). É também a **física do mundo aberto**:
-  `Jogo.fisica` devolve o ermo sempre que se está ao ar livre, e ele responde altura, água e colisão pela região
+  `SistemaRegioes.fisica` devolve o ermo sempre que se está ao ar livre, e ele responde altura, água e colisão pela região
   que manda em cada ponto ou pelo terreno procedural. Por isso o peregrino cruza a borda sem trocar de chão.
 - **Região atual**: no mundo aberto, `Jogo.area` é a região sob o peregrino (ou o ermo) e muda sozinha em
   `reverRegiao`, sem véu: manda a primeira região da lista de carimbos que tem o ponto; a atual segura até 3 m
@@ -737,7 +761,7 @@ antes da hora fica com a história adormecida. Pelo mapa (M) viaja-se aos lugare
 - **O que ficou aberto**: o Vale perdeu a parede invisível (`Mundo.colidir`) e o desfiladeiro do oeste agora
   corta a serra até a borda; nenhuma região devolve mais altura 99 para o mundo aberto (o ermo nunca pergunta
   fora do retângulo dela). A câmera enxerga até 2600 m.
-- **História adormecida** (`Jogo.acordada`, `revisarSono`): cada região ao ar livre tem um pré-requisito (o
+- **História adormecida** (`SistemaRegioes.acordada`, `revisarSono`): cada região ao ar livre tem um pré-requisito (o
   Deserto, o véu do Vale aberto; a Cidade, `meiodia_vencido`; as duas Bahias, a Gula vencida; Creta,
   `bahia_coracao_vencido`; o naufrágio, `naufragio_encalhou`; Malta, `naufragio_ira_vencida`; o Vale está sempre
   acordado). Antes dele a região **dorme**: os santos dela somem (e voltam a sumir se ela se rearrumar), não há
@@ -855,7 +879,7 @@ antes da hora fica com a história adormecida. Pelo mapa (M) viaja-se aos lugare
 - **Pendências conhecidas**: a Cidade Alta usa as cores das casas na parede da escarpa ao lado da Ladeira. As
   células do recheio ainda são montadas no thread do jogo (se pesar, vão para a obra, como os ladrilhos).
 - **Mapa do terreno** (`src/mundo/aberto/MapaDoTerreno.ts`): `pintarMapa` desenha o chão do mundo visto de cima
-  num canvas (a mesma pintura que o mapa-múndi faz aos poucos). No modo dev: `jogo.ganchosDev().mapaDoMundo(x0, z0, x1, z1, passo)`.
+  num canvas (a mesma pintura que o mapa-múndi faz aos poucos). No modo dev: `dev.g.mapaDoMundo(x0, z0, x1, z1, passo)`.
 - **Bordas**: as paredes da borda de um mapa descem até `FUNDO_BORDA` (`Terreno.ts`), a superfície da água
   segura a câmera (ela não mergulha) e o `Oceano` desenha os dois lados.
 
@@ -885,11 +909,11 @@ aparece quando a fala toca.
 | `#pausa:1.4` | fecha a caixa por 1,4 s antes da fala |
 | `#gesto:sim` | gesto de quem fala (`#gesto:rita=acolher` para outro personagem em cena) |
 | `#plano:perto` | pede um enquadramento à câmera de conversa (`geral`, `perto`, `ombro`) |
-| `~ evento("dom_ciencia")` | efeito de jogo tratado em `Jogo.eventoDialogo` |
+| `~ evento("dom_ciencia")` | efeito de jogo tratado em `SistemaConversa.eventoDialogo` |
 | `~ marcar("flag")` | grava uma flag no save |
 
 Funções externas: `descobriu(ponto)` (o ponto de viagem já foi descoberto), `tem(flag)`, `primeira(flag)` (verdadeiro só na primeira vez, e já marca), `nivel(dom)`,
-`valor(chave)` (números do jogo, em `Jogo.valorDialogo`), `nome()` e `g(masculino, feminino)` para o gênero
+`valor(chave)` (números do jogo, em `SistemaConversa.valorDialogo`), `nome()` e `g(masculino, feminino)` para o gênero
 do peregrino. As consultas puras são registradas como seguras para a leitura antecipada do Ink; as que mudam o
 jogo, não.
 
@@ -899,7 +923,7 @@ a caixa comum.
 ### Cenas de conversa
 
 Numa conversa com um NPC, a câmera e os corpos encenam o diálogo. Quando cada fala aparece, o Hud chama
-`Jogo.aoFalar`, e o jogo acha o corpo de quem fala com `Npc.doFalante(id, perto)` (o NPC visível mais perto com
+`SistemaConversa.aoFalar`, e o jogo acha o corpo de quem fala com `Npc.doFalante(id, perto)` (o NPC visível mais perto com
 aquele falante).
 
 **Câmera de conversa** (`core/CameraConversa.ts`)
@@ -1019,7 +1043,7 @@ bichos pequenos ou fica de pé para os grandes (`carinhoAlto`).
 - **`entidades/Npc.ts`**: base de todo personagem com quem se conversa. A ficha (`DefNpc`) diz o id, o falante,
   o nó do roteiro e a aparência. O NPC respira, vira o corpo para o peregrino a menos de 9 m, acompanha com a
   cabeça (até ±1 rad) e gesticula conforme o roteiro (veja [Cenas de conversa](#cenas-de-conversa)).
-- **`Jogo.falarCom(npc)`** cria a interação padrão ("F: falar com …") e liga `npc.falando` durante a conversa.
+- **`SistemaInteracoes.falarCom(npc)`** cria a interação padrão ("F: falar com …") e liga `npc.falando` durante a conversa.
 - **`voxel/Humano.ts`**: monta gente do povo a partir de um `Figurino` (gênero, idade, pele, penteado, traje,
   barba, acessório, auréola). A cabeça é 6³, como a do peregrino, e fica num grupo próprio para poder girar.
   `figurinoDoPovo(semente, 'pobre' | 'povo' | 'rico')` sorteia multidões variadas e sempre iguais para a mesma
@@ -1064,7 +1088,7 @@ ao jogo depois que o jogador aperta um botão nele.
   `rotularTeclas` os troca na hora de mostrar (`Hud.rotular`: dicas, avisos, diálogos e chips). Os textos fixos
   das telas usam `data-controle="Voltar · {B}"`, preenchido por `trocarRotulosDaTela`. Ao mudar o mapa em
   `MAPA_CONTROLE`, ajuste também `rotularTeclas` e o `MAPA` de `Configuracoes.ts`.
-- **Vibração** (`Jogo.tremer`): ao levar dano, ao acertar com o cajado e ao cair. Desliga em Configurações.
+- **Vibração** (`SistemaCombate.tremer`): ao levar dano, ao acertar com o cajado e ao cair. Desliga em Configurações.
 - **Testar sem controle**: no console, troque `navigator.getGamepads` por uma função que devolve um objeto
   `{ id, index: 0, connected: true, mapping: 'standard', axes: [0,0,0,0], buttons: [{ pressed, value }...] }`
   e mude `buttons`/`axes` entre os quadros.
@@ -1080,7 +1104,7 @@ Toda a interface é HTML e SVG desenhados por código, sem imagens.
   caixa de diálogo (retrato, texto que corre, escolhas numeradas).
 - **`Minimapa.ts`**: minimapa redondo que gira com a câmera. O parâmetro `conselho` (`alvo`, `raio`) desenha a
   estrela azul do próximo passo (na borda, com a ponta para ele, se estiver longe) e muda o alcance.
-- **Mira livre** (`Jogo.atualizarMiraLivre`, `Hud.mostrarRetic`), inspirada no Veloren e no Minecraft:
+- **Mira livre** (`SistemaCombate.atualizarMiraLivre`, `Hud.mostrarRetic`), inspirada no Veloren e no Minecraft:
   - a câmera olha 1,05 m acima da cabeça (`CameraTerceira.elevacaoMira`; 0,5 m na capela). O peregrino fica um
     pouco abaixo do centro e a mira fica livre por cima dele, como no Veloren;
   - para mirar no alto, a câmera desce até `ARFAGEM_LIVRE` (−0,8): o braço encolhe rente ao chão e passa para
